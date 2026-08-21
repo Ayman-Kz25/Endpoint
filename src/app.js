@@ -1,7 +1,11 @@
-import { createIcons } from "lucide";
+import { createIcons, icons } from "lucide";
 
 export function initializeApp() {
-    createIcons();
+  console.log("Endpoint initialized");
 
-    console.log("Endpoint initialized");
+  createIcons({
+    icons
+  });
+  
+  console.log("lucide initialized");
 }

@@ -1,4 +1,9 @@
-import { initializeApp } from './app.js';
 import './style.css';
+import { initializeApp } from './app.js';
+import { initializeTheme } from './scripts/ui/theme.js';
 
-initializeApp();
+window.document.addEventListener("DOMContentLoaded", () => {
+    initializeApp();
+    initializeTheme();
+})
+
