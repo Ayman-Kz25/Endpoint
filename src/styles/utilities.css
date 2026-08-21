@@ -1,0 +1,108 @@
+/* =========================================================
+   Application utilities
+   ========================================================= */
+
+.app-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.app-panel-raised {
+  background: var(--color-surface-raised);
+}
+
+.text-muted {
+  color: var(--color-muted-foreground);
+}
+
+/* =========================================================
+   Focus
+   ========================================================= */
+
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--color-background),
+    0 0 0 4px var(--color-primary);
+}
+
+/* =========================================================
+   Interactive surface
+   ========================================================= */
+
+.interactive-surface {
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.interactive-surface:hover {
+  background: var(--color-surface-raised);
+}
+
+/* =========================================================
+   Request / response status
+   ========================================================= */
+
+.status-success {
+  color: var(--color-success);
+  background: color-mix(
+    in srgb,
+    var(--color-success) 12%,
+    transparent
+  );
+}
+
+.status-warning {
+  color: var(--color-warning);
+  background: color-mix(
+    in srgb,
+    var(--color-warning) 12%,
+    transparent
+  );
+}
+
+.status-error {
+  color: var(--color-danger);
+  background: color-mix(
+    in srgb,
+    var(--color-danger) 12%,
+    transparent
+  );
+}
+
+/* =========================================================
+   Method colors
+   ========================================================= */
+
+.method-get {
+  color: #22c55e;
+}
+
+.method-post {
+  color: #eab308;
+}
+
+.method-put {
+  color: #3b82f6;
+}
+
+.method-patch {
+  color: #a855f7;
+}
+
+.method-delete {
+  color: #ef4444;
+}
+
+.method-head {
+  color: #06b6d4;
+}
+
+.method-options {
+  color: #94a3b8;
+}

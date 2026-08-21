@@ -1,0 +1,64 @@
+/* =========================================================
+   CodeMirror
+   ========================================================= */
+
+#json-editor {
+  position: relative;
+  min-height: 280px;
+}
+
+#json-editor .cm-editor {
+  height: 100%;
+  min-height: 280px;
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+#json-editor .cm-scroller {
+  min-height: 280px;
+  overflow: auto;
+}
+
+#json-editor .cm-content {
+  padding: 12px 0;
+  caret-color: var(--color-foreground);
+}
+
+#json-editor .cm-line {
+  padding: 0 16px;
+}
+
+#json-editor .cm-gutters {
+  background: var(--color-surface);
+  color: #596170;
+  border-right: 1px solid var(--color-border-subtle);
+}
+
+#json-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+#json-editor .cm-activeLineGutter {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+#json-editor .cm-selectionBackground {
+  background: rgba(99, 102, 241, 0.25) !important;
+}
+
+#json-editor .cm-cursor {
+  border-left-color: var(--color-primary);
+}
+
+#json-editor .cm-focused {
+  outline: none;
+}
+
+#json-editor:focus-within {
+  border-color: var(--color-primary);
+  box-shadow:
+    0 0 0 1px var(--color-primary),
+    0 0 0 3px rgba(99, 102, 241, 0.12);
+}
