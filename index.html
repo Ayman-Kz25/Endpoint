@@ -1,13 +1,804 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <meta
+      name="description"
+      content="Endpoint is a focused workspace for building, testing, and inspecting HTTP requests."
+    />
+
+    <meta name="theme-color" content="#0b0d10" />
+
     <title>Endpoint - HTTP Request Workspace</title>
+
+    <link rel="icon" type="image/svg+xml" href="" />
+
+    <!-- Application styles -->
+    <link rel="stylesheet" href="./src/style.css" />
   </head>
+
   <body>
-    <div id="app"></div>
-    <script type="module" src="./src/app.js"></script>
+    <div id="app" class="min-h-screen bg-background text-foreground">
+      <!-- ============================================================
+           Application Shell
+           ============================================================ -->
+
+      <div class="flex min-h-screen flex-col">
+        <!-- ==========================================================
+             Top Navigation
+             ========================================================== -->
+
+        <header
+          id="app-header"
+          class="flex h-14 shrink-0 items-center border-b border-border bg-surface"
+        >
+          <!-- Brand -->
+          <div
+            class="flex h-full w-64 shrink-0 items-center border-r border-border px-4"
+          >
+            <a
+              href="/"
+              class="flex items-center gap-2"
+              aria-label="Endpoint home"
+            >
+              <span
+                class="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-white"
+                aria-hidden="true"
+              >
+                E
+              </span>
+
+              <span class="text-sm font-semibold tracking-tight">
+                Endpoint
+              </span>
+            </a>
+          </div>
+
+          <!-- Header Content -->
+          <div class="flex min-w-0 flex-1 items-center justify-between px-4">
+            <!-- Workspace title -->
+            <div class="flex min-w-0 items-center gap-3">
+              <div class="min-w-0">
+                <p
+                  class="truncate text-sm font-medium"
+                  id="workspace-title"
+                >
+                  Workspace
+                </p>
+
+                <p
+                  class="truncate text-xs text-muted-foreground"
+                  id="workspace-subtitle"
+                >
+                  HTTP Request Workspace
+                </p>
+              </div>
+            </div>
+
+            <!-- Header actions -->
+            <div class="flex items-center gap-1">
+              <button
+                id="search-button"
+                type="button"
+                class="inline-flex h-8 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                aria-label="Search"
+                title="Search"
+              >
+                <i data-lucide="search" class="h-4 w-4"></i>
+                <span class="hidden lg:inline">Search</span>
+              </button>
+
+              <button
+                id="settings-button"
+                type="button"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                aria-label="Settings"
+                title="Settings"
+              >
+                <i data-lucide="settings" class="h-4 w-4"></i>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- ==========================================================
+             Main Application
+             ========================================================== -->
+
+        <div class="flex min-h-0 flex-1">
+          <!-- ========================================================
+               Sidebar
+               ======================================================== -->
+
+          <aside
+            id="sidebar"
+            class="flex w-64 shrink-0 flex-col border-r border-border bg-surface"
+            aria-label="Application navigation"
+          >
+            <!-- Sidebar navigation -->
+            <nav class="flex-1 overflow-y-auto p-3">
+              <!-- Workspace section -->
+              <div class="mb-6">
+                <div
+                  class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  Workspace
+                </div>
+
+                <div class="space-y-1">
+                  <button
+                    id="new-request-button"
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-md bg-surface-raised px-2.5 py-2 text-left text-sm font-medium text-foreground transition hover:bg-surface-raised"
+                  >
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    <span>New Request</span>
+                  </button>
+
+                  <button
+                    id="collections-button"
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                  >
+                    <i data-lucide="folder" class="h-4 w-4"></i>
+                    <span>Collections</span>
+                  </button>
+
+                  <button
+                    id="history-button"
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                  >
+                    <i data-lucide="history" class="h-4 w-4"></i>
+                    <span>History</span>
+                  </button>
+
+                  <button
+                    id="environments-button"
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                  >
+                    <i data-lucide="braces" class="h-4 w-4"></i>
+                    <span>Environments</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Recent requests -->
+              <div id="recent-requests-section">
+                <div class="mb-2 flex items-center justify-between px-2">
+                  <span
+                    class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                  >
+                    Recent
+                  </span>
+
+                  <button
+                    id="clear-recent-button"
+                    type="button"
+                    class="hidden text-[11px] text-muted-foreground transition hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                <div
+                  id="recent-requests-list"
+                  class="space-y-1"
+                  aria-live="polite"
+                >
+                  <!-- Recent requests are rendered by history-renderer.js -->
+                </div>
+
+                <div
+                  id="recent-requests-empty"
+                  class="px-2 py-6 text-center text-xs text-muted-foreground"
+                >
+                  No recent requests
+                </div>
+              </div>
+            </nav>
+
+            <!-- Sidebar footer -->
+            <div class="border-t border-border p-3">
+              <button
+                id="keyboard-shortcuts-button"
+                type="button"
+                class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+              >
+                <i data-lucide="keyboard" class="h-4 w-4"></i>
+                <span>Keyboard shortcuts</span>
+              </button>
+            </div>
+          </aside>
+
+          <!-- ========================================================
+               Main Content
+               ======================================================== -->
+
+          <main
+            id="main-content"
+            class="flex min-w-0 flex-1 flex-col overflow-hidden"
+          >
+            <!-- ======================================================
+                 Request Workspace
+                 ====================================================== -->
+
+            <section
+              id="request-workspace"
+              class="flex min-h-0 flex-1 flex-col"
+              aria-label="Request workspace"
+            >
+              <!-- Request toolbar -->
+              <div
+                id="request-toolbar"
+                class="border-b border-border bg-background p-3"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <!-- HTTP method -->
+                  <div class="relative shrink-0">
+                    <label for="request-method" class="sr-only">
+                      HTTP method
+                    </label>
+
+                    <select
+                      id="request-method"
+                      name="method"
+                      class="h-10 min-w-24 appearance-none rounded-md border border-border bg-surface px-3 pr-8 text-sm font-semibold outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="GET">GET</option>
+                      <option value="POST">POST</option>
+                      <option value="PUT">PUT</option>
+                      <option value="PATCH">PATCH</option>
+                      <option value="DELETE">DELETE</option>
+                      <option value="HEAD">HEAD</option>
+                      <option value="OPTIONS">OPTIONS</option>
+                    </select>
+
+                    <i
+                      data-lucide="chevron-down"
+                      class="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                    ></i>
+                  </div>
+
+                  <!-- URL -->
+                  <div class="relative min-w-0 flex-1">
+                    <label for="request-url" class="sr-only">
+                      Request URL
+                    </label>
+
+                    <input
+                      id="request-url"
+                      name="url"
+                      type="url"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="https://api.example.com/users"
+                      class="h-10 w-full rounded-md border border-border bg-surface px-3 font-mono text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <!-- Save -->
+                  <button
+                    id="save-request-button"
+                    type="button"
+                    class="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition hover:bg-surface-raised"
+                    title="Save request"
+                  >
+                    <i data-lucide="save" class="h-4 w-4"></i>
+                    <span class="hidden xl:inline">Save</span>
+                  </button>
+
+                  <!-- Send -->
+                  <button
+                    id="send-request-button"
+                    type="button"
+                    class="inline-flex h-10 shrink-0 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                    <span>Send</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- ====================================================
+                   Request Configuration
+                   ==================================================== -->
+
+              <div
+                id="request-panel"
+                class="flex min-h-0 flex-1 flex-col border-b border-border"
+              >
+                <!-- Request tabs -->
+                <div
+                  id="request-tabs"
+                  class="flex shrink-0 items-center gap-1 border-b border-border bg-surface px-3"
+                  role="tablist"
+                  aria-label="Request configuration"
+                >
+                  <button
+                    id="request-tab-params"
+                    type="button"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="request-panel-params"
+                    data-tab="params"
+                    class="request-tab border-b-2 border-primary px-3 py-2.5 text-xs font-medium text-foreground"
+                  >
+                    Params
+                  </button>
+
+                  <button
+                    id="request-tab-headers"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="request-panel-headers"
+                    data-tab="headers"
+                    class="request-tab border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    Headers
+                  </button>
+
+                  <button
+                    id="request-tab-body"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="request-panel-body"
+                    data-tab="body"
+                    class="request-tab border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    Body
+                  </button>
+
+                  <button
+                    id="request-tab-auth"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="request-panel-auth"
+                    data-tab="auth"
+                    class="request-tab border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    Auth
+                  </button>
+                </div>
+
+                <!-- Request tab panels -->
+                <div class="min-h-0 flex-1 overflow-auto">
+                  <!-- Params -->
+                  <section
+                    id="request-panel-params"
+                    role="tabpanel"
+                    aria-labelledby="request-tab-params"
+                    data-panel="params"
+                    class="h-full p-4"
+                  >
+                    <div class="mb-3 flex items-center justify-between">
+                      <div>
+                        <h2 class="text-sm font-medium">
+                          Query Parameters
+                        </h2>
+
+                        <p class="mt-0.5 text-xs text-muted-foreground">
+                          Add parameters to your request URL.
+                        </p>
+                      </div>
+
+                      <button
+                        id="add-query-param-button"
+                        type="button"
+                        class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised"
+                      >
+                        <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+                        Add parameter
+                      </button>
+                    </div>
+
+                    <div
+                      id="query-params-list"
+                      class="space-y-2"
+                    >
+                      <!-- Query parameter rows rendered by query-params.js -->
+                    </div>
+
+                    <div
+                      id="query-params-empty"
+                      class="rounded-md border border-dashed border-border px-4 py-8 text-center"
+                    >
+                      <p class="text-xs text-muted-foreground">
+                        No query parameters added.
+                      </p>
+                    </div>
+                  </section>
+
+                  <!-- Headers -->
+                  <section
+                    id="request-panel-headers"
+                    role="tabpanel"
+                    aria-labelledby="request-tab-headers"
+                    data-panel="headers"
+                    class="hidden h-full p-4"
+                  >
+                    <div class="mb-3 flex items-center justify-between">
+                      <div>
+                        <h2 class="text-sm font-medium">
+                          Request Headers
+                        </h2>
+
+                        <p class="mt-0.5 text-xs text-muted-foreground">
+                          Configure headers sent with the request.
+                        </p>
+                      </div>
+
+                      <button
+                        id="add-header-button"
+                        type="button"
+                        class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised"
+                      >
+                        <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+                        Add header
+                      </button>
+                    </div>
+
+                    <div
+                      id="headers-list"
+                      class="space-y-2"
+                    >
+                      <!-- Header rows rendered by headers.js -->
+                    </div>
+
+                    <div
+                      id="headers-empty"
+                      class="rounded-md border border-dashed border-border px-4 py-8 text-center"
+                    >
+                      <p class="text-xs text-muted-foreground">
+                        No custom headers added.
+                      </p>
+                    </div>
+                  </section>
+
+                  <!-- Body -->
+                  <section
+                    id="request-panel-body"
+                    role="tabpanel"
+                    aria-labelledby="request-tab-body"
+                    data-panel="body"
+                    class="hidden h-full min-h-[300px] p-4"
+                  >
+                    <div class="mb-3 flex items-center justify-between">
+                      <div>
+                        <h2 class="text-sm font-medium">
+                          Request Body
+                        </h2>
+
+                        <p class="mt-0.5 text-xs text-muted-foreground">
+                          Edit the request payload using the JSON editor.
+                        </p>
+                      </div>
+
+                      <div class="flex items-center gap-2">
+                        <button
+                          id="format-body-button"
+                          type="button"
+                          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised"
+                        >
+                          <i data-lucide="wand-sparkles" class="h-3.5 w-3.5"></i>
+                          Format
+                        </button>
+
+                        <span
+                          id="body-validation-status"
+                          class="text-xs text-muted-foreground"
+                          aria-live="polite"
+                        >
+                          Valid JSON
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      id="json-editor"
+                      class="min-h-[280px] overflow-hidden rounded-md border border-border bg-surface"
+                    >
+                      <!-- CodeMirror editor mounts here -->
+                    </div>
+                  </section>
+
+                  <!-- Auth -->
+                  <section
+                    id="request-panel-auth"
+                    role="tabpanel"
+                    aria-labelledby="request-tab-auth"
+                    data-panel="auth"
+                    class="hidden h-full p-4"
+                  >
+                    <div class="mb-4">
+                      <h2 class="text-sm font-medium">
+                        Authorization
+                      </h2>
+
+                      <p class="mt-0.5 text-xs text-muted-foreground">
+                        Configure authentication for this request.
+                      </p>
+                    </div>
+
+                    <div class="max-w-md">
+                      <label
+                        for="auth-type"
+                        class="mb-1.5 block text-xs font-medium"
+                      >
+                        Authentication type
+                      </label>
+
+                      <select
+                        id="auth-type"
+                        class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      >
+                        <option value="none">No Auth</option>
+                        <option value="bearer">Bearer Token</option>
+                        <option value="basic">Basic Auth</option>
+                        <option value="api-key">API Key</option>
+                      </select>
+                    </div>
+
+                    <div
+                      id="auth-fields"
+                      class="mt-4 max-w-md"
+                    >
+                      <!-- Authentication fields rendered by the auth feature later -->
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              <!-- ====================================================
+                   Response Viewer
+                   ==================================================== -->
+
+              <section
+                id="response-workspace"
+                class="flex min-h-0 flex-1 flex-col"
+                aria-label="Response viewer"
+              >
+                <!-- Response header -->
+                <div
+                  class="flex shrink-0 items-center justify-between border-b border-border bg-surface px-4 py-2.5"
+                >
+                  <div class="flex items-center gap-3">
+                    <h2 class="text-sm font-semibold">
+                      Response
+                    </h2>
+
+                    <span
+                      id="response-status"
+                      class="hidden rounded-full px-2 py-0.5 text-[11px] font-medium"
+                      aria-live="polite"
+                    >
+                      200 OK
+                    </span>
+
+                    <span
+                      id="response-duration"
+                      class="hidden text-[11px] text-muted-foreground"
+                    >
+                      184 ms
+                    </span>
+
+                    <span
+                      id="response-size"
+                      class="hidden text-[11px] text-muted-foreground"
+                    >
+                      1.2 KB
+                    </span>
+                  </div>
+
+                  <div class="flex items-center gap-1">
+                    <button
+                      id="copy-response-button"
+                      type="button"
+                      class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                      title="Copy response"
+                    >
+                      <i data-lucide="copy" class="h-3.5 w-3.5"></i>
+                      <span class="hidden sm:inline">Copy</span>
+                    </button>
+
+                    <button
+                      id="download-response-button"
+                      type="button"
+                      class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                      title="Download response"
+                    >
+                      <i data-lucide="download" class="h-3.5 w-3.5"></i>
+                      <span class="hidden sm:inline">Download</span>
+                    </button>
+
+                    <button
+                      id="generate-code-button"
+                      type="button"
+                      class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                      title="Generate fetch code"
+                    >
+                      <i data-lucide="code-2" class="h-3.5 w-3.5"></i>
+                      <span class="hidden sm:inline">Code</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Response tabs -->
+                <div
+                  id="response-tabs"
+                  class="flex shrink-0 items-center gap-1 border-b border-border bg-surface px-3"
+                  role="tablist"
+                  aria-label="Response view"
+                >
+                  <button
+                    id="response-tab-pretty"
+                    type="button"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="response-panel-pretty"
+                    data-response-tab="pretty"
+                    class="response-tab border-b-2 border-primary px-3 py-2 text-xs font-medium text-foreground"
+                  >
+                    Pretty
+                  </button>
+
+                  <button
+                    id="response-tab-raw"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="response-panel-raw"
+                    data-response-tab="raw"
+                    class="response-tab border-b-2 border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    Raw
+                  </button>
+
+                  <button
+                    id="response-tab-headers"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="response-panel-headers"
+                    data-response-tab="headers"
+                    class="response-tab border-b-2 border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    Headers
+                  </button>
+                </div>
+
+                <!-- Response content -->
+                <div class="relative min-h-0 flex-1 overflow-hidden">
+                  <!-- Empty state -->
+                  <div
+                    id="response-empty-state"
+                    class="flex h-full items-center justify-center p-8"
+                  >
+                    <div class="max-w-sm text-center">
+                      <div
+                        class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-surface"
+                      >
+                        <i
+                          data-lucide="terminal"
+                          class="h-5 w-5 text-muted-foreground"
+                        ></i>
+                      </div>
+
+                      <h3 class="text-sm font-medium">
+                        No response yet
+                      </h3>
+
+                      <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                        Configure your request and press
+                        <span class="font-medium text-foreground">
+                          Send
+                        </span>
+                        to see the response here.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Loading state -->
+                  <div
+                    id="response-loading-state"
+                    class="absolute inset-0 z-10 hidden items-center justify-center bg-background/80 backdrop-blur-sm"
+                  >
+                    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                      <i
+                        data-lucide="loader-circle"
+                        class="h-4 w-4 animate-spin"
+                      ></i>
+                      Sending request...
+                    </div>
+                  </div>
+
+                  <!-- Pretty response -->
+                  <section
+                    id="response-panel-pretty"
+                    role="tabpanel"
+                    aria-labelledby="response-tab-pretty"
+                    data-response-panel="pretty"
+                    class="hidden h-full overflow-auto"
+                  >
+                    <pre
+                      id="response-pretty"
+                      class="min-h-full whitespace-pre-wrap break-words p-4 font-mono text-xs leading-6"
+                    ></pre>
+                  </section>
+
+                  <!-- Raw response -->
+                  <section
+                    id="response-panel-raw"
+                    role="tabpanel"
+                    aria-labelledby="response-tab-raw"
+                    data-response-panel="raw"
+                    class="hidden h-full overflow-auto"
+                  >
+                    <pre
+                      id="response-raw"
+                      class="min-h-full whitespace-pre-wrap break-words p-4 font-mono text-xs leading-6"
+                    ></pre>
+                  </section>
+
+                  <!-- Response headers -->
+                  <section
+                    id="response-panel-headers"
+                    role="tabpanel"
+                    aria-labelledby="response-tab-headers"
+                    data-response-panel="headers"
+                    class="hidden h-full overflow-auto p-4"
+                  >
+                    <div
+                      id="response-headers-list"
+                      class="overflow-hidden rounded-md border border-border"
+                    >
+                      <!-- Response headers rendered by response-viewer.js -->
+                    </div>
+                  </section>
+                </div>
+              </section>
+            </section>
+          </main>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           Global UI
+           ============================================================ -->
+
+      <!-- Modal container -->
+      <div
+        id="modal-root"
+        class="relative z-50"
+        aria-live="polite"
+      ></div>
+
+      <!-- Dropdown container -->
+      <div
+        id="dropdown-root"
+        class="relative z-40"
+      ></div>
+
+      <!-- Screen reader announcements -->
+      <div
+        id="live-region"
+        class="sr-only"
+        aria-live="polite"
+        aria-atomic="true"
+      ></div>
+    </div>
+
+    <!-- Application entry -->
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

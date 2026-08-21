@@ -1,6 +1,6 @@
 Project Structure:
 
-api-request-builder/
+endpoint/
 │
 ├── index.html
 ├── package.json
@@ -8,78 +8,79 @@ api-request-builder/
 ├── vite.config.js
 ├── .gitignore
 │
-├── src/
-│   ├── app.js
-│   ├── main.css
-│   │
-│   ├── styles/
-│   │   ├── variables.css
-│   │   ├── reset.css
-│   │   ├── utilities.css
-│   │   └── editor.css
-│   │
-│   ├── scripts/
-│   │   ├── core/
-│   │   │   ├── state.js
-│   │   │   ├── constants.js
-│   │   │   └── events.js
-│   │   │
-│   │   ├── api/
-│   │   │   ├── request.js
-│   │   │   ├── response.js
-│   │   │   └── fetch-generator.js
-│   │   │
-│   │   ├── features/
-│   │   │   ├── request-builder/
-│   │   │   │   ├── request-builder.js
-│   │   │   │   ├── method-selector.js
-│   │   │   │   ├── url-handler.js
-│   │   │   │   ├── headers.js
-│   │   │   │   ├── query-params.js
-│   │   │   │   └── body.js
-│   │   │   │
-│   │   │   ├── response-viewer/
-│   │   │   │   ├── response-viewer.js
-│   │   │   │   ├── response-format.js
-│   │   │   │   └── response-tabs.js
-│   │   │   │
-│   │   │   ├── history/
-│   │   │   │   ├── history.js
-│   │   │   │   ├── history-storage.js
-│   │   │   │   └── history-renderer.js
-│   │   │   │
-│   │   │   ├── code-generator/
-│   │   │   │   ├── code-generator.js
-│   │   │   │   └── fetch-template.js
-│   │   │   │
-│   │   │   └── editor/
-│   │   │       ├── editor.js
-│   │   │       ├── editor-config.js
-│   │   │       └── json-editor.js
-│   │   │
-│   │   ├── ui/
-│   │   │   ├── dom.js
-│   │   │   ├── modal.js
-│   │   │   ├── tabs.js
-│   │   │   ├── dropdown.js
-│   │   │   ├── loader.js
-│   │   │   └── empty-state.js
-│   │   │
-│   │   └── utils/
-│   │       ├── formatters.js
-│   │       ├── validators.js
-│   │       ├── storage.js
-│   │       ├── clipboard.js
-│   │       └── helpers.js
-│   │
-│   └── assets/
-│       ├── icons/
-│       └── images/
-│
 ├── public/
 │   └── favicon.svg
 │
-└── node_modules/
+└── src/
+    │
+    ├── main.js
+    ├── app.js
+    ├── style.css
+    │
+    ├── styles/
+    │   ├── variables.css
+    │   ├── reset.css
+    │   ├── utilities.css
+    │   └── editor.css
+    │
+    ├── scripts/
+    │   │
+    │   ├── core/
+    │   │   ├── state.js
+    │   │   ├── constants.js
+    │   │   └── events.js
+    │   │
+    │   ├── api/
+    │   │   ├── request.js
+    │   │   ├── response.js
+    │   │   └── fetch-generator.js
+    │   │
+    │   ├── features/
+    │   │   ├── request-builder/
+    │   │   │   ├── request-builder.js
+    │   │   │   ├── method-selector.js
+    │   │   │   ├── url-handler.js
+    │   │   │   ├── headers.js
+    │   │   │   ├── query-params.js
+    │   │   │   └── body.js
+    │   │   │
+    │   │   ├── response-viewer/
+    │   │   │   ├── response-viewer.js
+    │   │   │   ├── response-format.js
+    │   │   │   └── response-tabs.js
+    │   │   │
+    │   │   ├── history/
+    │   │   │   ├── history.js
+    │   │   │   ├── history-storage.js
+    │   │   │   └── history-renderer.js
+    │   │   │
+    │   │   ├── code-generator/
+    │   │   │   ├── code-generator.js
+    │   │   │   └── fetch-template.js
+    │   │   │
+    │   │   └── editor/
+    │   │       ├── editor.js
+    │   │       ├── editor-config.js
+    │   │       └── json-editor.js
+    │   │
+    │   ├── ui/
+    │   │   ├── dom.js
+    │   │   ├── modal.js
+    │   │   ├── tabs.js
+    │   │   ├── dropdown.js
+    │   │   ├── loader.js
+    │   │   └── empty-state.js
+    │   │
+    │   └── utils/
+    │       ├── formatters.js
+    │       ├── validators.js
+    │       ├── storage.js
+    │       ├── clipboard.js
+    │       └── helpers.js
+    │
+    └── assets/
+        ├── icons/
+        └── images/
 
 Project Set-up:
 
