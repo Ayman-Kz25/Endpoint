@@ -1,0 +1,118 @@
+Project Structure:
+
+api-request-builder/
+│
+├── index.html
+├── package.json
+├── package-lock.json
+├── vite.config.js
+├── .gitignore
+│
+├── src/
+│   ├── app.js
+│   ├── main.css
+│   │
+│   ├── styles/
+│   │   ├── variables.css
+│   │   ├── reset.css
+│   │   ├── utilities.css
+│   │   └── editor.css
+│   │
+│   ├── scripts/
+│   │   ├── core/
+│   │   │   ├── state.js
+│   │   │   ├── constants.js
+│   │   │   └── events.js
+│   │   │
+│   │   ├── api/
+│   │   │   ├── request.js
+│   │   │   ├── response.js
+│   │   │   └── fetch-generator.js
+│   │   │
+│   │   ├── features/
+│   │   │   ├── request-builder/
+│   │   │   │   ├── request-builder.js
+│   │   │   │   ├── method-selector.js
+│   │   │   │   ├── url-handler.js
+│   │   │   │   ├── headers.js
+│   │   │   │   ├── query-params.js
+│   │   │   │   └── body.js
+│   │   │   │
+│   │   │   ├── response-viewer/
+│   │   │   │   ├── response-viewer.js
+│   │   │   │   ├── response-format.js
+│   │   │   │   └── response-tabs.js
+│   │   │   │
+│   │   │   ├── history/
+│   │   │   │   ├── history.js
+│   │   │   │   ├── history-storage.js
+│   │   │   │   └── history-renderer.js
+│   │   │   │
+│   │   │   ├── code-generator/
+│   │   │   │   ├── code-generator.js
+│   │   │   │   └── fetch-template.js
+│   │   │   │
+│   │   │   └── editor/
+│   │   │       ├── editor.js
+│   │   │       ├── editor-config.js
+│   │   │       └── json-editor.js
+│   │   │
+│   │   ├── ui/
+│   │   │   ├── dom.js
+│   │   │   ├── modal.js
+│   │   │   ├── tabs.js
+│   │   │   ├── dropdown.js
+│   │   │   ├── loader.js
+│   │   │   └── empty-state.js
+│   │   │
+│   │   └── utils/
+│   │       ├── formatters.js
+│   │       ├── validators.js
+│   │       ├── storage.js
+│   │       ├── clipboard.js
+│   │       └── helpers.js
+│   │
+│   └── assets/
+│       ├── icons/
+│       └── images/
+│
+├── public/
+│   └── favicon.svg
+│
+└── node_modules/
+
+Project Set-up:
+
+Create the Vite project
+
+npm create vite@latest . -- --template vanilla
+
+Install Tailwind CSS
+
+   npm install tailwindcss @tailwindcss/vite
+
+3. Install Lucide
+
+   npm install lucide
+
+4. Install Notyf (For toast notifications)
+
+   npm install notyf
+
+5. Install CodeMirror 6 (For JSON request-body editor)
+   
+   npm install @codemirror/state @codemirror/view @codemirror/lang-json @codemirror/commands @codemirror/language @codemirror/theme-one-dark
+
+6. Install Prism (For syntax highlighting)
+
+   npm install prismjs
+
+
+
+.gitignore should contain at least:
+
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
