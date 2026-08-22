@@ -23,14 +23,14 @@
 // ============================================================
 
 export const EDITOR_MODES = Object.freeze({
-    TEXT: "text",
-    JSON: "json",
-    JAVASCRIPT: "javascript",
-    HTML: "html",
-    CSS: "css",
-    XML: "xml",
-    SQL: "sql",
-    MARKDOWN: "markdown",
+  TEXT: "text",
+  JSON: "json",
+  JAVASCRIPT: "javascript",
+  HTML: "html",
+  CSS: "css",
+  XML: "xml",
+  SQL: "sql",
+  MARKDOWN: "markdown",
 });
 
 // ============================================================
@@ -38,8 +38,8 @@ export const EDITOR_MODES = Object.freeze({
 // ============================================================
 
 export const EDITOR_TYPES = Object.freeze({
-    REQUEST_BODY: "request-body",
-    RESPONSE_BODY: "response-body",
+  REQUEST_BODY: "request-body",
+  RESPONSE_BODY: "response-body",
 });
 
 // ============================================================
@@ -47,15 +47,15 @@ export const EDITOR_TYPES = Object.freeze({
 // ============================================================
 
 export const EDITOR_DEFAULTS = Object.freeze({
-    mode: EDITOR_MODES.TEXT,
-    tabSize: 2,
-    indentUnit: 2,
-    lineNumbers: true,
-    lineWrapping: true,
-    readOnly: false,
-    autofocus: false,
-    cursorBlinkRate: 530,
-    viewportMargin: Infinity,
+  mode: EDITOR_MODES.TEXT,
+  tabSize: 2,
+  indentUnit: 2,
+  lineNumbers: true,
+  lineWrapping: true,
+  readOnly: false,
+  autofocus: false,
+  cursorBlinkRate: 530,
+  viewportMargin: Infinity,
 });
 
 // ============================================================
@@ -63,15 +63,15 @@ export const EDITOR_DEFAULTS = Object.freeze({
 // ============================================================
 
 export const REQUEST_EDITOR_CONFIG = Object.freeze({
-    ...EDITOR_DEFAULTS,
+  ...EDITOR_DEFAULTS,
 
-    type: EDITOR_TYPES.REQUEST_BODY,
+  type: EDITOR_TYPES.REQUEST_BODY,
 
-    readOnly: false,
+  readOnly: false,
 
-    placeholder: "Enter request body...",
+  placeholder: "Enter request body...",
 
-    mode: EDITOR_MODES.TEXT,
+  mode: EDITOR_MODES.TEXT,
 });
 
 // ============================================================
@@ -79,15 +79,15 @@ export const REQUEST_EDITOR_CONFIG = Object.freeze({
 // ============================================================
 
 export const RESPONSE_EDITOR_CONFIG = Object.freeze({
-    ...EDITOR_DEFAULTS,
+  ...EDITOR_DEFAULTS,
 
-    type: EDITOR_TYPES.RESPONSE_BODY,
+  type: EDITOR_TYPES.RESPONSE_BODY,
 
-    readOnly: true,
+  readOnly: true,
 
-    placeholder: "Response body will appear here...",
+  placeholder: "Response body will appear here...",
 
-    mode: EDITOR_MODES.TEXT,
+  mode: EDITOR_MODES.TEXT,
 });
 
 // ============================================================
@@ -95,14 +95,14 @@ export const RESPONSE_EDITOR_CONFIG = Object.freeze({
 // ============================================================
 
 export const MIME_TYPES = Object.freeze({
-    JSON: "application/json",
-    JAVASCRIPT: "application/javascript",
-    HTML: "text/html",
-    CSS: "text/css",
-    XML: "application/xml",
-    TEXT: "text/plain",
-    SQL: "application/sql",
-    FORM_URLENCODED: "application/x-www-form-urlencoded",
+  JSON: "application/json",
+  JAVASCRIPT: "application/javascript",
+  HTML: "text/html",
+  CSS: "text/css",
+  XML: "application/xml",
+  TEXT: "text/plain",
+  SQL: "application/sql",
+  FORM_URLENCODED: "application/x-www-form-urlencoded",
 });
 
 // ============================================================
@@ -110,24 +110,24 @@ export const MIME_TYPES = Object.freeze({
 // ============================================================
 
 const MIME_MODE_MAP = Object.freeze({
-    [MIME_TYPES.JSON]: EDITOR_MODES.JSON,
-    "application/ld+json": EDITOR_MODES.JSON,
-    "application/problem+json": EDITOR_MODES.JSON,
+  [MIME_TYPES.JSON]: EDITOR_MODES.JSON,
+  "application/ld+json": EDITOR_MODES.JSON,
+  "application/problem+json": EDITOR_MODES.JSON,
 
-    [MIME_TYPES.JAVASCRIPT]: EDITOR_MODES.JAVASCRIPT,
-    "text/javascript": EDITOR_MODES.JAVASCRIPT,
+  [MIME_TYPES.JAVASCRIPT]: EDITOR_MODES.JAVASCRIPT,
+  "text/javascript": EDITOR_MODES.JAVASCRIPT,
 
-    [MIME_TYPES.HTML]: EDITOR_MODES.HTML,
-    "application/xhtml+xml": EDITOR_MODES.HTML,
+  [MIME_TYPES.HTML]: EDITOR_MODES.HTML,
+  "application/xhtml+xml": EDITOR_MODES.HTML,
 
-    [MIME_TYPES.CSS]: EDITOR_MODES.CSS,
+  [MIME_TYPES.CSS]: EDITOR_MODES.CSS,
 
-    [MIME_TYPES.XML]: EDITOR_MODES.XML,
-    "text/xml": EDITOR_MODES.XML,
+  [MIME_TYPES.XML]: EDITOR_MODES.XML,
+  "text/xml": EDITOR_MODES.XML,
 
-    [MIME_TYPES.SQL]: EDITOR_MODES.SQL,
+  [MIME_TYPES.SQL]: EDITOR_MODES.SQL,
 
-    [MIME_TYPES.TEXT]: EDITOR_MODES.TEXT,
+  [MIME_TYPES.TEXT]: EDITOR_MODES.TEXT,
 });
 
 // ============================================================
@@ -135,27 +135,27 @@ const MIME_MODE_MAP = Object.freeze({
 // ============================================================
 
 const EXTENSION_MODE_MAP = Object.freeze({
-    json: EDITOR_MODES.JSON,
-    jsonc: EDITOR_MODES.JSON,
+  json: EDITOR_MODES.JSON,
+  jsonc: EDITOR_MODES.JSON,
 
-    js: EDITOR_MODES.JAVASCRIPT,
-    mjs: EDITOR_MODES.JAVASCRIPT,
-    cjs: EDITOR_MODES.JAVASCRIPT,
+  js: EDITOR_MODES.JAVASCRIPT,
+  mjs: EDITOR_MODES.JAVASCRIPT,
+  cjs: EDITOR_MODES.JAVASCRIPT,
 
-    html: EDITOR_MODES.HTML,
-    htm: EDITOR_MODES.HTML,
+  html: EDITOR_MODES.HTML,
+  htm: EDITOR_MODES.HTML,
 
-    css: EDITOR_MODES.CSS,
+  css: EDITOR_MODES.CSS,
 
-    xml: EDITOR_MODES.XML,
-    svg: EDITOR_MODES.XML,
+  xml: EDITOR_MODES.XML,
+  svg: EDITOR_MODES.XML,
 
-    sql: EDITOR_MODES.SQL,
+  sql: EDITOR_MODES.SQL,
 
-    md: EDITOR_MODES.MARKDOWN,
-    markdown: EDITOR_MODES.MARKDOWN,
+  md: EDITOR_MODES.MARKDOWN,
+  markdown: EDITOR_MODES.MARKDOWN,
 
-    txt: EDITOR_MODES.TEXT,
+  txt: EDITOR_MODES.TEXT,
 });
 
 // ============================================================
@@ -163,12 +163,12 @@ const EXTENSION_MODE_MAP = Object.freeze({
 // ============================================================
 
 const METHOD_MODE_MAP = Object.freeze({
-    GET: EDITOR_MODES.TEXT,
-    HEAD: EDITOR_MODES.TEXT,
-    POST: EDITOR_MODES.JSON,
-    PUT: EDITOR_MODES.JSON,
-    PATCH: EDITOR_MODES.JSON,
-    DELETE: EDITOR_MODES.JSON,
+  GET: EDITOR_MODES.TEXT,
+  HEAD: EDITOR_MODES.TEXT,
+  POST: EDITOR_MODES.JSON,
+  PUT: EDITOR_MODES.JSON,
+  PATCH: EDITOR_MODES.JSON,
+  DELETE: EDITOR_MODES.JSON,
 });
 
 // ============================================================
@@ -182,7 +182,7 @@ const METHOD_MODE_MAP = Object.freeze({
  * @returns {boolean}
  */
 export function isSupportedEditorMode(mode) {
-    return Object.values(EDITOR_MODES).includes(mode);
+  return Object.values(EDITOR_MODES).includes(mode);
 }
 
 /**
@@ -192,15 +192,13 @@ export function isSupportedEditorMode(mode) {
  * @returns {string}
  */
 export function normalizeEditorMode(mode) {
-    if (!mode || typeof mode !== "string") {
-        return EDITOR_MODES.TEXT;
-    }
+  if (!mode || typeof mode !== "string") {
+    return EDITOR_MODES.TEXT;
+  }
 
-    const normalized = mode.trim().toLowerCase();
+  const normalized = mode.trim().toLowerCase();
 
-    return isSupportedEditorMode(normalized)
-        ? normalized
-        : EDITOR_MODES.TEXT;
+  return isSupportedEditorMode(normalized) ? normalized : EDITOR_MODES.TEXT;
 }
 
 // ============================================================
@@ -217,14 +215,11 @@ export function normalizeEditorMode(mode) {
  * @returns {string}
  */
 export function normalizeContentType(contentType = "") {
-    if (!contentType || typeof contentType !== "string") {
-        return "";
-    }
+  if (!contentType || typeof contentType !== "string") {
+    return "";
+  }
 
-    return contentType
-        .split(";")[0]
-        .trim()
-        .toLowerCase();
+  return contentType.split(";")[0].trim().toLowerCase();
 }
 
 /**
@@ -234,13 +229,13 @@ export function normalizeContentType(contentType = "") {
  * @returns {string}
  */
 export function getModeFromContentType(contentType) {
-    const normalized = normalizeContentType(contentType);
+  const normalized = normalizeContentType(contentType);
 
-    if (!normalized) {
-        return EDITOR_MODES.TEXT;
-    }
+  if (!normalized) {
+    return EDITOR_MODES.TEXT;
+  }
 
-    return MIME_MODE_MAP[normalized] || EDITOR_MODES.TEXT;
+  return MIME_MODE_MAP[normalized] || EDITOR_MODES.TEXT;
 }
 
 // ============================================================
@@ -254,25 +249,21 @@ export function getModeFromContentType(contentType) {
  * @returns {string}
  */
 export function getModeFromFilename(filename = "") {
-    if (!filename || typeof filename !== "string") {
-        return EDITOR_MODES.TEXT;
-    }
+  if (!filename || typeof filename !== "string") {
+    return EDITOR_MODES.TEXT;
+  }
 
-    const cleanName = filename
-        .split("?")[0]
-        .split("#")[0]
-        .trim()
-        .toLowerCase();
+  const cleanName = filename.split("?")[0].split("#")[0].trim().toLowerCase();
 
-    const parts = cleanName.split(".");
+  const parts = cleanName.split(".");
 
-    if (parts.length < 2) {
-        return EDITOR_MODES.TEXT;
-    }
+  if (parts.length < 2) {
+    return EDITOR_MODES.TEXT;
+  }
 
-    const extension = parts.pop();
+  const extension = parts.pop();
 
-    return EXTENSION_MODE_MAP[extension] || EDITOR_MODES.TEXT;
+  return EXTENSION_MODE_MAP[extension] || EDITOR_MODES.TEXT;
 }
 
 // ============================================================
@@ -286,13 +277,13 @@ export function getModeFromFilename(filename = "") {
  * @returns {string}
  */
 export function getModeFromMethod(method) {
-    if (!method || typeof method !== "string") {
-        return EDITOR_MODES.TEXT;
-    }
+  if (!method || typeof method !== "string") {
+    return EDITOR_MODES.TEXT;
+  }
 
-    const normalizedMethod = method.trim().toUpperCase();
+  const normalizedMethod = method.trim().toUpperCase();
 
-    return METHOD_MODE_MAP[normalizedMethod] || EDITOR_MODES.TEXT;
+  return METHOD_MODE_MAP[normalizedMethod] || EDITOR_MODES.TEXT;
 }
 
 // ============================================================
@@ -306,31 +297,26 @@ export function getModeFromMethod(method) {
  * @returns {boolean}
  */
 export function looksLikeJson(value) {
-    if (!value || typeof value !== "string") {
-        return false;
-    }
+  if (!value || typeof value !== "string") {
+    return false;
+  }
 
-    const trimmed = value.trim();
+  const trimmed = value.trim();
 
-    if (!trimmed) {
-        return false;
-    }
+  if (!trimmed) {
+    return false;
+  }
 
-    if (
-        !(
-            trimmed.startsWith("{") ||
-            trimmed.startsWith("[")
-        )
-    ) {
-        return false;
-    }
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    return false;
+  }
 
-    try {
-        JSON.parse(trimmed);
-        return true;
-    } catch {
-        return false;
-    }
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -343,27 +329,27 @@ export function looksLikeJson(value) {
  * @returns {string}
  */
 export function detectEditorMode({
-    contentType = "",
-    filename = "",
-    value = "",
+  contentType = "",
+  filename = "",
+  value = "",
 } = {}) {
-    const contentMode = getModeFromContentType(contentType);
+  const contentMode = getModeFromContentType(contentType);
 
-    if (contentMode !== EDITOR_MODES.TEXT) {
-        return contentMode;
-    }
+  if (contentMode !== EDITOR_MODES.TEXT) {
+    return contentMode;
+  }
 
-    const filenameMode = getModeFromFilename(filename);
+  const filenameMode = getModeFromFilename(filename);
 
-    if (filenameMode !== EDITOR_MODES.TEXT) {
-        return filenameMode;
-    }
+  if (filenameMode !== EDITOR_MODES.TEXT) {
+    return filenameMode;
+  }
 
-    if (looksLikeJson(value)) {
-        return EDITOR_MODES.JSON;
-    }
+  if (looksLikeJson(value)) {
+    return EDITOR_MODES.JSON;
+  }
 
-    return EDITOR_MODES.TEXT;
+  return EDITOR_MODES.TEXT;
 }
 
 // ============================================================
@@ -377,13 +363,11 @@ export function detectEditorMode({
  * @returns {Object}
  */
 export function getRequestEditorConfig(options = {}) {
-    return {
-        ...REQUEST_EDITOR_CONFIG,
-        ...options,
-        mode: normalizeEditorMode(
-            options.mode || REQUEST_EDITOR_CONFIG.mode,
-        ),
-    };
+  return {
+    ...REQUEST_EDITOR_CONFIG,
+    ...options,
+    mode: normalizeEditorMode(options.mode || REQUEST_EDITOR_CONFIG.mode),
+  };
 }
 
 /**
@@ -393,17 +377,12 @@ export function getRequestEditorConfig(options = {}) {
  * @returns {Object}
  */
 export function getResponseEditorConfig(options = {}) {
-    return {
-        ...RESPONSE_EDITOR_CONFIG,
-        ...options,
-        mode: normalizeEditorMode(
-            options.mode || RESPONSE_EDITOR_CONFIG.mode,
-        ),
-        readOnly:
-            options.readOnly !== undefined
-                ? Boolean(options.readOnly)
-                : true,
-    };
+  return {
+    ...RESPONSE_EDITOR_CONFIG,
+    ...options,
+    mode: normalizeEditorMode(options.mode || RESPONSE_EDITOR_CONFIG.mode),
+    readOnly: options.readOnly !== undefined ? Boolean(options.readOnly) : true,
+  };
 }
 
 /**
@@ -413,13 +392,11 @@ export function getResponseEditorConfig(options = {}) {
  * @returns {Object}
  */
 export function getEditorConfig(options = {}) {
-    return {
-        ...EDITOR_DEFAULTS,
-        ...options,
-        mode: normalizeEditorMode(
-            options.mode || EDITOR_DEFAULTS.mode,
-        ),
-    };
+  return {
+    ...EDITOR_DEFAULTS,
+    ...options,
+    mode: normalizeEditorMode(options.mode || EDITOR_DEFAULTS.mode),
+  };
 }
 
 // ============================================================
@@ -427,10 +404,10 @@ export function getEditorConfig(options = {}) {
 // ============================================================
 
 export const EDITOR_SELECTORS = Object.freeze({
-    requestBody: "#request-body",
-    responseBody: "#response-body",
-    requestEditor: "#request-editor",
-    responseEditor: "#response-editor",
+  requestBody: "#request-body",
+  responseBody: "#response-body",
+  requestEditor: "#request-editor",
+  responseEditor: "#response-editor",
 });
 
 // ============================================================
@@ -438,24 +415,24 @@ export const EDITOR_SELECTORS = Object.freeze({
 // ============================================================
 
 export default {
-    EDITOR_MODES,
-    EDITOR_TYPES,
-    EDITOR_DEFAULTS,
-    REQUEST_EDITOR_CONFIG,
-    RESPONSE_EDITOR_CONFIG,
-    MIME_TYPES,
-    EDITOR_SELECTORS,
+  EDITOR_MODES,
+  EDITOR_TYPES,
+  EDITOR_DEFAULTS,
+  REQUEST_EDITOR_CONFIG,
+  RESPONSE_EDITOR_CONFIG,
+  MIME_TYPES,
+  EDITOR_SELECTORS,
 
-    isSupportedEditorMode,
-    normalizeEditorMode,
-    normalizeContentType,
-    getModeFromContentType,
-    getModeFromFilename,
-    getModeFromMethod,
-    looksLikeJson,
-    detectEditorMode,
+  isSupportedEditorMode,
+  normalizeEditorMode,
+  normalizeContentType,
+  getModeFromContentType,
+  getModeFromFilename,
+  getModeFromMethod,
+  looksLikeJson,
+  detectEditorMode,
 
-    getRequestEditorConfig,
-    getResponseEditorConfig,
-    getEditorConfig,
+  getRequestEditorConfig,
+  getResponseEditorConfig,
+  getEditorConfig,
 };
