@@ -20,6 +20,10 @@
  * - Manage application state
  */
 
+const SIDEBAR_ID = "sidebar";
+const BACKDROP_ID = "sidebar-backdrop";
+const TOGGLE_ID = "mobile-sidebar-button";
+
 const elements = {
     sidebar: null,
     backdrop: null,
@@ -31,6 +35,7 @@ const state = {
     open: false,
     mobileBreakpoint: 768,
     cleanup: null,
+    previousActiveElement: null,
 };
 
 // ============================================================
@@ -43,16 +48,20 @@ const state = {
  * @returns {Object} Sidebar API
  */
 export function initSidebar() {
+    cleanupEvents();
+
     cacheElements();
 
     if (!elements.sidebar) {
+        state.initialized = false;
+        state.open = false;
         return createApi();
     }
 
+    state.initialized = true;
+
     bindEvents();
     syncUI();
-
-    state.initialized = true;
 
     return createApi();
 }
@@ -61,18 +70,13 @@ export function initSidebar() {
  * Cache sidebar DOM elements.
  */
 function cacheElements() {
-    elements.sidebar =
-        document.getElementById("sidebar");
+    elements.sidebar = document.getElementById(SIDEBAR_ID);
 
     elements.backdrop =
-        document.getElementById(
-            "sidebar-backdrop"
-        );
+        document.getElementById(BACKDROP_ID);
 
     elements.toggleButton =
-        document.getElementById(
-            "mobile-sidebar-button"
-        );
+        document.getElementById(TOGGLE_ID);
 }
 
 // ============================================================
@@ -82,14 +86,27 @@ function cacheElements() {
 /**
  * Open the sidebar.
  *
+ * On desktop the sidebar is always visible, so opening it simply
+ * synchronizes the UI without creating a mobile overlay.
+ *
  * @returns {boolean}
  */
 export function openSidebar() {
     if (!elements.sidebar) {
+        cacheElements();
+    }
+
+    if (!elements.sidebar) {
         return false;
     }
 
-    state.open = true;
+    if (isMobileSidebar()) {
+        state.previousActiveElement =
+            document.activeElement;
+
+        state.open = true;
+    }
+
     syncUI();
 
     return true;
@@ -100,13 +117,45 @@ export function openSidebar() {
  *
  * @returns {boolean}
  */
-export function closeSidebar() {
+export function closeSidebar({
+    restoreFocus = true,
+} = {}) {
+    if (!elements.sidebar) {
+        cacheElements();
+    }
+
     if (!elements.sidebar) {
         return false;
     }
 
+    const shouldRestoreFocus =
+        restoreFocus &&
+        isMobileSidebar() &&
+        state.open;
+
     state.open = false;
+
     syncUI();
+
+    if (
+        shouldRestoreFocus &&
+        state.previousActiveElement &&
+        typeof state.previousActiveElement.focus === "function" &&
+        document.contains(state.previousActiveElement)
+    ) {
+        requestAnimationFrame(() => {
+            state.previousActiveElement?.focus();
+        });
+    } else if (
+        shouldRestoreFocus &&
+        elements.toggleButton
+    ) {
+        requestAnimationFrame(() => {
+            elements.toggleButton?.focus();
+        });
+    }
+
+    state.previousActiveElement = null;
 
     return true;
 }
@@ -117,22 +166,38 @@ export function closeSidebar() {
  * @returns {boolean}
  */
 export function toggleSidebar() {
+    if (!elements.sidebar) {
+        cacheElements();
+    }
+
+    if (!elements.sidebar) {
+        return false;
+    }
+
+    if (!isMobileSidebar()) {
+        syncUI();
+        return true;
+    }
+
     if (state.open) {
         closeSidebar();
-    } else {
-        openSidebar();
+        return false;
     }
+
+    openSidebar();
 
     return state.open;
 }
 
 /**
- * Check whether the sidebar is open.
+ * Check whether the mobile sidebar is currently open.
  *
  * @returns {boolean}
  */
 export function isSidebarOpen() {
-    return state.open;
+    return Boolean(
+        state.open && isMobileSidebar()
+    );
 }
 
 /**
@@ -160,23 +225,24 @@ function bindEvents() {
     };
 
     const handleBackdropClick = (event) => {
-        if (
-            event.target ===
-            elements.backdrop
-        ) {
-            closeSidebar();
+        if (event.target !== elements.backdrop) {
+            return;
         }
+
+        closeSidebar();
     };
 
     const handleKeyDown = (event) => {
         if (
-            event.key === "Escape" &&
-            state.open
+            event.key !== "Escape" ||
+            !state.open ||
+            !isMobileSidebar()
         ) {
-            closeSidebar();
-
-            elements.toggleButton?.focus();
+            return;
         }
+
+        event.preventDefault();
+        closeSidebar();
     };
 
     const handleResize = () => {
@@ -184,27 +250,53 @@ function bindEvents() {
     };
 
     const handleNavigationClick = (event) => {
-        if (!isMobileSidebar()) {
+        if (!isMobileSidebar() || !state.open) {
             return;
         }
 
-        const button =
-            event.target.closest(
-                "button, a"
-            );
+        const target = event.target;
 
-        if (!button) {
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        const button = target.closest(
+            "button, a"
+        );
+
+        if (!button || !elements.sidebar?.contains(button)) {
             return;
         }
 
         if (
-            button.id ===
-            "mobile-sidebar-button"
+            button === elements.toggleButton ||
+            button.closest("[data-sidebar-ignore-close]") ||
+            button.hasAttribute("data-sidebar-ignore-close")
         ) {
             return;
         }
 
-        closeSidebar();
+        /*
+         * Only close automatically for actual navigation items.
+         *
+         * Supported patterns:
+         * - <a href="...">
+         * - [data-sidebar-nav]
+         *
+         * Other sidebar controls remain usable.
+         */
+        const isNavigationItem =
+            button.matches(
+                "a[href], [data-sidebar-nav]"
+            );
+
+        if (!isNavigationItem) {
+            return;
+        }
+
+        closeSidebar({
+            restoreFocus: false,
+        });
     };
 
     elements.toggleButton?.addEventListener(
@@ -282,15 +374,18 @@ function syncUI() {
         return;
     }
 
-    const mobile =
-        isMobileSidebar();
+    const mobile = isMobileSidebar();
 
-    /*
-     * Desktop:
-     * The HTML uses md:flex, so the sidebar should remain
-     * visible regardless of the mobile open state.
-     */
     if (!mobile) {
+        /*
+         * Desktop sidebar is always visible.
+         *
+         * Reset the mobile state here so switching back to mobile
+         * does not unexpectedly reopen an old mobile session.
+         */
+        state.open = false;
+        state.previousActiveElement = null;
+
         showDesktopSidebar();
         return;
     }
@@ -302,25 +397,23 @@ function syncUI() {
     }
 }
 
+// ============================================================
+// Desktop
+// ============================================================
+
 /**
  * Show sidebar on desktop.
  */
 function showDesktopSidebar() {
-    elements.sidebar.classList.remove(
-        "hidden"
+    elements.sidebar.classList.remove("hidden");
+    elements.sidebar.classList.add("flex");
+
+    elements.sidebar.setAttribute(
+        "aria-hidden",
+        "false"
     );
 
-    elements.sidebar.classList.add(
-        "flex"
-    );
-
-    elements.sidebar.removeAttribute(
-        "aria-hidden"
-    );
-
-    elements.backdrop?.classList.add(
-        "hidden"
-    );
+    elements.backdrop?.classList.add("hidden");
 
     elements.backdrop?.setAttribute(
         "aria-hidden",
@@ -331,28 +424,43 @@ function showDesktopSidebar() {
         "aria-expanded",
         "false"
     );
+
+    elements.toggleButton?.setAttribute(
+        "aria-label",
+        "Open navigation"
+    );
+
+    elements.toggleButton?.setAttribute(
+        "title",
+        "Open navigation"
+    );
+
+    /*
+     * Critical:
+     * Desktop must never inherit the mobile scroll lock.
+     */
+    document.body.classList.remove(
+        "overflow-hidden"
+    );
 }
+
+// ============================================================
+// Mobile
+// ============================================================
 
 /**
  * Show sidebar on mobile.
  */
 function showMobileSidebar() {
-    elements.sidebar.classList.remove(
-        "hidden"
-    );
-
-    elements.sidebar.classList.add(
-        "flex"
-    );
+    elements.sidebar.classList.remove("hidden");
+    elements.sidebar.classList.add("flex");
 
     elements.sidebar.setAttribute(
         "aria-hidden",
         "false"
     );
 
-    elements.backdrop?.classList.remove(
-        "hidden"
-    );
+    elements.backdrop?.classList.remove("hidden");
 
     elements.backdrop?.setAttribute(
         "aria-hidden",
@@ -383,22 +491,15 @@ function showMobileSidebar() {
  * Hide sidebar on mobile.
  */
 function hideMobileSidebar() {
-    elements.sidebar.classList.add(
-        "hidden"
-    );
-
-    elements.sidebar.classList.remove(
-        "flex"
-    );
+    elements.sidebar.classList.add("hidden");
+    elements.sidebar.classList.remove("flex");
 
     elements.sidebar.setAttribute(
         "aria-hidden",
         "true"
     );
 
-    elements.backdrop?.classList.add(
-        "hidden"
-    );
+    elements.backdrop?.classList.add("hidden");
 
     elements.backdrop?.setAttribute(
         "aria-hidden",
@@ -441,7 +542,14 @@ export function focusSidebar() {
 
     const target =
         elements.sidebar.querySelector(
-            "button:not([disabled]), a[href]"
+            [
+                "button:not([disabled])",
+                "a[href]",
+                "input:not([disabled])",
+                "select:not([disabled])",
+                "textarea:not([disabled])",
+                "[tabindex]:not([tabindex='-1'])",
+            ].join(",")
         );
 
     if (!target) {
@@ -459,17 +567,22 @@ export function focusSidebar() {
  * @returns {boolean}
  */
 export function openSidebarAndFocus() {
+    if (!isMobileSidebar()) {
+        openSidebar();
+        return true;
+    }
+
     const opened = openSidebar();
 
     if (!opened) {
         return false;
     }
 
-    if (isMobileSidebar()) {
-        requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+        if (state.open) {
             focusSidebar();
-        });
-    }
+        }
+    });
 
     return true;
 }
@@ -486,8 +599,7 @@ export function openSidebarAndFocus() {
 export function setSidebarBreakpoint(
     breakpoint
 ) {
-    const value =
-        Number(breakpoint);
+    const value = Number(breakpoint);
 
     if (
         !Number.isFinite(value) ||
@@ -528,6 +640,7 @@ export function destroySidebar() {
 
     state.initialized = false;
     state.open = false;
+    state.previousActiveElement = null;
 
     elements.sidebar = null;
     elements.backdrop = null;

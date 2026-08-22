@@ -26,6 +26,10 @@ const state = {
     open: false,
     previousActiveElement: null,
     keydownHandler: null,
+    config: null,
+    instanceId: 0,
+    bodyOverflowLocked: false,
+    bodyHadOverflowHidden: false,
 };
 
 const elements = {
@@ -45,7 +49,10 @@ const elements = {
  * @returns {HTMLElement|null}
  */
 function getRoot() {
-    if (elements.root && document.contains(elements.root)) {
+    if (
+        elements.root &&
+        document.contains(elements.root)
+    ) {
         return elements.root;
     }
 
@@ -61,9 +68,6 @@ function getRoot() {
 /**
  * Initialize the modal module.
  *
- * This function only prepares the modal container. It does not
- * open a modal automatically.
- *
  * @returns {Object} Modal API
  */
 export function initModal() {
@@ -75,20 +79,31 @@ export function initModal() {
         );
 
         return {
-            openModal,
-            closeModal,
-            isModalOpen,
-            setModalContent,
+            open: openModal,
+            close: closeModal,
+            isOpen: isModalOpen,
+            setContent: setModalContent,
         };
     }
 
     root.setAttribute("aria-live", "polite");
 
+    /*
+     * Recover from a DOM replacement where the previous modal
+     * instance no longer exists.
+     */
+    if (
+        state.open &&
+        !root.querySelector("[data-modal-dialog]")
+    ) {
+        resetState();
+    }
+
     return {
-        openModal,
-        closeModal,
-        isModalOpen,
-        setModalContent,
+        open: openModal,
+        close: closeModal,
+        isOpen: isModalOpen,
+        setContent: setModalContent,
     };
 }
 
@@ -100,17 +115,6 @@ export function initModal() {
  * Open a modal.
  *
  * @param {Object} options
- * @param {string} [options.title]
- * @param {string} [options.content]
- * @param {string|HTMLElement} [options.body]
- * @param {string} [options.confirmText]
- * @param {string} [options.cancelText]
- * @param {boolean} [options.showClose=true]
- * @param {boolean} [options.closeOnBackdrop=true]
- * @param {boolean} [options.closeOnEscape=true]
- * @param {Function} [options.onConfirm]
- * @param {Function} [options.onCancel]
- * @param {Function} [options.onClose]
  * @returns {Object|null}
  */
 export function openModal(options = {}) {
@@ -124,36 +128,107 @@ export function openModal(options = {}) {
         return null;
     }
 
+    /*
+     * Always close an existing modal before creating a new one.
+     * Do not restore focus here because focus should move into
+     * the newly opened modal instead.
+     */
     if (state.open) {
-        closeModal();
+        closeModal({
+            restoreFocus: false,
+            invokeOnClose: true,
+        });
     }
 
     const config = normalizeOptions(options);
 
-    state.previousActiveElement = document.activeElement;
+    state.instanceId += 1;
+
+    const instanceId = state.instanceId;
+
+    state.previousActiveElement =
+        document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+
+    state.config = config;
 
     root.innerHTML = createModalMarkup(config);
 
     cacheModalElements();
 
-    if (!elements.overlay || !elements.dialog) {
+    if (
+        !elements.overlay ||
+        !elements.dialog
+    ) {
+        resetState();
         return null;
     }
 
+    /*
+     * Store the configuration on the generated dialog.
+     * This is required by backdrop handling and also provides
+     * a useful reference for DOM-level integrations.
+     */
+    elements.dialog.__modalConfig = config;
+    elements.dialog.__modalInstanceId = instanceId;
+
     state.open = true;
 
-    bindModalEvents(config);
+    bindModalEvents(config, instanceId);
 
-    document.body.classList.add("overflow-hidden");
+    lockBodyScroll();
 
     requestAnimationFrame(() => {
-        focusInitialElement();
+        /*
+         * Do not focus an obsolete modal after another modal
+         * has already been opened.
+         */
+        if (
+            state.open &&
+            state.instanceId === instanceId &&
+            elements.dialog
+        ) {
+            focusInitialElement();
+        }
     });
 
     return {
-        close: () => closeModal(),
-        confirm: () => handleConfirm(config),
-        setContent: (content) => setModalContent(content),
+        close: () => {
+            if (state.instanceId !== instanceId) {
+                return false;
+            }
+
+            return closeModal();
+        },
+
+        confirm: () => {
+            if (state.instanceId !== instanceId) {
+                return false;
+            }
+
+            return handleConfirm(config, instanceId);
+        },
+
+        cancel: () => {
+            if (state.instanceId !== instanceId) {
+                return false;
+            }
+
+            return handleCancel(config, instanceId);
+        },
+
+        setContent: (content) => {
+            if (state.instanceId !== instanceId) {
+                return false;
+            }
+
+            return setModalContent(content);
+        },
+
+        isOpen: () =>
+            state.open &&
+            state.instanceId === instanceId,
     };
 }
 
@@ -162,18 +237,27 @@ export function openModal(options = {}) {
  *
  * @param {Object} [options]
  * @param {boolean} [options.restoreFocus=true]
+ * @param {boolean} [options.invokeOnClose=true]
  * @returns {boolean}
  */
 export function closeModal(options = {}) {
     const {
         restoreFocus = true,
+        invokeOnClose = true,
     } = options;
 
     const root = getRoot();
 
-    if (!state.open && !root?.children.length) {
+    if (
+        !state.open &&
+        !root?.children.length
+    ) {
         return false;
     }
+
+    const config = state.config;
+    const previousActiveElement =
+        state.previousActiveElement;
 
     unbindModalEvents();
 
@@ -186,21 +270,38 @@ export function closeModal(options = {}) {
     elements.closeButton = null;
 
     state.open = false;
+    state.config = null;
 
-    document.body.classList.remove("overflow-hidden");
+    unlockBodyScroll();
 
     if (
-        restoreFocus &&
-        state.previousActiveElement &&
-        typeof state.previousActiveElement.focus === "function" &&
-        document.contains(state.previousActiveElement)
+        invokeOnClose &&
+        config?.onClose
     ) {
-        requestAnimationFrame(() => {
-            state.previousActiveElement.focus();
-        });
+        try {
+            config.onClose();
+        } catch (error) {
+            console.error(
+                "[modal] Close callback failed:",
+                error
+            );
+        }
     }
 
     state.previousActiveElement = null;
+
+    if (
+        restoreFocus &&
+        previousActiveElement &&
+        typeof previousActiveElement.focus === "function" &&
+        document.contains(previousActiveElement)
+    ) {
+        requestAnimationFrame(() => {
+            if (document.contains(previousActiveElement)) {
+                previousActiveElement.focus();
+            }
+        });
+    }
 
     return true;
 }
@@ -211,17 +312,25 @@ export function closeModal(options = {}) {
  * @returns {boolean}
  */
 export function isModalOpen() {
-    return state.open;
+    return Boolean(
+        state.open &&
+        elements.dialog &&
+        document.contains(elements.dialog)
+    );
 }
 
 /**
  * Replace the body content of the currently open modal.
  *
- * @param {string|HTMLElement} content
+ * @param {string|HTMLElement|Node} content
  * @returns {boolean}
  */
 export function setModalContent(content) {
-    if (!elements.dialog) {
+    if (
+        !state.open ||
+        !elements.dialog ||
+        !document.contains(elements.dialog)
+    ) {
         return false;
     }
 
@@ -250,30 +359,61 @@ export function setModalContent(content) {
  * @param {Object} options
  * @returns {Object}
  */
-function normalizeOptions(options) {
+function normalizeOptions(options = {}) {
     return {
-        title: options.title || "",
-        content: options.content ?? options.body ?? "",
-        confirmText: options.confirmText || "",
-        cancelText: options.cancelText || "",
-        showClose: options.showClose !== false,
-        closeOnBackdrop: options.closeOnBackdrop !== false,
-        closeOnEscape: options.closeOnEscape !== false,
+        title:
+            options.title != null
+                ? String(options.title)
+                : "",
+
+        content:
+            options.content ??
+            options.body ??
+            "",
+
+        confirmText:
+            options.confirmText != null
+                ? String(options.confirmText)
+                : "",
+
+        cancelText:
+            options.cancelText != null
+                ? String(options.cancelText)
+                : "",
+
+        showClose:
+            options.showClose !== false,
+
+        closeOnBackdrop:
+            options.closeOnBackdrop !== false,
+
+        closeOnEscape:
+            options.closeOnEscape !== false,
+
         onConfirm:
             typeof options.onConfirm === "function"
                 ? options.onConfirm
                 : null,
+
         onCancel:
             typeof options.onCancel === "function"
                 ? options.onCancel
                 : null,
+
         onClose:
             typeof options.onClose === "function"
                 ? options.onClose
                 : null,
+
         size: normalizeSize(options.size),
-        danger: options.danger === true,
-        labelledBy: options.labelledBy || "",
+
+        danger:
+            options.danger === true,
+
+        labelledBy:
+            options.labelledBy
+                ? String(options.labelledBy)
+                : "",
     };
 }
 
@@ -362,22 +502,25 @@ function createModalMarkup(config) {
         `
         : "";
 
-    const footer = cancelButton || confirmButton
-        ? `
-            <div
-                data-modal-footer
-                class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-4 py-3"
-            >
-                ${cancelButton}
-                ${confirmButton}
-            </div>
-        `
-        : "";
+    const footer =
+        cancelButton || confirmButton
+            ? `
+                <div
+                    data-modal-footer
+                    class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-4 py-3"
+                >
+                    ${cancelButton}
+                    ${confirmButton}
+                </div>
+            `
+            : "";
 
     const labelledBy = config.title
         ? `aria-labelledby="${escapeAttribute(titleId)}"`
         : config.labelledBy
-            ? `aria-labelledby="${escapeAttribute(config.labelledBy)}"`
+            ? `aria-labelledby="${escapeAttribute(
+                  config.labelledBy
+              )}"`
             : `aria-label="Dialog"`;
 
     return `
@@ -417,9 +560,9 @@ function createModalMarkup(config) {
 }
 
 /**
- * Insert content safely when it is an HTMLElement.
- * Strings are treated as HTML because modal callers may need
- * to render small custom forms.
+ * Insert content into a container.
+ *
+ * Strings are treated as HTML intentionally.
  *
  * @param {HTMLElement} container
  * @param {string|HTMLElement|Node} content
@@ -444,22 +587,32 @@ function cacheModalElements() {
     elements.root = getRoot();
 
     elements.overlay =
-        elements.root?.querySelector("[data-modal-overlay]") || null;
+        elements.root?.querySelector(
+            "[data-modal-overlay]"
+        ) || null;
 
     elements.dialog =
-        elements.root?.querySelector("[data-modal-dialog]") || null;
+        elements.root?.querySelector(
+            "[data-modal-dialog]"
+        ) || null;
 
     elements.closeButton =
-        elements.root?.querySelector("[data-modal-close]") || null;
+        elements.root?.querySelector(
+            "[data-modal-close]"
+        ) || null;
 }
 
 /**
  * Bind modal events.
  *
  * @param {Object} config
+ * @param {number} instanceId
  */
-function bindModalEvents(config) {
-    if (!elements.overlay || !elements.dialog) {
+function bindModalEvents(config, instanceId) {
+    if (
+        !elements.overlay ||
+        !elements.dialog
+    ) {
         return;
     }
 
@@ -469,19 +622,23 @@ function bindModalEvents(config) {
     );
 
     const cancelButton =
-        elements.dialog.querySelector("[data-modal-cancel]");
+        elements.dialog.querySelector(
+            "[data-modal-cancel]"
+        );
 
     cancelButton?.addEventListener(
         "click",
-        () => handleCancel(config)
+        () => handleCancel(config, instanceId)
     );
 
     const confirmButton =
-        elements.dialog.querySelector("[data-modal-confirm]");
+        elements.dialog.querySelector(
+            "[data-modal-confirm]"
+        );
 
     confirmButton?.addEventListener(
         "click",
-        () => handleConfirm(config)
+        () => handleConfirm(config, instanceId)
     );
 
     elements.overlay.addEventListener(
@@ -489,19 +646,31 @@ function bindModalEvents(config) {
         handleOverlayMouseDown
     );
 
-    elements.dialog.addEventListener(
-        "keydown",
-        handleDialogKeydown
-    );
-
     state.keydownHandler = (event) => {
-        if (!state.open) {
+        if (
+            !state.open ||
+            state.instanceId !== instanceId ||
+            !elements.dialog
+        ) {
             return;
         }
 
-        if (event.key === "Escape" && config.closeOnEscape) {
+        if (
+            event.key === "Escape" &&
+            config.closeOnEscape
+        ) {
             event.preventDefault();
-            handleCancel(config);
+
+            handleCancel(
+                config,
+                instanceId
+            );
+
+            return;
+        }
+
+        if (event.key === "Tab") {
+            trapFocus(event);
         }
     };
 
@@ -542,13 +711,19 @@ function handleCloseClick() {
  * @param {MouseEvent} event
  */
 function handleOverlayMouseDown(event) {
-    if (event.target !== elements.overlay) {
+    if (
+        event.target !== elements.overlay
+    ) {
         return;
     }
 
-    const config = elements.dialog?.__modalConfig;
+    const config =
+        state.config ||
+        elements.dialog?.__modalConfig;
 
-    if (config?.closeOnBackdrop === false) {
+    if (
+        config?.closeOnBackdrop === false
+    ) {
         return;
     }
 
@@ -559,65 +734,118 @@ function handleOverlayMouseDown(event) {
  * Handle cancel action.
  *
  * @param {Object} config
+ * @param {number} instanceId
+ * @returns {boolean|undefined}
  */
-function handleCancel(config) {
-    if (config.onCancel) {
-        const result = config.onCancel();
+function handleCancel(
+    config,
+    instanceId
+) {
+    if (
+        state.instanceId !== instanceId ||
+        !state.open
+    ) {
+        return false;
+    }
 
-        if (result === false) {
-            return;
+    if (config.onCancel) {
+        try {
+            const result =
+                config.onCancel();
+
+            if (result === false) {
+                return false;
+            }
+        } catch (error) {
+            console.error(
+                "[modal] Cancel callback failed:",
+                error
+            );
+
+            return false;
         }
     }
 
-    closeModal();
+    return closeModal();
 }
 
 /**
  * Handle confirm action.
  *
  * @param {Object} config
+ * @param {number} instanceId
+ * @returns {boolean|Promise|undefined}
  */
-function handleConfirm(config) {
-    if (!config.onConfirm) {
-        closeModal();
-        return;
+function handleConfirm(
+    config,
+    instanceId
+) {
+    if (
+        state.instanceId !== instanceId ||
+        !state.open
+    ) {
+        return false;
     }
 
-    const result = config.onConfirm();
+    if (!config.onConfirm) {
+        return closeModal();
+    }
 
-    if (result instanceof Promise) {
-        result
+    let result;
+
+    try {
+        result = config.onConfirm();
+    } catch (error) {
+        console.error(
+            "[modal] Confirm callback failed:",
+            error
+        );
+
+        return false;
+    }
+
+    /*
+     * Support native Promises and generic thenables.
+     */
+    if (
+        result &&
+        typeof result.then === "function"
+    ) {
+        return Promise.resolve(result)
             .then((value) => {
+                /*
+                 * The original modal may have already been
+                 * closed or replaced while the async callback
+                 * was running.
+                 */
+                if (
+                    state.instanceId !== instanceId ||
+                    !state.open
+                ) {
+                    return value;
+                }
+
                 if (value !== false) {
                     closeModal();
                 }
+
+                return value;
             })
             .catch((error) => {
                 console.error(
                     "[modal] Confirm callback failed:",
                     error
                 );
-            });
 
-        return;
+                return undefined;
+            });
     }
 
     if (result !== false) {
-        closeModal();
-    }
-}
-
-/**
- * Handle keyboard navigation inside the dialog.
- *
- * @param {KeyboardEvent} event
- */
-function handleDialogKeydown(event) {
-    if (event.key !== "Tab") {
-        return;
+        return closeModal();
     }
 
-    trapFocus(event);
+    return false;
 }
 
 // ============================================================
@@ -632,9 +860,10 @@ function focusInitialElement() {
         return;
     }
 
-    const firstFocusable = getFocusableElements(
-        elements.dialog
-    )[0];
+    const firstFocusable =
+        getFocusableElements(
+            elements.dialog
+        )[0];
 
     if (firstFocusable) {
         firstFocusable.focus();
@@ -645,7 +874,7 @@ function focusInitialElement() {
 }
 
 /**
- * Keep keyboard focus inside the modal.
+ * Keep keyboard focus inside the dialog.
  *
  * @param {KeyboardEvent} event
  */
@@ -654,9 +883,10 @@ function trapFocus(event) {
         return;
     }
 
-    const focusable = getFocusableElements(
-        elements.dialog
-    );
+    const focusable =
+        getFocusableElements(
+            elements.dialog
+        );
 
     if (!focusable.length) {
         event.preventDefault();
@@ -665,15 +895,35 @@ function trapFocus(event) {
     }
 
     const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const last =
+        focusable[focusable.length - 1];
 
-    if (event.shiftKey && document.activeElement === first) {
+    /*
+     * If focus somehow escaped the modal, put it back inside.
+     */
+    if (
+        !elements.dialog.contains(
+            document.activeElement
+        )
+    ) {
+        event.preventDefault();
+        first.focus();
+        return;
+    }
+
+    if (
+        event.shiftKey &&
+        document.activeElement === first
+    ) {
         event.preventDefault();
         last.focus();
         return;
     }
 
-    if (!event.shiftKey && document.activeElement === last) {
+    if (
+        !event.shiftKey &&
+        document.activeElement === last
+    ) {
         event.preventDefault();
         first.focus();
     }
@@ -687,20 +937,21 @@ function trapFocus(event) {
  */
 function getFocusableElements(container) {
     return Array.from(
-        container.querySelectorAll(
-            `
+        container.querySelectorAll(`
             button:not([disabled]),
             [href],
             input:not([disabled]),
             select:not([disabled]),
             textarea:not([disabled]),
+            [contenteditable="true"],
             [tabindex]:not([tabindex="-1"])
-            `
-        )
+        `)
     ).filter((element) => {
         return (
             !element.hasAttribute("hidden") &&
-            element.getAttribute("aria-hidden") !== "true" &&
+            element.getAttribute(
+                "aria-hidden"
+            ) !== "true" &&
             isVisible(element)
         );
     });
@@ -711,12 +962,60 @@ function getFocusableElements(container) {
  * @returns {boolean}
  */
 function isVisible(element) {
-    const style = window.getComputedStyle(element);
+    const style =
+        window.getComputedStyle(element);
+
+    const rect =
+        element.getBoundingClientRect();
 
     return (
         style.display !== "none" &&
-        style.visibility !== "hidden"
+        style.visibility !== "hidden" &&
+        rect.width > 0 &&
+        rect.height > 0
     );
+}
+
+// ============================================================
+// Body Scroll
+// ============================================================
+
+/**
+ * Prevent background page scrolling while a modal is open.
+ */
+function lockBodyScroll() {
+    if (state.bodyOverflowLocked) {
+        return;
+    }
+
+    state.bodyOverflowLocked = true;
+
+    state.bodyHadOverflowHidden =
+        document.body.classList.contains(
+            "overflow-hidden"
+        );
+
+    document.body.classList.add(
+        "overflow-hidden"
+    );
+}
+
+/**
+ * Restore the body's original overflow state.
+ */
+function unlockBodyScroll() {
+    if (!state.bodyOverflowLocked) {
+        return;
+    }
+
+    if (!state.bodyHadOverflowHidden) {
+        document.body.classList.remove(
+            "overflow-hidden"
+        );
+    }
+
+    state.bodyOverflowLocked = false;
+    state.bodyHadOverflowHidden = false;
 }
 
 // ============================================================
@@ -724,15 +1023,22 @@ function isVisible(element) {
 // ============================================================
 
 /**
- * Generate a simple unique DOM id.
+ * Generate a unique DOM id.
  *
  * @param {string} prefix
  * @returns {string}
  */
 function createId(prefix) {
+    if (
+        typeof crypto !== "undefined" &&
+        typeof crypto.randomUUID === "function"
+    ) {
+        return `${prefix}-${crypto.randomUUID()}`;
+    }
+
     return `${prefix}-${Math.random()
         .toString(36)
-        .slice(2, 9)}`;
+        .slice(2, 11)}-${Date.now()}`;
 }
 
 /**
@@ -758,6 +1064,23 @@ function escapeHtml(value) {
  */
 function escapeAttribute(value) {
     return escapeHtml(value);
+}
+
+/**
+ * Reset internal state without triggering callbacks.
+ */
+function resetState() {
+    unbindModalEvents();
+
+    elements.overlay = null;
+    elements.dialog = null;
+    elements.closeButton = null;
+
+    state.open = false;
+    state.config = null;
+    state.previousActiveElement = null;
+
+    unlockBodyScroll();
 }
 
 // ============================================================

@@ -1,93 +1,106 @@
 // src/scripts/ui/tabs.js
 
+import {
+    getDOM,
+    getRequestTabElements,
+    getRequestPanelElements,
+    getResponseTabElements,
+    getResponsePanelElements,
+    setSelected,
+    setVisible,
+} from "./dom.js";
+
 /**
  * Tabs UI
  *
- * Generic tab controller used by request and response tab groups.
+ * Controls the request and response tab interfaces using
+ * the DOM elements cached by dom.js.
  *
- * Responsibilities:
- * - Initialize tab groups
- * - Switch between tabs
- * - Update aria-selected state
- * - Show/hide associated panels
- * - Support keyboard navigation
- * - Keep tab state accessible to other modules
+ * Supported groups:
  *
- * Expected markup:
+ * Request:
+ *   requestTabs
+ *   requestTabParams
+ *   requestTabHeaders
+ *   requestTabBody
+ *   requestTabAuth
  *
- * <div role="tablist">
- *   <button
- *     role="tab"
- *     data-tab="params"
- *     aria-controls="request-panel-params"
- *     aria-selected="true"
- *   >
- *     Params
- *   </button>
- * </div>
+ *   requestPanelParams
+ *   requestPanelHeaders
+ *   requestPanelBody
+ *   requestPanelAuth
  *
- * <section
- *   id="request-panel-params"
- *   role="tabpanel"
- * >
- * </section>
+ * Response:
+ *   responseTabs
+ *   responseTabPretty
+ *   responseTabRaw
+ *   responseTabHeaders
  *
- * The module supports both:
- * - data-tab / data-panel
- * - data-response-tab / data-response-panel
- *
- * It can also initialize a specific tab container directly.
+ *   responsePanelPretty
+ *   responsePanelRaw
+ *   responsePanelHeaders
  */
 
-// ============================================================
-// Constants
-// ============================================================
+const GROUPS = {
+    request: {
+        tabsKey: "requestTabs",
+        tabs: [
+            "requestTabParams",
+            "requestTabHeaders",
+            "requestTabBody",
+            "requestTabAuth",
+        ],
+        panels: [
+            "requestPanelParams",
+            "requestPanelHeaders",
+            "requestPanelBody",
+            "requestPanelAuth",
+        ],
+        defaultTab: "requestTabParams",
+    },
 
-const SELECTORS = {
-    tabLists: '[role="tablist"]',
-    tabs: '[role="tab"]',
-    panels: '[role="tabpanel"]',
+    response: {
+        tabsKey: "responseTabs",
+        tabs: [
+            "responseTabPretty",
+            "responseTabRaw",
+            "responseTabHeaders",
+        ],
+        panels: [
+            "responsePanelPretty",
+            "responsePanelRaw",
+            "responsePanelHeaders",
+        ],
+        defaultTab: "responseTabPretty",
+    },
 };
 
-const CLASSES = {
-    active:
-        "border-primary text-foreground",
-    inactive:
-        "border-transparent text-muted-foreground",
-};
+const ACTIVE_CLASSES = [
+    "border-primary",
+    "text-foreground",
+];
 
-// ============================================================
-// Internal State
-// ============================================================
+const INACTIVE_CLASSES = [
+    "border-transparent",
+    "text-muted-foreground",
+];
 
 const groups = new Map();
 
 let initialized = false;
 
-// ============================================================
-// Initialization
-// ============================================================
-
 /**
- * Initialize all tab groups in the document.
+ * Initialize request and response tabs.
  *
- * This does not assume any particular tab implementation.
- * It discovers tablists using [role="tablist"].
- *
- * @returns {Object} Tabs API
+ * @returns {Object}
  */
 export function initTabs() {
     if (initialized) {
         return createApi();
     }
 
-    const tabLists = document.querySelectorAll(
-        SELECTORS.tabLists
-    );
-
-    tabLists.forEach((tabList) => {
-        initTabList(tabList);
-    });
+    initRequestTabs();
+    initResponseTabs();
 
     initialized = true;
 
@@ -95,98 +108,159 @@ export function initTabs() {
 }
 
 /**
- * Initialize a single tab list.
+ * Initialize request tabs.
  *
- * @param {HTMLElement|string} tabList
  * @returns {Object|null}
  */
-export function initTabList(tabList) {
-    const element =
-        typeof tabList === "string"
-            ? document.querySelector(tabList)
-            : tabList;
+export function initRequestTabs() {
+    return initGroup("request");
+}
 
-    if (!(element instanceof HTMLElement)) {
+/**
+ * Initialize response tabs.
+ *
+ * @returns {Object|null}
+ */
+export function initResponseTabs() {
+    return initGroup("response");
+}
+
+/**
+ * Initialize one known tab group.
+ *
+ * @param {"request"|"response"} groupName
+ * @returns {Object|null}
+ */
+function initGroup(groupName) {
+    const config = GROUPS[groupName];
+
+    if (!config) {
         return null;
     }
 
-    if (!element.matches(SELECTORS.tabLists)) {
+    const tabList = getDOM(config.tabsKey);
+
+    if (!tabList) {
+        console.warn(
+            `[tabs] Missing DOM element: ${config.tabsKey}`
+        );
+
         return null;
     }
 
-    const tabs = Array.from(
-        element.querySelectorAll(
-            SELECTORS.tabs
-        )
-    );
+    const tabs = config.tabs
+        .map((key) => getDOM(key))
+        .filter(Boolean);
+
+    const panels = config.panels
+        .map((key) => getDOM(key))
+        .filter(Boolean);
 
     if (!tabs.length) {
+        console.warn(
+            `[tabs] No tabs found for ${groupName} tab group`
+        );
+
         return null;
     }
 
-    const existing = groups.get(element);
+    const existing = groups.get(groupName);
 
     if (existing) {
-        destroyTabList(element);
+        destroyGroup(groupName);
     }
 
     const group = {
-        element,
+        name: groupName,
+        tabList,
         tabs,
+        panels,
         activeTab: null,
         handlers: new Map(),
     };
 
-    groups.set(element, group);
+    groups.set(groupName, group);
+
+    prepareTabList(group);
 
     tabs.forEach((tab) => {
-        bindTabEvents(group, tab);
+        bindTab(group, tab);
     });
 
-    const initialTab = findInitialTab(tabs);
+    const initialTab = findInitialTab(
+        group,
+        config.defaultTab
+    );
 
     if (initialTab) {
         activateTab(initialTab, {
             focus: false,
-            updateUrl: false,
+            dispatch: false,
         });
     }
 
-    return {
-        activate: (tab) => activateTab(tab),
-        getActive: () => getActiveTab(element),
-        getTabs: () => [...group.tabs],
-        destroy: () => destroyTabList(element),
-    };
+    return createGroupApi(groupName);
 }
 
 /**
- * Initialize a tab list after it has been dynamically inserted.
+ * Prepare the tablist for accessibility.
  *
- * @param {HTMLElement|string} tabList
- * @returns {Object|null}
+ * @param {Object} group
  */
-export function refreshTabs(tabList) {
-    return initTabList(tabList);
+function prepareTabList(group) {
+    group.tabList.setAttribute(
+        "role",
+        "tablist"
+    );
+
+    group.tabs.forEach((tab) => {
+        tab.setAttribute(
+            "role",
+            "tab"
+        );
+
+        if (!tab.hasAttribute("aria-selected")) {
+            tab.setAttribute(
+                "aria-selected",
+                "false"
+            );
+        }
+
+        if (!tab.hasAttribute("tabindex")) {
+            tab.setAttribute(
+                "tabindex",
+                "-1"
+            );
+        }
+    });
+
+    group.panels.forEach((panel) => {
+        panel.setAttribute(
+            "role",
+            "tabpanel"
+        );
+    });
 }
 
-// ============================================================
-// Binding
-// ============================================================
-
 /**
- * Bind events for a single tab.
+ * Bind events to a tab.
  *
  * @param {Object} group
  * @param {HTMLElement} tab
  */
-function bindTabEvents(group, tab) {
-    const clickHandler = () => {
+function bindTab(group, tab) {
+    const clickHandler = (event) => {
+        event.preventDefault();
+
         activateTab(tab);
     };
 
     const keydownHandler = (event) => {
-        handleTabKeydown(event, group);
+        handleKeyboardNavigation(
+            event,
+            group,
+            tab
+        );
     };
 
     tab.addEventListener(
@@ -206,103 +280,83 @@ function bindTabEvents(group, tab) {
 }
 
 /**
- * Remove events from a tab list.
+ * Destroy one tab group.
  *
- * @param {HTMLElement} tabList
+ * @param {"request"|"response"} groupName
+ * @returns {boolean}
  */
-export function destroyTabList(tabList) {
-    const group = groups.get(tabList);
+export function destroyGroup(groupName) {
+    const group = groups.get(groupName);
 
     if (!group) {
         return false;
     }
 
-    group.tabs.forEach((tab) => {
-        const handlers = group.handlers.get(tab);
+    group.handlers.forEach(
+        (handlers, tab) => {
+            tab.removeEventListener(
+                "click",
+                handlers.clickHandler
+            );
 
-        if (!handlers) {
-            return;
+            tab.removeEventListener(
+                "keydown",
+                handlers.keydownHandler
+            );
         }
+    );
 
-        tab.removeEventListener(
-            "click",
-            handlers.clickHandler
-        );
-
-        tab.removeEventListener(
-            "keydown",
-            handlers.keydownHandler
-        );
-    });
-
-    groups.delete(tabList);
+    groups.delete(groupName);
 
     return true;
 }
 
-// ============================================================
-// Activation
-// ============================================================
+/**
+ * Destroy all tab groups.
+ */
+export function destroyTabs() {
+    destroyGroup("request");
+    destroyGroup("response");
+
+    initialized = false;
+}
 
 /**
  * Activate a tab.
  *
  * @param {HTMLElement|string} tab
- * @param {Object} [options]
- * @param {boolean} [options.focus=true]
- * @param {boolean} [options.updateUrl=false]
+ * @param {Object} options
+ * @param {boolean} options.focus
+ * @param {boolean} options.dispatch
  * @returns {boolean}
  */
-export function activateTab(tab, options = {}) {
-    const {
+export function activateTab(
+    tab,
+    {
         focus = true,
-        updateUrl = false,
-    } = options;
-
-    const tabElement =
-        resolveTab(tab);
+        dispatch = true,
+    } = {}
+) {
+    const tabElement = resolveTab(tab);
 
     if (!tabElement) {
         return false;
     }
 
-    const tabList =
-        tabElement.closest(
-            SELECTORS.tabLists
-        );
-
-    if (!tabList) {
-        return false;
-    }
-
-    const group = groups.get(tabList);
+    const group = findGroupForTab(tabElement);
 
     if (!group) {
-        initTabList(tabList);
-
-        return activateTab(
-            tabElement,
-            options
-        );
+        return false;
     }
 
     if (!group.tabs.includes(tabElement)) {
         return false;
     }
 
-    const panelId =
-        getPanelId(tabElement);
-
-    const panel =
-        panelId
-            ? document.getElementById(panelId)
-            : null;
-
-    if (!panel) {
-        console.warn(
-            `[tabs] No panel found for tab "${tabElement.id || getTabName(tabElement)}".`
-        );
-    }
+    const panel = getPanelForTab(
+        group,
+        tabElement
+    );
 
     group.tabs.forEach((currentTab) => {
         const active =
@@ -312,25 +366,16 @@ export function activateTab(tab, options = {}) {
             currentTab,
             active
         );
+    });
 
-        const currentPanelId =
-            getPanelId(currentTab);
+    group.panels.forEach((currentPanel) => {
+        const active =
+            currentPanel === panel;
 
-        if (!currentPanelId) {
-            return;
-        }
-
-        const currentPanel =
-            document.getElementById(
-                currentPanelId
-            );
-
-        if (currentPanel) {
-            updatePanelState(
-                currentPanel,
-                active
-            );
-        }
+        updatePanelState(
+            currentPanel,
+            active
+        );
     });
 
     group.activeTab = tabElement;
@@ -339,43 +384,49 @@ export function activateTab(tab, options = {}) {
         tabElement.focus();
     }
 
-    if (updateUrl) {
-        updateUrlHash(tabElement);
+    if (dispatch) {
+        dispatchTabChange(
+            group,
+            tabElement,
+            panel
+        );
     }
-
-    dispatchTabChange(
-        tabElement,
-        panel
-    );
 
     return true;
 }
 
 /**
- * Set a tab without requiring the caller to know its DOM element.
+ * Set an active tab by logical name.
+ *
+ * Examples:
+ *
+ *   setActiveTab("params", "request")
+ *   setActiveTab("headers", "request")
+ *   setActiveTab("pretty", "response")
  *
  * @param {string} tabName
- * @param {HTMLElement|string} tabList
- * @param {Object} [options]
+ * @param {"request"|"response"|HTMLElement|string|null} groupName
+ * @param {Object} options
  * @returns {boolean}
  */
 export function setActiveTab(
     tabName,
-    tabList = null,
+    groupName = null,
     options = {}
 ) {
-    const group =
-        resolveGroup(tabList);
+    const group = resolveGroup(groupName);
 
     if (!group) {
         return false;
     }
 
-    const tab =
-        group.tabs.find(
-            (item) =>
-                getTabName(item) === tabName
-        );
+    const normalizedName =
+        normalizeTabName(tabName);
+
+    const tab = group.tabs.find(
+        (item) =>
+            getTabName(item) === normalizedName
+    );
 
     if (!tab) {
         return false;
@@ -388,14 +439,15 @@ export function setActiveTab(
 }
 
 /**
- * Get the currently active tab.
+ * Get the active tab.
  *
- * @param {HTMLElement|string} [tabList]
+ * @param {"request"|"response"|HTMLElement|string|null} groupName
  * @returns {HTMLElement|null}
  */
-export function getActiveTab(tabList = null) {
-    const group =
-        resolveGroup(tabList);
+export function getActiveTab(
+    groupName = null
+) {
+    const group = resolveGroup(groupName);
 
     if (!group) {
         return null;
@@ -416,26 +468,103 @@ export function getActiveTab(tabList = null) {
 /**
  * Get the active tab name.
  *
- * @param {HTMLElement|string} [tabList]
+ * @param {"request"|"response"|HTMLElement|string|null} groupName
  * @returns {string|null}
  */
 export function getActiveTabName(
-    tabList = null
+    groupName = null
 ) {
-    const tab =
-        getActiveTab(tabList);
+    const tab = getActiveTab(groupName);
 
     return tab
         ? getTabName(tab)
         : null;
 }
 
-// ============================================================
-// Tab State
-// ============================================================
+/**
+ * Refresh a tab group.
+ *
+ * Useful if HTML is dynamically replaced.
+ *
+ * @param {"request"|"response"|HTMLElement|string} groupName
+ * @returns {Object|null}
+ */
+export function refreshTabs(
+    groupName = null
+) {
+    if (
+        groupName === "request" ||
+        groupName === "response"
+    ) {
+        return initGroup(groupName);
+    }
+
+    if (
+        groupName instanceof HTMLElement
+    ) {
+        const requestTabs =
+            getDOM("requestTabs");
+
+        const responseTabs =
+            getDOM("responseTabs");
+
+        if (groupName === requestTabs) {
+            return initGroup("request");
+        }
+
+        if (groupName === responseTabs) {
+            return initGroup("response");
+        }
+    }
+
+    return initTabs();
+}
 
 /**
- * Update tab accessibility and visual state.
+ * Find the initial tab.
+ *
+ * @param {Object} group
+ * @param {string} defaultTabKey
+ * @returns {HTMLElement|null}
+ */
+function findInitialTab(
+    group,
+    defaultTabKey
+) {
+    const selected = group.tabs.find(
+        (tab) =>
+            tab.getAttribute(
+                "aria-selected"
+            ) === "true" &&
+            !isDisabled(tab)
+    );
+
+    if (selected) {
+        return selected;
+    }
+
+    const defaultTab =
+        getDOM(defaultTabKey);
+
+    if (
+        defaultTab &&
+        group.tabs.includes(defaultTab) &&
+        !isDisabled(defaultTab)
+    ) {
+        return defaultTab;
+    }
+
+    return (
+        group.tabs.find(
+            (tab) => !isDisabled(tab)
+        ) ||
+        group.tabs[0] ||
+        null
+    );
+}
+
+/**
+ * Update tab state.
  *
  * @param {HTMLElement} tab
  * @param {boolean} active
@@ -444,9 +573,9 @@ function updateTabState(
     tab,
     active
 ) {
-    tab.setAttribute(
-        "aria-selected",
-        String(active)
+    setSelected(
+        tab,
+        active
     );
 
     tab.setAttribute(
@@ -454,29 +583,32 @@ function updateTabState(
         active ? "0" : "-1"
     );
 
+    ACTIVE_CLASSES.forEach(
+        (className) => {
+            tab.classList.toggle(
+                className,
+                active
+            );
+        }
+    );
+
+    INACTIVE_CLASSES.forEach(
+        (className) => {
+            tab.classList.toggle(
+                className,
+                !active
+            );
+        }
+    );
+
     tab.classList.toggle(
-        CLASSES.active.split(" ")[0],
+        "active",
         active
-    );
-
-    tab.classList.toggle(
-        CLASSES.active.split(" ")[1],
-        active
-    );
-
-    tab.classList.toggle(
-        CLASSES.inactive.split(" ")[0],
-        !active
-    );
-
-    tab.classList.toggle(
-        CLASSES.inactive.split(" ")[1],
-        !active
     );
 }
 
 /**
- * Update panel visibility and accessibility.
+ * Update panel state.
  *
  * @param {HTMLElement} panel
  * @param {boolean} active
@@ -485,9 +617,9 @@ function updatePanelState(
     panel,
     active
 ) {
-    panel.classList.toggle(
-        "hidden",
-        !active
+    setVisible(
+        panel,
+        active
     );
 
     panel.setAttribute(
@@ -495,36 +627,267 @@ function updatePanelState(
         String(!active)
     );
 
-    panel.tabIndex = active ? 0 : -1;
+    panel.setAttribute(
+        "tabindex",
+        active ? "0" : "-1"
+    );
 }
 
-// ============================================================
-// Keyboard Navigation
-// ============================================================
+/**
+ * Resolve a tab from an element, ID,
+ * or logical name.
+ *
+ * @param {HTMLElement|string} value
+ * @returns {HTMLElement|null}
+ */
+function resolveTab(value) {
+    if (
+        value instanceof HTMLElement
+    ) {
+        return value;
+    }
+
+    if (
+        typeof value !== "string"
+    ) {
+        return null;
+    }
+
+    const allTabs = [
+        ...getRequestTabElements(),
+        ...getResponseTabElements(),
+    ];
+
+    const normalized =
+        normalizeTabName(value);
+
+    return (
+        allTabs.find(
+            (tab) =>
+                tab.id === value
+        ) ||
+        allTabs.find(
+            (tab) =>
+                getTabName(tab) === normalized
+        ) ||
+        null
+    );
+}
 
 /**
- * Handle keyboard interaction with tabs.
+ * Resolve a group.
  *
- * Supported:
- * - ArrowLeft
- * - ArrowRight
- * - ArrowUp
- * - ArrowDown
- * - Home
- * - End
- * - Enter
- * - Space
+ * @param {string|HTMLElement|null} value
+ * @returns {Object|null}
+ */
+function resolveGroup(value) {
+    if (
+        value === "request" ||
+        value === "response"
+    ) {
+        return groups.get(value) || null;
+    }
+
+    if (
+        value instanceof HTMLElement
+    ) {
+        for (const group of groups.values()) {
+            if (
+                group.tabList === value ||
+                group.tabs.includes(value)
+            ) {
+                return group;
+            }
+        }
+
+        return null;
+    }
+
+    if (
+        typeof value === "string"
+    ) {
+        for (const group of groups.values()) {
+            if (
+                group.tabList.id === value
+            ) {
+                return group;
+            }
+        }
+    }
+
+    const activeElement =
+        document.activeElement;
+
+    if (
+        activeElement instanceof HTMLElement
+    ) {
+        const activeGroup =
+            findGroupForTab(
+                activeElement
+            );
+
+        if (activeGroup) {
+            return activeGroup;
+        }
+    }
+
+    return (
+        groups.get("request") ||
+        groups.get("response") ||
+        null
+    );
+}
+
+/**
+ * Find which group owns a tab.
+ *
+ * @param {HTMLElement} tab
+ * @returns {Object|null}
+ */
+function findGroupForTab(tab) {
+    for (const group of groups.values()) {
+        if (group.tabs.includes(tab)) {
+            return group;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Find a panel belonging to a tab.
+ *
+ * First uses aria-controls if the HTML
+ * provides it. Otherwise maps DOM references
+ * directly based on the known group structure.
+ *
+ * @param {Object} group
+ * @param {HTMLElement} tab
+ * @returns {HTMLElement|null}
+ */
+function getPanelForTab(
+    group,
+    tab
+) {
+    const controls =
+        tab.getAttribute(
+            "aria-controls"
+        );
+
+    if (controls) {
+        const panel =
+            document.getElementById(
+                controls
+            );
+
+        if (panel) {
+            return panel;
+        }
+    }
+
+    const index =
+        group.tabs.indexOf(tab);
+
+    if (index === -1) {
+        return null;
+    }
+
+    return group.panels[index] || null;
+}
+
+/**
+ * Get logical tab name.
+ *
+ * Supports:
+ *
+ * data-tab="params"
+ * data-response-tab="pretty"
+ *
+ * It also understands common ID names
+ * from dom.js.
+ *
+ * @param {HTMLElement} tab
+ * @returns {string|null}
+ */
+function getTabName(tab) {
+    if (!tab) {
+        return null;
+    }
+
+    if (tab.dataset.tab) {
+        return normalizeTabName(
+            tab.dataset.tab
+        );
+    }
+
+    if (tab.dataset.responseTab) {
+        return normalizeTabName(
+            tab.dataset.responseTab
+        );
+    }
+
+    const id = tab.id || "";
+
+    const knownNames = [
+        "params",
+        "headers",
+        "body",
+        "auth",
+        "pretty",
+        "raw",
+    ];
+
+    for (const name of knownNames) {
+        if (
+            id
+                .toLowerCase()
+                .includes(name)
+        ) {
+            return name;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Normalize a tab name.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function normalizeTabName(value) {
+    if (
+        typeof value !== "string"
+    ) {
+        return "";
+    }
+
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(
+            /^(request|response)-?/,
+            ""
+        )
+        .replace(
+            /-?(tab|panel)$/,
+            ""
+        );
+}
+
+/**
+ * Handle keyboard navigation.
  *
  * @param {KeyboardEvent} event
  * @param {Object} group
+ * @param {HTMLElement} currentTab
  */
-function handleTabKeydown(
+function handleKeyboardNavigation(
     event,
-    group
+    group,
+    currentTab
 ) {
-    const currentTab =
-        event.currentTarget;
-
     const currentIndex =
         group.tabs.indexOf(
             currentTab
@@ -547,7 +910,8 @@ function handleTabKeydown(
         case "ArrowLeft":
         case "ArrowUp":
             nextIndex =
-                (currentIndex - 1 +
+                (currentIndex -
+                    1 +
                     group.tabs.length) %
                 group.tabs.length;
             break;
@@ -589,194 +953,19 @@ function handleTabKeydown(
         nextTab,
         {
             focus: true,
-            updateUrl: false,
         }
     );
 }
 
-// ============================================================
-// Discovery
-// ============================================================
-
 /**
- * Find the initial tab.
+ * Dispatch tabs:change.
  *
- * Priority:
- * 1. aria-selected="true"
- * 2. first tab without disabled
- * 3. first tab
- *
- * @param {HTMLElement[]} tabs
- * @returns {HTMLElement|null}
- */
-function findInitialTab(tabs) {
-    const selected =
-        tabs.find(
-            (tab) =>
-                tab.getAttribute(
-                    "aria-selected"
-                ) === "true" &&
-                !isDisabled(tab)
-        );
-
-    if (selected) {
-        return selected;
-    }
-
-    return (
-        tabs.find(
-            (tab) => !isDisabled(tab)
-        ) ||
-        tabs[0] ||
-        null
-    );
-}
-
-/**
- * Resolve a tab argument.
- *
- * @param {HTMLElement|string} tab
- * @returns {HTMLElement|null}
- */
-function resolveTab(tab) {
-    if (tab instanceof HTMLElement) {
-        return tab;
-    }
-
-    if (typeof tab !== "string") {
-        return null;
-    }
-
-    const byId =
-        document.getElementById(tab);
-
-    if (byId?.matches(SELECTORS.tabs)) {
-        return byId;
-    }
-
-    const selector =
-        `[data-tab="${escapeSelectorValue(tab)}"],` +
-        `[data-response-tab="${escapeSelectorValue(tab)}"]`;
-
-    return document.querySelector(
-        selector
-    );
-}
-
-/**
- * Resolve a tab group.
- *
- * @param {HTMLElement|string|null} tabList
- * @returns {Object|null}
- */
-function resolveGroup(tabList) {
-    if (tabList instanceof HTMLElement) {
-        return groups.get(tabList) || null;
-    }
-
-    if (typeof tabList === "string") {
-        const element =
-            document.querySelector(tabList);
-
-        return element
-            ? groups.get(element) || null
-            : null;
-    }
-
-    const active =
-        document.activeElement;
-
-    const activeList =
-        active?.closest(
-            SELECTORS.tabLists
-        );
-
-    if (activeList) {
-        return groups.get(
-            activeList
-        ) || null;
-    }
-
-    const first =
-        groups.values().next().value;
-
-    return first || null;
-}
-
-/**
- * Get the associated panel id.
- *
- * Supports aria-controls and data-panel relationships.
- *
- * @param {HTMLElement} tab
- * @returns {string|null}
- */
-function getPanelId(tab) {
-    const ariaControls =
-        tab.getAttribute(
-            "aria-controls"
-        );
-
-    if (ariaControls) {
-        return ariaControls;
-    }
-
-    const tabName =
-        getTabName(tab);
-
-    if (!tabName) {
-        return null;
-    }
-
-    const panel =
-        tab.closest(
-            SELECTORS.tabLists
-        )?.parentElement?.querySelector(
-            `[data-panel="${escapeSelectorValue(tabName)}"], ` +
-            `[data-response-panel="${escapeSelectorValue(tabName)}"]`
-        );
-
-    return panel?.id || null;
-}
-
-/**
- * Get the logical tab name.
- *
- * @param {HTMLElement} tab
- * @returns {string|null}
- */
-function getTabName(tab) {
-    return (
-        tab.dataset.tab ||
-        tab.dataset.responseTab ||
-        null
-    );
-}
-
-/**
- * @param {HTMLElement} element
- * @returns {boolean}
- */
-function isDisabled(element) {
-    return (
-        element.disabled ||
-        element.getAttribute(
-            "aria-disabled"
-        ) === "true"
-    );
-}
-
-// ============================================================
-// Events
-// ============================================================
-
-/**
- * Notify application code that a tab changed.
- *
+ * @param {Object} group
  * @param {HTMLElement} tab
  * @param {HTMLElement|null} panel
  */
 function dispatchTabChange(
+    group,
     tab,
     panel
 ) {
@@ -785,97 +974,117 @@ function dispatchTabChange(
             "tabs:change",
             {
                 bubbles: true,
+
                 detail: {
+                    group:
+                        group.name,
+
                     tab,
+
                     panel,
-                    name: getTabName(tab),
+
+                    name:
+                        getTabName(tab),
+
                     tabList:
-                        tab.closest(
-                            SELECTORS.tabLists
-                        ),
+                        group.tabList,
                 },
             }
         );
 
-    tab.dispatchEvent(event);
+    tab.dispatchEvent(
+        event
+    );
 }
 
 /**
- * Optionally synchronize the tab with the URL hash.
+ * Check whether a tab is disabled.
  *
- * @param {HTMLElement} tab
+ * @param {HTMLElement} element
+ * @returns {boolean}
  */
-function updateUrlHash(tab) {
-    const name =
-        getTabName(tab);
-
-    if (!name) {
-        return;
-    }
-
-    try {
-        history.replaceState(
-            null,
-            "",
-            `#tab-${encodeURIComponent(name)}`
-        );
-    } catch {
-        // Ignore environments where history manipulation
-        // is unavailable.
-    }
+function isDisabled(element) {
+    return Boolean(
+        element.disabled ||
+        element.getAttribute(
+            "aria-disabled"
+        ) === "true"
+    );
 }
 
-// ============================================================
-// Utilities
-// ============================================================
-
 /**
- * Escape a value used inside a CSS attribute selector.
+ * Create API for one group.
  *
- * @param {string} value
- * @returns {string}
+ * @param {string} groupName
+ * @returns {Object|null}
  */
-function escapeSelectorValue(value) {
-    if (
-        typeof CSS !== "undefined" &&
-        typeof CSS.escape === "function"
-    ) {
-        return CSS.escape(value);
-    }
+function createGroupApi(
+    groupName
+) {
+    return {
+        activate: (tab, options) =>
+            activateTab(
+                tab,
+                options
+            ),
 
-    return String(value)
-        .replaceAll("\\", "\\\\")
-        .replaceAll('"', '\\"');
+        getActive: () =>
+            getActiveTab(
+                groupName
+            ),
+
+        getActiveName: () =>
+            getActiveTabName(
+                groupName
+            ),
+
+        getTabs: () => {
+            const group =
+                groups.get(
+                    groupName
+                );
+
+            return group
+                ? [...group.tabs]
+                : [];
+        },
+
+        destroy: () =>
+            destroyGroup(
+                groupName
+            ),
+    };
 }
 
 /**
- * Create the public API.
+ * Create public API.
  *
  * @returns {Object}
  */
 function createApi() {
     return {
-        initTabList,
+        initTabs,
+        initRequestTabs,
+        initResponseTabs,
         refreshTabs,
         activateTab,
         setActiveTab,
         getActiveTab,
         getActiveTabName,
-        destroyTabList,
+        destroyGroup,
+        destroyTabs,
     };
 }
 
-// ============================================================
-// Exports
-// ============================================================
-
 export default {
     initTabs,
-    initTabList,
+    initRequestTabs,
+    initResponseTabs,
     refreshTabs,
     activateTab,
     setActiveTab,
     getActiveTab,
     getActiveTabName,
-    destroyTabList,
+    destroyGroup,
+    destroyTabs,
 };

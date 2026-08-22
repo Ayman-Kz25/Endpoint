@@ -1,5 +1,3 @@
-// src/scripts/ui/empty-state.js
-
 /**
  * Empty State UI
  *
@@ -30,7 +28,12 @@ const DEFAULT_EMPTY_MESSAGE = "Nothing to show yet.";
 // ============================================================
 
 /**
- * Resolve an element from either a DOM element or an element ID.
+ * Resolve an element from either a DOM element or selector.
+ *
+ * Supports:
+ * - HTMLElement
+ * - Element ID
+ * - CSS selector
  *
  * @param {HTMLElement|string|null} target
  * @returns {HTMLElement|null}
@@ -40,15 +43,31 @@ function resolveElement(target) {
         return null;
     }
 
-    if (typeof target === "string") {
-        return document.getElementById(target);
-    }
-
     if (target instanceof HTMLElement) {
         return target;
     }
 
-    return null;
+    if (typeof target !== "string") {
+        return null;
+    }
+
+    // Preserve convenient ID-based usage.
+    const byId = document.getElementById(target);
+
+    if (byId instanceof HTMLElement) {
+        return byId;
+    }
+
+    // Also support CSS selectors.
+    try {
+        const element = document.querySelector(target);
+
+        return element instanceof HTMLElement
+            ? element
+            : null;
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -66,6 +85,24 @@ function getMessageElement(container) {
         container.querySelector("p") ||
         container
     );
+}
+
+/**
+ * Normalize an empty-state message.
+ *
+ * @param {*} message
+ * @returns {string}
+ */
+function normalizeMessage(message) {
+    if (
+        message === null ||
+        message === undefined ||
+        String(message).trim() === ""
+    ) {
+        return DEFAULT_EMPTY_MESSAGE;
+    }
+
+    return String(message);
 }
 
 // ============================================================
@@ -118,7 +155,7 @@ export function hideEmptyState(target) {
  * @returns {HTMLElement|null}
  */
 export function toggleEmptyState(target, show) {
-    return show
+    return Boolean(show)
         ? showEmptyState(target)
         : hideEmptyState(target);
 }
@@ -146,8 +183,7 @@ export function setEmptyStateMessage(
 
     const messageElement = getMessageElement(element);
 
-    messageElement.textContent =
-        message || DEFAULT_EMPTY_MESSAGE;
+    messageElement.textContent = normalizeMessage(message);
 
     return element;
 }
@@ -173,11 +209,11 @@ export function getEmptyStateMessage(target) {
 // ============================================================
 
 /**
- * Show or hide an empty state based on an array.
+ * Show or hide an empty state based on whether a collection has items.
  *
  * @param {HTMLElement|string} target
  * @param {Array} items
- * @returns {boolean}
+ * @returns {boolean} True when the collection is empty.
  */
 export function updateEmptyState(target, items) {
     const hasItems =
@@ -193,20 +229,18 @@ export function updateEmptyState(target, items) {
  *
  * @param {HTMLElement|string} target
  * @param {Array} items
- * @returns {boolean}
+ * @returns {boolean} True when the collection is empty.
  */
 export function showIfEmpty(target, items) {
     return updateEmptyState(target, items);
 }
 
 /**
- * Show an empty state when a collection contains items.
- *
- * This is useful when the caller wants the inverse behavior.
+ * Hide an empty state when a collection has items.
  *
  * @param {HTMLElement|string} target
  * @param {Array} items
- * @returns {boolean}
+ * @returns {boolean} True when the collection is empty.
  */
 export function hideIfNotEmpty(target, items) {
     return updateEmptyState(target, items);
@@ -246,20 +280,22 @@ export function createEmptyState({
 
     element.setAttribute("data-empty-state", "");
 
-    if (hidden) {
-        element.classList.add("hidden");
-        element.setAttribute("aria-hidden", "true");
-    }
-
     const text = document.createElement("p");
 
     text.className =
         "empty-state-message text-xs text-muted-foreground";
 
     text.setAttribute("data-empty-message", "");
-    text.textContent = message;
+    text.textContent = normalizeMessage(message);
 
     element.appendChild(text);
+
+    // Always normalize visibility + accessibility together.
+    if (hidden) {
+        hideEmptyState(element);
+    } else {
+        showEmptyState(element);
+    }
 
     return element;
 }
@@ -271,8 +307,11 @@ export function createEmptyState({
 /**
  * Initialize an existing empty-state element.
  *
- * This adds the expected accessibility attributes and optionally
- * sets its initial message.
+ * Adds the expected accessibility attributes and optionally
+ * sets its initial message/visibility.
+ *
+ * If `visible` is not supplied, the existing `hidden` class
+ * is used to determine the accessibility state.
  *
  * @param {HTMLElement|string} target
  * @param {Object} options
@@ -301,6 +340,16 @@ export function initEmptyState(
 
     if (visible !== undefined) {
         toggleEmptyState(element, visible);
+    } else {
+        // Normalize accessibility state to match the existing
+        // visual state instead of leaving stale aria attributes.
+        const isHidden = element.classList.contains("hidden");
+
+        if (isHidden) {
+            element.setAttribute("aria-hidden", "true");
+        } else {
+            element.removeAttribute("aria-hidden");
+        }
     }
 
     return element;

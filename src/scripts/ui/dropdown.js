@@ -3,21 +3,27 @@
 /**
  * Dropdown UI
  *
- * Provides a small, reusable dropdown manager for the application.
+ * Provides a reusable dropdown manager for the application.
  *
  * Responsibilities:
  * - Open and close dropdowns
  * - Position dropdowns relative to trigger elements
  * - Handle outside clicks
  * - Handle Escape
- * - Manage aria-expanded
+ * - Manage aria-expanded / aria-controls
  * - Support dynamically rendered dropdown content
+ * - Support keyboard navigation
  *
  * This module does not:
  * - Decide what dropdown content should contain
  * - Persist application state
  * - Handle business logic
  */
+
+const DEFAULT_ROOT_SELECTOR = "#dropdown-root";
+const DEFAULT_PLACEMENT = "bottom-start";
+const DEFAULT_OFFSET = 6;
+const VIEWPORT_MARGIN = 8;
 
 const state = {
     root: null,
@@ -26,18 +32,21 @@ const state = {
     cleanup: null,
 };
 
-// ============================================================
-// Initialization
-// ============================================================
-
 /**
  * Initialize the dropdown system.
  *
  * @param {HTMLElement|string} root
  * @returns {Object} Dropdown API
  */
-export function initDropdown(root = "#dropdown-root") {
-    state.root = resolveElement(root);
+export function initDropdown(root = DEFAULT_ROOT_SELECTOR) {
+    const resolvedRoot = resolveElement(root);
+
+    // Clean up an existing manager before replacing its root.
+    if (state.root !== resolvedRoot && state.active) {
+        closeDropdown();
+    }
+
+    state.root = resolvedRoot;
 
     if (!state.root) {
         return {
@@ -58,10 +67,6 @@ export function initDropdown(root = "#dropdown-root") {
     };
 }
 
-// ============================================================
-// Open / Close
-// ============================================================
-
 /**
  * Open a dropdown.
  *
@@ -72,11 +77,14 @@ export function initDropdown(root = "#dropdown-root") {
  * @param {string} [options.placement="bottom-start"]
  * @param {number} [options.offset=6]
  * @param {boolean} [options.closeOnSelect=true]
+ * @param {boolean} [options.focusFirst=false]
  * @returns {HTMLElement|null}
  */
 export function openDropdown(options = {}) {
-    if (!state.root) {
-        state.root = document.getElementById("dropdown-root");
+    ensureRoot();
+
+    if (!state.root || !document.body.contains(state.root)) {
+        state.root = resolveElement(DEFAULT_ROOT_SELECTOR);
     }
 
     if (!state.root) {
@@ -107,10 +115,34 @@ export function openDropdown(options = {}) {
     };
 
     setTriggerExpanded(trigger, true);
+    setTriggerControls(trigger, dropdown.id);
 
+    // Position after the element has been inserted into the DOM.
     positionDropdown(dropdown, trigger, options);
 
     bindActiveEvents();
+
+    // Focus is useful for keyboard navigation, but preserve the
+    // caller's choice when explicitly disabled.
+    if (options.focusFirst === true) {
+        requestAnimationFrame(() => {
+            if (!state.active || state.active.element !== dropdown) {
+                return;
+            }
+
+            focusFirstMenuItem(dropdown);
+        });
+    }
+
+    // Content can change size after insertion, especially when icons
+    // or asynchronously-rendered content are involved.
+    requestAnimationFrame(() => {
+        if (!state.active || state.active.element !== dropdown) {
+            return;
+        }
+
+        positionDropdown(dropdown, trigger, options);
+    });
 
     return dropdown;
 }
@@ -120,6 +152,10 @@ export function openDropdown(options = {}) {
  */
 export function closeDropdown() {
     if (!state.active) {
+        cleanupActiveEvents();
+
+        state.trigger = null;
+
         return;
     }
 
@@ -128,16 +164,14 @@ export function closeDropdown() {
         trigger,
     } = state.active;
 
+    cleanupActiveEvents();
+
     if (element?.parentNode) {
         element.parentNode.removeChild(element);
     }
 
     setTriggerExpanded(trigger, false);
-
-    if (state.cleanup) {
-        state.cleanup();
-        state.cleanup = null;
-    }
+    setTriggerControls(trigger, null);
 
     state.active = null;
     state.trigger = null;
@@ -164,7 +198,10 @@ export function toggleDropdown(options = {}) {
         return null;
     }
 
-    return openDropdown(options);
+    return openDropdown({
+        ...options,
+        trigger,
+    });
 }
 
 /**
@@ -173,7 +210,10 @@ export function toggleDropdown(options = {}) {
  * @returns {boolean}
  */
 export function isDropdownOpen() {
-    return Boolean(state.active);
+    return Boolean(
+        state.active &&
+        state.active.element?.isConnected
+    );
 }
 
 /**
@@ -185,9 +225,9 @@ export function getActiveDropdown() {
     return state.active;
 }
 
-// ============================================================
-// Element Creation
-// ============================================================
+/* ============================================================
+ * Element Creation
+ * ============================================================ */
 
 /**
  * Create the dropdown DOM element.
@@ -195,12 +235,12 @@ export function getActiveDropdown() {
  * @param {Object} options
  * @returns {HTMLElement|null}
  */
-function createDropdownElement(options) {
+function createDropdownElement(options = {}) {
     const dropdown = document.createElement("div");
 
     dropdown.id =
         options.id ||
-        `dropdown-${Date.now()}`;
+        createUniqueDropdownId();
 
     dropdown.setAttribute("role", "menu");
     dropdown.setAttribute("tabindex", "-1");
@@ -212,7 +252,9 @@ function createDropdownElement(options) {
             "z-50",
             "min-w-40",
             "max-w-[calc(100vw-1rem)]",
-            "overflow-hidden",
+            "max-h-[calc(100vh-1rem)]",
+            "overflow-y-auto",
+            "overflow-x-hidden",
             "rounded-md",
             "border",
             "border-border",
@@ -224,7 +266,13 @@ function createDropdownElement(options) {
 
     if (typeof options.content === "string") {
         dropdown.innerHTML = options.content;
-    } else if (options.content instanceof HTMLElement) {
+    } else if (
+        options.content instanceof HTMLElement
+    ) {
+        dropdown.appendChild(options.content);
+    } else if (
+        options.content instanceof DocumentFragment
+    ) {
         dropdown.appendChild(options.content);
     } else {
         return null;
@@ -237,9 +285,9 @@ function createDropdownElement(options) {
     return dropdown;
 }
 
-// ============================================================
-// Positioning
-// ============================================================
+/* ============================================================
+ * Positioning
+ * ============================================================ */
 
 /**
  * Position the dropdown relative to its trigger.
@@ -253,13 +301,26 @@ function positionDropdown(
     trigger,
     options = {}
 ) {
+    if (!dropdown || !trigger) {
+        return;
+    }
+
+    if (
+        !dropdown.isConnected ||
+        !trigger.isConnected
+    ) {
+        return;
+    }
+
     const placement =
-        options.placement || "bottom-start";
+        typeof options.placement === "string"
+            ? options.placement
+            : DEFAULT_PLACEMENT;
 
     const offset =
-        Number.isFinite(options.offset)
-            ? options.offset
-            : 6;
+        Number.isFinite(Number(options.offset))
+            ? Number(options.offset)
+            : DEFAULT_OFFSET;
 
     const triggerRect =
         trigger.getBoundingClientRect();
@@ -268,164 +329,206 @@ function positionDropdown(
         dropdown.getBoundingClientRect();
 
     const viewportWidth =
-        document.documentElement.clientWidth;
+        document.documentElement.clientWidth ||
+        window.innerWidth;
 
     const viewportHeight =
-        document.documentElement.clientHeight;
+        document.documentElement.clientHeight ||
+        window.innerHeight;
 
-    let top = 0;
-    let left = 0;
+    const margin = VIEWPORT_MARGIN;
+
+    const dropdownWidth = dropdownRect.width;
+    const dropdownHeight = dropdownRect.height;
+
+    let top;
+    let left;
 
     switch (placement) {
         case "bottom-end":
-            top =
-                triggerRect.bottom +
-                offset;
-
-            left =
-                triggerRect.right -
-                dropdownRect.width;
-
+            top = triggerRect.bottom + offset;
+            left = triggerRect.right - dropdownWidth;
             break;
 
         case "top-start":
             top =
                 triggerRect.top -
-                dropdownRect.height -
+                dropdownHeight -
                 offset;
 
-            left =
-                triggerRect.left;
-
+            left = triggerRect.left;
             break;
 
         case "top-end":
             top =
                 triggerRect.top -
-                dropdownRect.height -
+                dropdownHeight -
                 offset;
 
             left =
                 triggerRect.right -
-                dropdownRect.width;
+                dropdownWidth;
 
             break;
 
         case "right-start":
+            top = triggerRect.top;
+            left = triggerRect.right + offset;
+            break;
+
+        case "right-end":
             top =
-                triggerRect.top;
+                triggerRect.bottom -
+                dropdownHeight;
+
+            left = triggerRect.right + offset;
+            break;
+
+        case "left-start":
+            top = triggerRect.top;
 
             left =
-                triggerRect.right +
+                triggerRect.left -
+                dropdownWidth -
                 offset;
 
             break;
 
-        case "left-start":
+        case "left-end":
             top =
-                triggerRect.top;
+                triggerRect.bottom -
+                dropdownHeight;
 
             left =
                 triggerRect.left -
-                dropdownRect.width -
+                dropdownWidth -
                 offset;
 
             break;
 
         case "bottom-start":
         default:
-            top =
-                triggerRect.bottom +
-                offset;
-
-            left =
-                triggerRect.left;
-
+            top = triggerRect.bottom + offset;
+            left = triggerRect.left;
             break;
     }
 
-    const margin = 8;
+    /*
+     * Vertical collision handling.
+     */
+
+    const fitsBelow =
+        triggerRect.bottom +
+        offset +
+        dropdownHeight <=
+        viewportHeight - margin;
+
+    const fitsAbove =
+        triggerRect.top -
+        offset -
+        dropdownHeight >=
+        margin;
 
     if (
         placement.startsWith("bottom") &&
-        top + dropdownRect.height >
-            viewportHeight - margin
-    ) {
-        const alternativeTop =
-            triggerRect.top -
-            dropdownRect.height -
-            offset;
-
-        if (alternativeTop >= margin) {
-            top = alternativeTop;
-        }
-    }
-
-    if (
-        placement.startsWith("top") &&
-        top < margin
+        !fitsBelow &&
+        fitsAbove
     ) {
         top =
-            triggerRect.bottom +
+            triggerRect.top -
+            dropdownHeight -
             offset;
+    } else if (
+        placement.startsWith("top") &&
+        !fitsAbove &&
+        fitsBelow
+    ) {
+        top = triggerRect.bottom + offset;
     }
+
+    /*
+     * Horizontal collision handling.
+     */
+
+    const fitsRight =
+        triggerRect.right +
+        offset +
+        dropdownWidth <=
+        viewportWidth - margin;
+
+    const fitsLeft =
+        triggerRect.left -
+        offset -
+        dropdownWidth >=
+        margin;
 
     if (
         placement.startsWith("right") &&
-        left + dropdownRect.width >
-            viewportWidth - margin
-    ) {
-        const alternativeLeft =
-            triggerRect.left -
-            dropdownRect.width -
-            offset;
-
-        if (alternativeLeft >= margin) {
-            left = alternativeLeft;
-        }
-    }
-
-    if (
-        placement.startsWith("left") &&
-        left < margin
+        !fitsRight &&
+        fitsLeft
     ) {
         left =
-            triggerRect.right +
+            triggerRect.left -
+            dropdownWidth -
             offset;
+    } else if (
+        placement.startsWith("left") &&
+        !fitsLeft &&
+        fitsRight
+    ) {
+        left = triggerRect.right + offset;
     }
 
-    left = Math.max(
+    /*
+     * Final viewport clamping.
+     *
+     * This prevents menus from becoming inaccessible when the
+     * dropdown is larger than the available viewport.
+     */
+
+    const maxLeft = Math.max(
         margin,
-        Math.min(
-            left,
-            viewportWidth -
-                dropdownRect.width -
-                margin
-        )
+        viewportWidth -
+            dropdownWidth -
+            margin
     );
 
-    top = Math.max(
+    const maxTop = Math.max(
         margin,
-        Math.min(
-            top,
-            viewportHeight -
-                dropdownRect.height -
-                margin
-        )
+        viewportHeight -
+            dropdownHeight -
+            margin
     );
 
-    dropdown.style.top = `${Math.round(top)}px`;
-    dropdown.style.left = `${Math.round(left)}px`;
+    left = clamp(
+        left,
+        margin,
+        maxLeft
+    );
+
+    top = clamp(
+        top,
+        margin,
+        maxTop
+    );
+
+    dropdown.style.top =
+        `${Math.round(top)}px`;
+
+    dropdown.style.left =
+        `${Math.round(left)}px`;
 }
 
-// ============================================================
-// Event Handling
-// ============================================================
+/* ============================================================
+ * Event Handling
+ * ============================================================ */
 
 /**
  * Bind global events for the active dropdown.
  */
 function bindActiveEvents() {
+    cleanupActiveEvents();
+
     const handlePointerDown = (event) => {
         if (!state.active) {
             return;
@@ -436,9 +539,15 @@ function bindActiveEvents() {
             trigger,
         } = state.active;
 
+        const target = event.target;
+
+        if (!(target instanceof Node)) {
+            return;
+        }
+
         if (
-            element.contains(event.target) ||
-            trigger.contains(event.target)
+            element.contains(target) ||
+            trigger.contains(target)
         ) {
             return;
         }
@@ -459,7 +568,12 @@ function bindActiveEvents() {
 
             closeDropdown();
 
-            trigger?.focus();
+            if (
+                trigger &&
+                typeof trigger.focus === "function"
+            ) {
+                trigger.focus();
+            }
 
             return;
         }
@@ -468,7 +582,38 @@ function bindActiveEvents() {
             event.key === "ArrowDown" ||
             event.key === "ArrowUp"
         ) {
+            if (isTextInputElement(
+                document.activeElement
+            )) {
+                return;
+            }
+
             handleArrowNavigation(event);
+        }
+
+        if (event.key === "Home") {
+            if (isTextInputElement(
+                document.activeElement
+            )) {
+                return;
+            }
+
+            focusMenuItemAtIndex(0, event);
+        }
+
+        if (event.key === "End") {
+            if (isTextInputElement(
+                document.activeElement
+            )) {
+                return;
+            }
+
+            const items = getFocusableMenuItems();
+
+            focusMenuItemAtIndex(
+                items.length - 1,
+                event
+            );
         }
     };
 
@@ -477,10 +622,16 @@ function bindActiveEvents() {
             return;
         }
 
+        const {
+            element,
+            trigger,
+            options,
+        } = state.active;
+
         positionDropdown(
-            state.active.element,
-            state.active.trigger,
-            state.active.options
+            element,
+            trigger,
+            options
         );
     };
 
@@ -530,6 +681,17 @@ function bindActiveEvents() {
 }
 
 /**
+ * Remove active global event handlers.
+ */
+function cleanupActiveEvents() {
+    if (typeof state.cleanup === "function") {
+        state.cleanup();
+    }
+
+    state.cleanup = null;
+}
+
+/**
  * Close the dropdown when a menu item is selected.
  *
  * @param {HTMLElement} dropdown
@@ -538,10 +700,15 @@ function bindSelectionHandling(dropdown) {
     dropdown.addEventListener(
         "click",
         (event) => {
-            const item =
-                event.target.closest(
-                    '[role="menuitem"], [data-dropdown-item]'
-                );
+            const target = event.target;
+
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const item = target.closest(
+                '[role="menuitem"], [data-dropdown-item]'
+            );
 
             if (!item) {
                 return;
@@ -551,6 +718,14 @@ function bindSelectionHandling(dropdown) {
                 item.hasAttribute(
                     "data-dropdown-keep-open"
                 )
+            ) {
+                return;
+            }
+
+            if (
+                item.getAttribute("aria-disabled") ===
+                "true" ||
+                item.hasAttribute("disabled")
             ) {
                 return;
             }
@@ -566,26 +741,7 @@ function bindSelectionHandling(dropdown) {
  * @param {KeyboardEvent} event
  */
 function handleArrowNavigation(event) {
-    const dropdown =
-        state.active?.element;
-
-    if (!dropdown) {
-        return;
-    }
-
-    const items = Array.from(
-        dropdown.querySelectorAll(
-            '[role="menuitem"]:not([aria-disabled="true"]), [data-dropdown-item]:not([aria-disabled="true"])'
-        )
-    ).filter((item) => {
-        const style =
-            window.getComputedStyle(item);
-
-        return (
-            style.display !== "none" &&
-            style.visibility !== "hidden"
-        );
-    });
+    const items = getFocusableMenuItems();
 
     if (!items.length) {
         return;
@@ -594,9 +750,7 @@ function handleArrowNavigation(event) {
     event.preventDefault();
 
     const currentIndex =
-        items.indexOf(
-            document.activeElement
-        );
+        items.indexOf(document.activeElement);
 
     let nextIndex;
 
@@ -604,22 +758,170 @@ function handleArrowNavigation(event) {
         nextIndex =
             currentIndex < 0
                 ? 0
-                : (currentIndex + 1) %
-                  items.length;
+                : (
+                    currentIndex + 1
+                ) % items.length;
     } else {
         nextIndex =
             currentIndex < 0
                 ? items.length - 1
-                : (currentIndex - 1 + items.length) %
-                  items.length;
+                : (
+                    currentIndex -
+                    1 +
+                    items.length
+                ) % items.length;
     }
 
     items[nextIndex].focus();
 }
 
-// ============================================================
-// Helpers
-// ============================================================
+/**
+ * Focus a specific menu item.
+ *
+ * @param {number} index
+ * @param {KeyboardEvent} event
+ */
+function focusMenuItemAtIndex(index, event) {
+    const items = getFocusableMenuItems();
+
+    if (!items.length) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const safeIndex = clamp(
+        index,
+        0,
+        items.length - 1
+    );
+
+    items[safeIndex].focus();
+}
+
+/**
+ * Get currently focusable menu items.
+ *
+ * @returns {HTMLElement[]}
+ */
+function getFocusableMenuItems() {
+    const dropdown =
+        state.active?.element;
+
+    if (!dropdown) {
+        return [];
+    }
+
+    return Array.from(
+        dropdown.querySelectorAll(
+            '[role="menuitem"], [data-dropdown-item]'
+        )
+    ).filter((item) => {
+        if (!(item instanceof HTMLElement)) {
+            return false;
+        }
+
+        if (
+            item.getAttribute("aria-disabled") ===
+            "true"
+        ) {
+            return false;
+        }
+
+        if (item.hasAttribute("disabled")) {
+            return false;
+        }
+
+        const style =
+            window.getComputedStyle(item);
+
+        if (
+            style.display === "none" ||
+            style.visibility === "hidden"
+        ) {
+            return false;
+        }
+
+        return item.getClientRects().length > 0;
+    });
+}
+
+/**
+ * Focus the first menu item.
+ *
+ * @param {HTMLElement} dropdown
+ */
+function focusFirstMenuItem(dropdown) {
+    const items = getMenuItems(dropdown);
+
+    if (items.length) {
+        items[0].focus();
+    } else {
+        dropdown.focus();
+    }
+}
+
+/**
+ * Get focusable menu items from a specific dropdown.
+ *
+ * @param {HTMLElement} dropdown
+ * @returns {HTMLElement[]}
+ */
+function getMenuItems(dropdown) {
+    return Array.from(
+        dropdown.querySelectorAll(
+            '[role="menuitem"], [data-dropdown-item]'
+        )
+    ).filter((item) => {
+        if (!(item instanceof HTMLElement)) {
+            return false;
+        }
+
+        if (
+            item.getAttribute("aria-disabled") ===
+            "true"
+        ) {
+            return false;
+        }
+
+        if (item.hasAttribute("disabled")) {
+            return false;
+        }
+
+        const style =
+            window.getComputedStyle(item);
+
+        return (
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            item.getClientRects().length > 0
+        );
+    });
+}
+
+/* ============================================================
+ * Helpers
+ * ============================================================ */
+
+/**
+ * Ensure the global dropdown root exists.
+ */
+function ensureRoot() {
+    if (
+        state.root &&
+        document.documentElement.contains(
+            state.root
+        )
+    ) {
+        return state.root;
+    }
+
+    state.root = resolveElement(
+        DEFAULT_ROOT_SELECTOR
+    );
+
+    return state.root;
+}
 
 /**
  * Resolve an element from an element or selector.
@@ -636,11 +938,14 @@ function resolveElement(value) {
         return value;
     }
 
-    if (
-        typeof value === "string"
-    ) {
+    if (typeof value === "string") {
         try {
-            return document.querySelector(value);
+            const element =
+                document.querySelector(value);
+
+            return element instanceof HTMLElement
+                ? element
+                : null;
         } catch {
             return null;
         }
@@ -670,21 +975,38 @@ function setTriggerExpanded(
 }
 
 /**
+ * Set aria-controls on a trigger.
+ *
+ * @param {HTMLElement|null} trigger
+ * @param {string|null} id
+ */
+function setTriggerControls(
+    trigger,
+    id
+) {
+    if (!trigger) {
+        return;
+    }
+
+    if (id) {
+        trigger.setAttribute(
+            "aria-controls",
+            id
+        );
+    } else {
+        trigger.removeAttribute(
+            "aria-controls"
+        );
+    }
+}
+
+/**
  * Resolve the global dropdown root.
  *
  * @returns {HTMLElement|null}
  */
 export function getDropdownRoot() {
-    if (state.root) {
-        return state.root;
-    }
-
-    state.root =
-        document.getElementById(
-            "dropdown-root"
-        );
-
-    return state.root;
+    return ensureRoot();
 }
 
 /**
@@ -698,16 +1020,104 @@ export function destroyDropdown() {
     }
 
     state.root = null;
+    state.active = null;
+    state.trigger = null;
+    state.cleanup = null;
 }
 
-// ============================================================
-// Convenience API
-// ============================================================
+/**
+ * Create a unique dropdown ID.
+ *
+ * @returns {string}
+ */
+function createUniqueDropdownId() {
+    return `dropdown-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+}
+
+/**
+ * Clamp a number between min and max.
+ *
+ * @param {number} value
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
+function clamp(value, min, max) {
+    if (!Number.isFinite(value)) {
+        return min;
+    }
+
+    return Math.min(
+        Math.max(value, min),
+        max
+    );
+}
+
+/**
+ * Determine whether an element is a text input.
+ *
+ * @param {Element|null} element
+ * @returns {boolean}
+ */
+function isTextInputElement(element) {
+    if (!(element instanceof HTMLElement)) {
+        return false;
+    }
+
+    const tagName =
+        element.tagName.toLowerCase();
+
+    if (
+        tagName === "textarea" ||
+        tagName === "select"
+    ) {
+        return true;
+    }
+
+    if (tagName !== "input") {
+        return false;
+    }
+
+    const type =
+        element.getAttribute("type") ||
+        "text";
+
+    return ![
+        "button",
+        "checkbox",
+        "radio",
+        "range",
+        "submit",
+        "reset",
+        "file",
+        "color",
+        "hidden",
+    ].includes(type);
+}
+
+/**
+ * Escape HTML content used in generated dropdown markup.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/* ============================================================
+ * Convenience API
+ * ============================================================ */
 
 /**
  * Create a dropdown item.
- *
- * This helper keeps generated dropdown markup consistent.
  *
  * @param {Object} options
  * @param {string} options.label
@@ -730,51 +1140,59 @@ export function createDropdownItem({
     const safeValue =
         escapeHtml(value);
 
+    const safeIcon =
+        escapeHtml(icon);
+
     const iconMarkup = icon
         ? `
             <i
-                data-lucide="${escapeHtml(icon)}"
+                data-lucide="${safeIcon}"
                 class="h-4 w-4 shrink-0"
                 aria-hidden="true"
             ></i>
         `
         : "";
 
+    const classes = [
+        "flex",
+        "w-full",
+        "items-center",
+        "gap-2",
+        "rounded-sm",
+        "px-2.5",
+        "py-2",
+        "text-left",
+        "text-xs",
+        "text-foreground",
+        "transition",
+        "hover:bg-surface-raised",
+        "focus:bg-surface-raised",
+        "focus:outline-none",
+        disabled
+            ? "pointer-events-none opacity-50"
+            : "",
+        className,
+    ]
+        .filter(Boolean)
+        .join(" ");
+
     return `
         <button
             type="button"
             role="menuitem"
             data-dropdown-item
-            ${safeValue ? `data-value="${safeValue}"` : ""}
+            ${safeValue
+                ? `data-value="${safeValue}"`
+                : ""}
             ${
                 disabled
                     ? 'aria-disabled="true" disabled'
                     : ""
             }
-            class="${[
-                "flex",
-                "w-full",
-                "items-center",
-                "gap-2",
-                "rounded-sm",
-                "px-2.5",
-                "py-2",
-                "text-left",
-                "text-xs",
-                "text-foreground",
-                "transition",
-                "hover:bg-surface-raised",
-                "focus:bg-surface-raised",
-                "focus:outline-none",
-                disabled
-                    ? "pointer-events-none opacity-50"
-                    : "",
-                className,
-            ]
-                .filter(Boolean)
-                .join(" ")}"
+            class="${classes}"
         >
             ${iconMarkup}
+
             <span class="min-w-0 flex-1 truncate">
                 ${safeLabel}
             </span>
@@ -782,24 +1200,9 @@ export function createDropdownItem({
     `;
 }
 
-/**
- * Escape HTML content used in generated dropdown markup.
- *
- * @param {*} value
- * @returns {string}
- */
-function escapeHtml(value) {
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-// ============================================================
-// Default Export
-// ============================================================
+/* ============================================================
+ * Default Export
+ * ============================================================ */
 
 export default {
     initDropdown,

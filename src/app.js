@@ -120,7 +120,7 @@ function runModule(name, initializer) {
 
     initializer();
 
-    console.log(`[Endpoint] ${name} initialized.`);
+    // console.log(`[Endpoint] ${name} initialized.`);
   } catch (error) {
     console.error(
       `[Endpoint] ${name} failed to initialize:`,

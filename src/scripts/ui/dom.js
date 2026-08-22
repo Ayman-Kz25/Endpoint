@@ -1,5 +1,3 @@
-// src/scripts/ui/dom.js
-
 /**
  * DOM Utilities
  *
@@ -96,7 +94,6 @@ const elements = {
     responseStatus: null,
     responseDuration: null,
     responseSize: null,
-
     copyResponseButton: null,
     downloadResponseButton: null,
     generateCodeButton: null,
@@ -192,7 +189,6 @@ const elementIds = {
     responseStatus: "response-status",
     responseDuration: "response-duration",
     responseSize: "response-size",
-
     copyResponseButton: "copy-response-button",
     downloadResponseButton: "download-response-button",
     generateCodeButton: "generate-code-button",
@@ -235,9 +231,7 @@ export function initDOM(root = document) {
     }
 
     Object.entries(elementIds).forEach(([key, id]) => {
-        elements[key] = root.getElementById
-            ? root.getElementById(id)
-            : root.querySelector(`#${escapeSelector(id)}`);
+        elements[key] = getElement(id, root);
     });
 
     return elements;
@@ -262,7 +256,7 @@ export function cacheDOM(root = document) {
  *
  * @param {string} id
  * @param {ParentNode} root
- * @returns {HTMLElement|null}
+ * @returns {Element|null}
  */
 export function getElement(id, root = document) {
     if (!id || !root) {
@@ -273,7 +267,11 @@ export function getElement(id, root = document) {
         return root.getElementById(id);
     }
 
-    return root.querySelector(`#${escapeSelector(id)}`);
+    if (typeof root.querySelector === "function") {
+        return root.querySelector(`#${escapeSelector(id)}`);
+    }
+
+    return null;
 }
 
 /**
@@ -288,7 +286,12 @@ export function query(selector, root = document) {
         return null;
     }
 
-    return root.querySelector(selector);
+    try {
+        return root.querySelector(selector);
+    } catch (error) {
+        console.warn(`Invalid selector: ${selector}`, error);
+        return null;
+    }
 }
 
 /**
@@ -303,7 +306,12 @@ export function queryAll(selector, root = document) {
         return [];
     }
 
-    return Array.from(root.querySelectorAll(selector));
+    try {
+        return Array.from(root.querySelectorAll(selector));
+    } catch (error) {
+        console.warn(`Invalid selector: ${selector}`, error);
+        return [];
+    }
 }
 
 /**
@@ -313,11 +321,16 @@ export function queryAll(selector, root = document) {
  * @returns {string}
  */
 function escapeSelector(value) {
-    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-        return CSS.escape(value);
+    const stringValue = String(value);
+
+    if (
+        typeof CSS !== "undefined" &&
+        typeof CSS.escape === "function"
+    ) {
+        return CSS.escape(stringValue);
     }
 
-    return String(value).replace(
+    return stringValue.replace(
         /([ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g,
         "\\$1"
     );
@@ -358,8 +371,8 @@ export function getElements() {
 /**
  * Get a cached DOM element.
  *
- * @param {keyof typeof elements} name
- * @returns {HTMLElement|null}
+ * @param {string} name
+ * @returns {Element|null}
  */
 export function getDOM(name) {
     return elements[name] || null;
@@ -372,7 +385,7 @@ export function getDOM(name) {
 /**
  * Get request tab buttons.
  *
- * @returns {HTMLElement[]}
+ * @returns {Element[]}
  */
 export function getRequestTabElements() {
     return queryAll(
@@ -384,7 +397,7 @@ export function getRequestTabElements() {
 /**
  * Get request tab panels.
  *
- * @returns {HTMLElement[]}
+ * @returns {Element[]}
  */
 export function getRequestPanelElements() {
     return queryAll(
@@ -400,7 +413,7 @@ export function getRequestPanelElements() {
 /**
  * Get response tab buttons.
  *
- * @returns {HTMLElement[]}
+ * @returns {Element[]}
  */
 export function getResponseTabElements() {
     return queryAll(
@@ -412,7 +425,7 @@ export function getResponseTabElements() {
 /**
  * Get response tab panels.
  *
- * @returns {HTMLElement[]}
+ * @returns {Element[]}
  */
 export function getResponsePanelElements() {
     return queryAll(
@@ -478,7 +491,7 @@ export function setVisible(element, visible) {
  *
  * @param {Element|null} element
  * @param {string} name
- * @param {string} value
+ * @param {unknown} value
  */
 export function setAttribute(element, name, value) {
     if (!element || !name) {
@@ -558,10 +571,9 @@ export function setText(element, value) {
 }
 
 /**
- * Safely set HTML content.
+ * Set HTML content.
  *
- * Use this only when the HTML has already been sanitized or
- * is generated entirely by the application.
+ * Only use this with trusted or sanitized HTML.
  *
  * @param {Element|null} element
  * @param {string} html
@@ -629,6 +641,7 @@ export function removeClass(element, ...classNames) {
  * @param {Element|null} element
  * @param {string} className
  * @param {boolean|undefined} force
+ * @returns {boolean}
  */
 export function toggleClass(
     element,
@@ -656,7 +669,7 @@ export function toggleClass(
  * @param {string} eventName
  * @param {EventListener} handler
  * @param {AddEventListenerOptions|boolean} options
- * @returns {Function|null} Cleanup function
+ * @returns {Function|null}
  */
 export function on(
     element,
@@ -694,7 +707,7 @@ export function on(
  * @param {string} eventName
  * @param {string} selector
  * @param {(event: Event, matched: Element) => void} handler
- * @returns {Function|null} Cleanup function
+ * @returns {Function|null}
  */
 export function delegate(
     element,
@@ -712,16 +725,29 @@ export function delegate(
     }
 
     const listener = (event) => {
-        const target =
-            event.target instanceof Element
-                ? event.target.closest(selector)
-                : null;
+        const target = event.target;
 
-        if (!target || !element.contains(target)) {
+        if (
+            !target ||
+            typeof target.closest !== "function"
+        ) {
             return;
         }
 
-        handler(event, target);
+        const matched = target.closest(selector);
+
+        if (!matched) {
+            return;
+        }
+
+        if (
+            typeof element.contains === "function" &&
+            !element.contains(matched)
+        ) {
+            return;
+        }
+
+        handler(event, matched);
     };
 
     element.addEventListener(
@@ -752,7 +778,7 @@ export function getValue(
     element,
     fallback = ""
 ) {
-    if (!element) {
+    if (!element || !("value" in element)) {
         return fallback;
     }
 
@@ -819,7 +845,10 @@ export function setChecked(element, checked) {
  * @param {FocusOptions} options
  */
 export function focus(element, options = {}) {
-    if (!element || typeof element.focus !== "function") {
+    if (
+        !element ||
+        typeof element.focus !== "function"
+    ) {
         return;
     }
 
@@ -832,7 +861,10 @@ export function focus(element, options = {}) {
  * @param {HTMLInputElement|HTMLTextAreaElement|null} element
  */
 export function selectInput(element) {
-    if (!element || typeof element.select !== "function") {
+    if (
+        !element ||
+        typeof element.select !== "function"
+    ) {
         return;
     }
 
@@ -859,13 +891,18 @@ export function announce(message) {
 
     liveRegion.textContent = "";
 
-    // Allow assistive technologies to detect a new announcement.
-    requestAnimationFrame(() => {
+    const update = () => {
         liveRegion.textContent =
             message === null || message === undefined
                 ? ""
                 : String(message);
-    });
+    };
+
+    if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(update);
+    } else {
+        setTimeout(update, 0);
+    }
 }
 
 /* ============================================================
@@ -887,6 +924,7 @@ export default {
 
     getRequestTabElements,
     getRequestPanelElements,
+
     getResponseTabElements,
     getResponsePanelElements,
 
