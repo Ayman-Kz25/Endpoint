@@ -23,6 +23,7 @@ import { DEFAULT_HTTP_METHOD } from "../../core/constants.js";
 
 import {
     getRequestMethod,
+    initMethodSelector,
     setRequestMethod,
 } from "./method-selector.js";
 
@@ -69,6 +70,7 @@ const elements = {
 export function initRequestBuilder() {
     cacheElements();
     bindEvents();
+    initMethodSelector();
     syncStateToUI();
 
     return {
@@ -98,10 +100,6 @@ function cacheElements() {
  * Bind request-builder input events.
  */
 function bindEvents() {
-    if (elements.method) {
-        elements.method.addEventListener("change", handleMethodChange);
-    }
-
     if (elements.url) {
         elements.url.addEventListener("input", handleUrlInput);
         elements.url.addEventListener("change", handleUrlInput);
@@ -110,18 +108,6 @@ function bindEvents() {
     if (elements.authType) {
         elements.authType.addEventListener("change", handleAuthTypeChange);
     }
-}
-
-/**
- * Handle HTTP method changes.
- *
- * @param {Event} event
- */
-function handleMethodChange(event) {
-    const method = event.target.value || DEFAULT_HTTP_METHOD;
-
-    setRequestMethod(method);
-    state.request.method = method;
 }
 
 /**
