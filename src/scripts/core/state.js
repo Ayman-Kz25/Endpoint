@@ -1,3 +1,5 @@
+//src/scripts/core/state.js
+
 import {
     DEFAULT_HTTP_METHOD,
     DEFAULT_REQUEST_TAB,
