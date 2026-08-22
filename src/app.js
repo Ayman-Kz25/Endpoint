@@ -10,7 +10,6 @@ import { initializeTabs } from "./scripts/ui/tabs.js";
 import { initializeDropdowns } from "./scripts/ui/dropdown.js";
 import { initializeSidebar } from "./scripts/ui/sidebar.js";
 import { initializeLoader } from "./scripts/ui/loader.js";
-import { initializeEmptyState } from "./scripts/ui/empty-state.js";
 
 // Request builder
 import { initializeQueryParams } from "./scripts/features/request-builder/query-params.js";
@@ -34,6 +33,7 @@ import { initializeCodeGenerator } from "./scripts/features/code-generator/code-
 import { initializeEditor } from "./scripts/features/editor/editor.js";
 import { initializeEditorConfig } from "./scripts/features/editor/editor-config.js";
 import { initializeJsonEditor } from "./scripts/features/editor/json-editor.js";
+import { initEmptyState } from "./scripts/ui/empty-state.js";
 
 /**
  * Initialize the Endpoint application.
@@ -60,7 +60,7 @@ export function initializeApp() {
     initializeDropdowns();
     initializeSidebar();
     initializeLoader();
-    initializeEmptyState();
+    initEmptyState();
 
     // ---------------------------------------------------------------
     // Request builder
