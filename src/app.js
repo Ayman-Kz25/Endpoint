@@ -6,33 +6,31 @@ import { initializeTheme } from "./scripts/ui/theme.js";
 import { initDOM } from "./scripts/ui/dom.js";
 
 // UI
-import { initializeTabs } from "./scripts/ui/tabs.js";
-import { initializeDropdowns } from "./scripts/ui/dropdown.js";
-import { initializeSidebar } from "./scripts/ui/sidebar.js";
-import { initializeLoader } from "./scripts/ui/loader.js";
+import { initTabs } from "./scripts/ui/tabs.js";
+import { initDropdown } from "./scripts/ui/dropdown.js";
+import { initSidebar } from "./scripts/ui/sidebar.js";
+import { initLoader } from "./scripts/ui/loader.js";
 
 // Request builder
-import { initializeQueryParams } from "./scripts/features/request-builder/query-params.js";
-import { initializeHeaders } from "./scripts/features/request-builder/headers.js";
-import { initializeBody } from "./scripts/features/request-builder/body.js";
+import { initQueryParams } from "./scripts/features/request-builder/query-params.js";
+import { initHeaders } from "./scripts/features/request-builder/headers.js";
+import { initRequestBody } from "./scripts/features/request-builder/body.js";
 
 // Response viewer
-import { initializeResponseViewer } from "./scripts/features/response-viewer/response-viewer.js";
-import { initializeResponseFormat } from "./scripts/features/response-viewer/response-format.js";
-import { initializeResponseTabs } from "./scripts/features/response-viewer/response-tabs.js";
+import { initResponseViewer } from "./scripts/features/response-viewer/response-viewer.js";
+import { initResponseTabs } from "./scripts/features/response-viewer/response-tabs.js";
 
 // History
-import { initializeHistory } from "./scripts/features/history/history.js";
-import { initializeHistoryStorage } from "./scripts/features/history/history-storage.js";
-import { initializeHistoryRenderer } from "./scripts/features/history/history-renderer.js";
+import { initHistory } from "./scripts/features/history/history.js";
+import { initHistoryRenderer } from "./scripts/features/history/history-renderer.js";
 
 // Code generator
-import { initializeCodeGenerator } from "./scripts/features/code-generator/code-generator.js";
+import { initCodeGenerator } from "./scripts/features/code-generator/code-generator.js";
 
 // Editor
-import { initializeEditor } from "./scripts/features/editor/editor.js";
-import { initializeEditorConfig } from "./scripts/features/editor/editor-config.js";
-import { initializeJsonEditor } from "./scripts/features/editor/json-editor.js";
+import { initEditor } from "./scripts/features/editor/editor.js";
+
+import { initJsonEditor } from "./scripts/features/editor/json-editor.js";
 import { initEmptyState } from "./scripts/ui/empty-state.js";
 
 /**
@@ -56,49 +54,44 @@ export function initializeApp() {
     // UI components
     // ---------------------------------------------------------------
 
-    initializeTabs();
-    initializeDropdowns();
-    initializeSidebar();
-    initializeLoader();
+    initTabs();
+    initDropdown();
+    initSidebar();
+    initLoader();
     initEmptyState();
 
     // ---------------------------------------------------------------
     // Request builder
     // ---------------------------------------------------------------
 
-    initializeQueryParams();
-    initializeHeaders();
-    initializeBody();
+    initQueryParams();
+    initHeaders();
+    initRequestBody();
 
     // ---------------------------------------------------------------
     // Editor
     // ---------------------------------------------------------------
-
-    initializeEditorConfig();
-    initializeEditor();
-    initializeJsonEditor();
+    initEditor();
+    initJsonEditor();
 
     // ---------------------------------------------------------------
     // Response viewer
     // ---------------------------------------------------------------
 
-    initializeResponseViewer();
-    initializeResponseFormat();
-    initializeResponseTabs();
+    initResponseViewer();
+    initResponseTabs();
 
     // ---------------------------------------------------------------
     // History
     // ---------------------------------------------------------------
-
-    initializeHistoryStorage();
-    initializeHistoryRenderer();
-    initializeHistory();
+    initHistoryRenderer();
+    initHistory();
 
     // ---------------------------------------------------------------
     // Code generator
     // ---------------------------------------------------------------
 
-    initializeCodeGenerator();
+    initCodeGenerator();
 
     // ---------------------------------------------------------------
     // Icons
