@@ -10,108 +10,133 @@ import { initTabs } from "./scripts/ui/tabs.js";
 import { initDropdown } from "./scripts/ui/dropdown.js";
 import { initSidebar } from "./scripts/ui/sidebar.js";
 import { initLoader } from "./scripts/ui/loader.js";
+import { initEmptyState } from "./scripts/ui/empty-state.js";
 
 // Request builder
-import { initQueryParams } from "./scripts/features/request-builder/query-params.js";
-import { initHeaders } from "./scripts/features/request-builder/headers.js";
-import { initRequestBody } from "./scripts/features/request-builder/body.js";
+import {
+  initQueryParams,
+} from "./scripts/features/request-builder/query-params.js";
+
+import {
+  initHeaders,
+} from "./scripts/features/request-builder/headers.js";
+
+import {
+  initRequestBody,
+} from "./scripts/features/request-builder/body.js";
 
 // Response viewer
-import { initResponseViewer } from "./scripts/features/response-viewer/response-viewer.js";
-import { initResponseTabs } from "./scripts/features/response-viewer/response-tabs.js";
+import {
+  initResponseViewer,
+} from "./scripts/features/response-viewer/response-viewer.js";
+
+import {
+  initResponseTabs,
+} from "./scripts/features/response-viewer/response-tabs.js";
 
 // History
-import { initHistory } from "./scripts/features/history/history.js";
-import { initHistoryRenderer } from "./scripts/features/history/history-renderer.js";
+import {
+  initHistory,
+} from "./scripts/features/history/history.js";
+
+import {
+  initHistoryRenderer,
+} from "./scripts/features/history/history-renderer.js";
 
 // Code generator
-import { initCodeGenerator } from "./scripts/features/code-generator/code-generator.js";
+import {
+  initCodeGenerator,
+} from "./scripts/features/code-generator/code-generator.js";
 
 // Editor
-import { initEditor } from "./scripts/features/editor/editor.js";
+import {
+  initEditor,
+} from "./scripts/features/editor/editor.js";
 
-import { initJsonEditor } from "./scripts/features/editor/json-editor.js";
-import { initEmptyState } from "./scripts/ui/empty-state.js";
+import {
+  initJsonEditor,
+} from "./scripts/features/editor/json-editor.js";
+
 
 /**
  * Initialize the Endpoint application.
- *
- * Application startup is kept here so main.js remains a small
- * entry point and all modules have a predictable initialization order.
  */
 export function initializeApp() {
-  console.log("Endpoint initialized");
+  console.log("[Endpoint] Starting application...");
 
+  // Core UI must be initialized first.
+  runModule("Theme", initializeTheme);
+  runModule("DOM", initDOM);
+
+  // General UI
+  runModule("Tabs", initTabs);
+  runModule("Dropdown", initDropdown);
+  runModule("Sidebar", initSidebar);
+  runModule("Loader", initLoader);
+  runModule("Empty State", initEmptyState);
+
+  // Request builder
+  runModule("Query Params", initQueryParams);
+  runModule("Headers", initHeaders);
+  runModule("Request Body", initRequestBody);
+
+  // Editor
+  runModule("Editor", initEditor);
+  runModule("JSON Editor", initJsonEditor);
+
+  // Response viewer
+  runModule("Response Viewer", initResponseViewer);
+  runModule("Response Tabs", initResponseTabs);
+
+  // History
+  runModule("History Renderer", initHistoryRenderer);
+  runModule("History", initHistory);
+
+  // Code generator
+  runModule("Code Generator", initCodeGenerator);
+
+  // Icons should be initialized last because some modules
+  // may create Lucide <i data-lucide="..."> elements dynamically.
+  runModule("Lucide", initializeLucide);
+
+  console.log("[Endpoint] Application initialization complete.");
+}
+
+
+/**
+ * Run a module without allowing one module failure
+ * to prevent the remaining application from initializing.
+ *
+ * @param {string} name
+ * @param {Function} initializer
+ */
+function runModule(name, initializer) {
   try {
-    // ---------------------------------------------------------------
-    // Core UI
-    // ---------------------------------------------------------------
+    if (typeof initializer !== "function") {
+      throw new TypeError(
+        `Initializer for "${name}" is not a function.`,
+      );
+    }
 
-    initializeTheme();
-    initDOM();
+    initializer();
 
-    // ---------------------------------------------------------------
-    // UI components
-    // ---------------------------------------------------------------
-
-    initTabs();
-    initDropdown();
-    initSidebar();
-    initLoader();
-    initEmptyState();
-
-    // ---------------------------------------------------------------
-    // Request builder
-    // ---------------------------------------------------------------
-
-    initQueryParams();
-    initHeaders();
-    initRequestBody();
-
-    // ---------------------------------------------------------------
-    // Editor
-    // ---------------------------------------------------------------
-    initEditor();
-    initJsonEditor();
-
-    // ---------------------------------------------------------------
-    // Response viewer
-    // ---------------------------------------------------------------
-
-    initResponseViewer();
-    initResponseTabs();
-
-    // ---------------------------------------------------------------
-    // History
-    // ---------------------------------------------------------------
-    initHistoryRenderer();
-    initHistory();
-
-    // ---------------------------------------------------------------
-    // Code generator
-    // ---------------------------------------------------------------
-
-    initCodeGenerator();
-
-    // ---------------------------------------------------------------
-    // Icons
-    // ---------------------------------------------------------------
-
-    initializeLucide();
-
-    console.log("Endpoint UI initialized");
+    console.log(`[Endpoint] ${name} initialized.`);
   } catch (error) {
-    console.error("Endpoint failed to initialize:", error);
+    console.error(
+      `[Endpoint] ${name} failed to initialize:`,
+      error,
+    );
   }
 }
 
+
 /**
- * Initialize Lucide icons after the application DOM has been prepared.
+ * Initialize Lucide icons.
  */
 function initializeLucide() {
   createIcons({
     icons,
   });
 
-  console.log("Lucide initialized");
+  console.log("[Endpoint] Lucide initialized.");
 }
