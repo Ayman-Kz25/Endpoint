@@ -1,32 +1,33 @@
-//src/scripts/core/state.js
+import {
+    DEFAULT_HTTP_METHOD,
+    DEFAULT_REQUEST_TAB,
+    DEFAULT_RESPONSE_TAB,
+    DEFAULT_AUTH_TYPE,
+    THEMES,
+} from "./constants.js";
 
 const state = {
-
-    // Workspace
     workspace: {
         title: "Workspace",
         subtitle: "HTTP Request Workspace",
     },
 
-    // Request
     request: {
-        method: "GET",
+        method: DEFAULT_HTTP_METHOD,
         url: "",
         params: [],
         headers: [],
         body: "",
         auth: {
-            type: "none",
+            type: DEFAULT_AUTH_TYPE,
             fields: {},
         },
     },
 
-    // Request UI
     requestUI: {
-        activeTab: "params",
+        activeTab: DEFAULT_REQUEST_TAB,
     },
 
-    // Response
     response: {
         status: null,
         statusText: "",
@@ -37,26 +38,22 @@ const state = {
         headers: [],
     },
 
-    // Response UI
     responseUI: {
-        activeTab: "pretty",
+        activeTab: DEFAULT_RESPONSE_TAB,
     },
 
-    // Application UI
     ui: {
         sidebarOpen: false,
-        theme: "dark",
+        theme: THEMES.DARK,
         modal: null,
         dropdown: null,
         isLoading: false,
     },
 
-    // History
     history: {
         requests: [],
     },
 
-    // Environment
     environment: {
         active: null,
         variables: {},

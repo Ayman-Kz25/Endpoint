@@ -68,6 +68,7 @@ endpoint/
     │   │   ├── modal.js
     │   │   ├── tabs.js
     │   │   ├── dropdown.js
+    │   │   ├── sidebar.js
     │   │   ├── loader.js
     │   │   └── empty-state.js
     │   │
