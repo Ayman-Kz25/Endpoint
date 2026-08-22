@@ -1,14 +1,25 @@
 //src/scripts/core/constants.js
+/**
+ * Application constants
+ *
+ * Keep fixed application values here so they are not duplicated
+ * throughout feature modules.
+ */
 
+// ============================================================
 // Application
+// ============================================================
+
 export const APP = {
     NAME: "Endpoint",
     VERSION: "1.0.0",
     DEFAULT_THEME: "dark",
 };
 
-
+// ============================================================
 // HTTP
+// ============================================================
+
 export const HTTP_METHODS = [
     "GET",
     "POST",
@@ -21,8 +32,10 @@ export const HTTP_METHODS = [
 
 export const DEFAULT_HTTP_METHOD = "GET";
 
-
+// ============================================================
 // Request
+// ============================================================
+
 export const REQUEST_TABS = {
     PARAMS: "params",
     HEADERS: "headers",
@@ -42,8 +55,10 @@ export const DEFAULT_REQUEST = {
     body: "",
 };
 
-
+// ============================================================
 // Authentication
+// ============================================================
+
 export const AUTH_TYPES = {
     NONE: "none",
     BEARER: "bearer",
@@ -55,8 +70,10 @@ export const AUTH_TYPE_LIST = Object.values(AUTH_TYPES);
 
 export const DEFAULT_AUTH_TYPE = AUTH_TYPES.NONE;
 
-
+// ============================================================
 // Response
+// ============================================================
+
 export const RESPONSE_TABS = {
     PRETTY: "pretty",
     RAW: "raw",
@@ -67,8 +84,10 @@ export const RESPONSE_TAB_LIST = Object.values(RESPONSE_TABS);
 
 export const DEFAULT_RESPONSE_TAB = RESPONSE_TABS.PRETTY;
 
-
+// ============================================================
 // Themes
+// ============================================================
+
 export const THEMES = {
     LIGHT: "light",
     DARK: "dark",
@@ -76,8 +95,10 @@ export const THEMES = {
 
 export const THEME_LIST = Object.values(THEMES);
 
-
+// ============================================================
 // Storage
+// ============================================================
+
 export const STORAGE_KEYS = {
     THEME: "endpoint-theme",
     HISTORY: "endpoint-history",
@@ -85,14 +106,18 @@ export const STORAGE_KEYS = {
     ENVIRONMENT: "endpoint-environment",
 };
 
-
+// ============================================================
 // History
+// ============================================================
+
 export const HISTORY = {
     MAX_ITEMS: 50,
 };
 
-
+// ============================================================
 // Request Defaults
+// ============================================================
+
 export const DEFAULT_HEADERS = [];
 
 export const DEFAULT_PARAMS = [];
@@ -104,8 +129,10 @@ export const DEFAULT_AUTH = {
     fields: {},
 };
 
-
+// ============================================================
 // UI
+// ============================================================
+
 export const UI = {
     SIDEBAR_WIDTH: 240,
     HEADER_HEIGHT: 60,
@@ -117,8 +144,10 @@ export const UI = {
     REQUEST_TIMEOUT: 30000,
 };
 
-
+// ============================================================
 // Editor
+// ============================================================
+
 export const EDITOR = {
     DEFAULT_LANGUAGE: "json",
 
@@ -129,8 +158,10 @@ export const EDITOR = {
     LINE_WRAPPING: true,
 };
 
-
+// ============================================================
 // Response Status
+// ============================================================
+
 export const HTTP_STATUS = {
     OK: 200,
     CREATED: 201,
@@ -149,8 +180,10 @@ export const HTTP_STATUS = {
     GATEWAY_TIMEOUT: 504,
 };
 
-
+// ============================================================
 // Events
+// ============================================================
+
 export const EVENTS = {
     REQUEST_CHANGED: "request:changed",
     REQUEST_SENT: "request:sent",
@@ -172,8 +205,10 @@ export const EVENTS = {
     LOADING_FINISHED: "loading:finished",
 };
 
-
+// ============================================================
 // Validation
+// ============================================================
+
 export const VALIDATION = {
     MAX_URL_LENGTH: 2048,
 
@@ -186,8 +221,10 @@ export const VALIDATION = {
     MAX_BODY_SIZE: 1024 * 1024,
 };
 
-
+// ============================================================
 // Content Types
+// ============================================================
+
 export const CONTENT_TYPES = {
     JSON: "application/json",
     TEXT: "text/plain",
@@ -197,7 +234,10 @@ export const CONTENT_TYPES = {
     XML: "application/xml",
 };
 
+// ============================================================
 // Error Messages
+// ============================================================
+
 export const ERROR_MESSAGES = {
     INVALID_URL: "Please enter a valid URL.",
     INVALID_JSON: "Request body contains invalid JSON.",
