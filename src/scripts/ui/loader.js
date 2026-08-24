@@ -1,16 +1,15 @@
-// src/scripts/ui/loader.js
-
 /**
  * Loader UI
  *
- * Provides a centralized loading-state controller for the application.
+ * Provides a small, centralized controller for application loading states.
  *
  * Responsibilities:
- * - Show and hide request loading state
- * - Synchronize loading state with the global UI state
- * - Disable request actions while loading
+ * - Show and hide the request loading state
+ * - Synchronize loading state with global UI state
+ * - Disable request-related actions while loading
  * - Update accessible loading attributes
- * - Control the response loading overlay
+ * - Update the loading message
+ * - Restore controlled UI state after loading
  *
  * This module does not:
  * - Execute requests
@@ -53,10 +52,7 @@ const loaderState = {
     active: false,
     message: DEFAULT_LOADING_MESSAGE,
 
-    // Send button state captured immediately before loading.
     sendButtonSnapshot: null,
-
-    // Save button state captured immediately before loading.
     saveButtonSnapshot: null,
 };
 
@@ -67,7 +63,7 @@ const loaderState = {
 /**
  * Initialize the loader UI.
  *
- * Safe to call more than once.
+ * Safe to call multiple times.
  *
  * @returns {Object} Loader API
  */
@@ -84,29 +80,21 @@ export function initLoader() {
 /**
  * Cache loader-related DOM elements.
  *
- * This is intentionally safe to call repeatedly because parts
- * of the application may be rendered dynamically.
+ * This function is safe to call repeatedly because the application
+ * may replace parts of the DOM dynamically.
  */
 function cacheElements() {
     elements.loadingState =
-        document.getElementById(
-            ELEMENT_IDS.loadingState
-        );
+        document.getElementById(ELEMENT_IDS.loadingState);
 
     elements.sendButton =
-        document.getElementById(
-            ELEMENT_IDS.sendButton
-        );
+        document.getElementById(ELEMENT_IDS.sendButton);
 
     elements.saveButton =
-        document.getElementById(
-            ELEMENT_IDS.saveButton
-        );
+        document.getElementById(ELEMENT_IDS.saveButton);
 
     elements.responseWorkspace =
-        document.getElementById(
-            ELEMENT_IDS.responseWorkspace
-        );
+        document.getElementById(ELEMENT_IDS.responseWorkspace);
 }
 
 // ============================================================
@@ -124,8 +112,6 @@ export function startLoading(
 ) {
     cacheElements();
 
-    // Capture button state only on the first transition
-    // into loading. Repeated calls must not overwrite it.
     if (!loaderState.active) {
         captureButtonStates();
     }
@@ -147,12 +133,16 @@ export function startLoading(
 export function stopLoading() {
     cacheElements();
 
+    if (!loaderState.active) {
+        syncGlobalLoadingState(false);
+        syncUI();
+        return false;
+    }
+
     loaderState.active = false;
 
     syncGlobalLoadingState(false);
     syncUI();
-
-    restoreButtonStates();
 
     return true;
 }
@@ -192,13 +182,11 @@ export function getLoadingMessage() {
 }
 
 // ============================================================
-// Global State Synchronization
+// Global State
 // ============================================================
 
 /**
  * Synchronize the application loading state.
- *
- * Handles state objects that may not yet have a ui property.
  *
  * @param {boolean} loading
  */
@@ -207,10 +195,7 @@ function syncGlobalLoadingState(loading) {
         return;
     }
 
-    if (
-        !state.ui ||
-        typeof state.ui !== "object"
-    ) {
+    if (!state.ui || typeof state.ui !== "object") {
         state.ui = {};
     }
 
@@ -222,16 +207,12 @@ function syncGlobalLoadingState(loading) {
 // ============================================================
 
 /**
- * Synchronize the loader state with the DOM.
- *
- * @returns {void}
+ * Synchronize the DOM with the current loader state.
  */
 export function syncUI() {
     cacheElements();
 
-    const active = loaderState.active;
-
-    if (active) {
+    if (loaderState.active) {
         showLoadingUI();
     } else {
         hideLoadingUI();
@@ -239,28 +220,29 @@ export function syncUI() {
 }
 
 /**
- * Show loading UI.
+ * Show the loading UI.
  */
 function showLoadingUI() {
-    cacheElements();
+    const loadingState = elements.loadingState;
 
-    if (elements.loadingState) {
-        showElement(elements.loadingState);
-
-        elements.loadingState.setAttribute(
-            "aria-busy",
-            "true"
-        );
+    if (loadingState) {
+        loadingState.classList.remove("hidden");
+        loadingState.setAttribute("aria-hidden", "false");
+        loadingState.setAttribute("aria-busy", "true");
 
         updateLoadingMessage();
     }
 
     if (elements.sendButton) {
-        applySendButtonLoadingState();
+        applySendButtonLoadingState(
+            elements.sendButton
+        );
     }
 
     if (elements.saveButton) {
-        applySaveButtonLoadingState();
+        applySaveButtonLoadingState(
+            elements.saveButton
+        );
     }
 
     if (elements.responseWorkspace) {
@@ -272,18 +254,15 @@ function showLoadingUI() {
 }
 
 /**
- * Hide loading UI.
+ * Hide the loading UI.
  */
 function hideLoadingUI() {
-    cacheElements();
+    const loadingState = elements.loadingState;
 
-    if (elements.loadingState) {
-        hideElement(elements.loadingState);
-
-        elements.loadingState.setAttribute(
-            "aria-busy",
-            "false"
-        );
+    if (loadingState) {
+        loadingState.classList.add("hidden");
+        loadingState.setAttribute("aria-hidden", "true");
+        loadingState.setAttribute("aria-busy", "false");
     }
 
     if (elements.responseWorkspace) {
@@ -296,52 +275,12 @@ function hideLoadingUI() {
     restoreButtonStates();
 }
 
-/**
- * Show an element.
- *
- * @param {HTMLElement} element
- */
-function showElement(element) {
-    element.classList.remove("hidden");
-
-    // Only use flex when the element is designed as a flex container.
-    // If it already has a display utility, preserve that instead.
-    if (
-        !element.classList.contains("block") &&
-        !element.classList.contains("grid") &&
-        !element.classList.contains("inline-flex") &&
-        !element.classList.contains("inline-block")
-    ) {
-        element.classList.add("flex");
-    }
-
-    element.setAttribute(
-        "aria-hidden",
-        "false"
-    );
-}
-
-/**
- * Hide an element.
- *
- * @param {HTMLElement} element
- */
-function hideElement(element) {
-    element.classList.add("hidden");
-    element.classList.remove("flex");
-
-    element.setAttribute(
-        "aria-hidden",
-        "true"
-    );
-}
-
 // ============================================================
 // Loading Message
 // ============================================================
 
 /**
- * Update the loading message inside the overlay.
+ * Update the loading message.
  */
 function updateLoadingMessage() {
     const loadingState = elements.loadingState;
@@ -350,50 +289,37 @@ function updateLoadingMessage() {
         return;
     }
 
-    const message =
+    let messageElement =
         loadingState.querySelector(
             "[data-loader-message]"
         );
 
-    if (message) {
-        message.textContent =
-            loaderState.message;
-        return;
+    if (!messageElement) {
+        messageElement =
+            loadingState.querySelector(
+                "[data-loader-label], .loader-message"
+            );
     }
 
-    // Prefer a span only when it appears to be a dedicated
-    // loader label. This avoids accidentally changing spinner
-    // text or unrelated content.
-    const label =
-        loadingState.querySelector(
-            '[data-loader-label], .loader-message'
+    if (!messageElement) {
+        messageElement =
+            document.createElement("span");
+
+        messageElement.className =
+            "loader-message";
+
+        messageElement.setAttribute(
+            "data-loader-message",
+            ""
         );
 
-    if (label) {
-        label.textContent =
-            loaderState.message;
-        return;
+        loadingState.appendChild(
+            messageElement
+        );
     }
 
-    // If no dedicated message element exists, create one.
-    // This gives the loader a reliable target for future updates.
-    const generatedMessage =
-        document.createElement("span");
-
-    generatedMessage.setAttribute(
-        "data-loader-message",
-        ""
-    );
-
-    generatedMessage.className =
-        "loader-message";
-
-    generatedMessage.textContent =
+    messageElement.textContent =
         loaderState.message;
-
-    loadingState.appendChild(
-        generatedMessage
-    );
 }
 
 // ============================================================
@@ -401,11 +327,9 @@ function updateLoadingMessage() {
 // ============================================================
 
 /**
- * Capture button state before entering loading mode.
+ * Capture button states before loading starts.
  */
 function captureButtonStates() {
-    cacheElements();
-
     loaderState.sendButtonSnapshot =
         elements.sendButton
             ? createButtonSnapshot(
@@ -422,64 +346,44 @@ function captureButtonStates() {
 }
 
 /**
- * Create a snapshot of a button's current state.
+ * Create a button state snapshot.
  *
- * @param {HTMLElement} button
+ * @param {HTMLButtonElement} button
  * @returns {Object}
  */
 function createButtonSnapshot(button) {
     const icon =
-        button.querySelector(
-            "[data-lucide]"
-        );
+        button.querySelector("[data-lucide]");
 
     const label =
         getButtonLabelElement(button);
 
     return {
         disabled: button.disabled,
-
         ariaBusy:
-            button.getAttribute(
-                "aria-busy"
-            ),
-
+            button.getAttribute("aria-busy"),
         ariaDisabled:
-            button.getAttribute(
-                "aria-disabled"
-            ),
-
+            button.getAttribute("aria-disabled"),
         ariaLabel:
-            button.getAttribute(
-                "aria-label"
-            ),
+            button.getAttribute("aria-label"),
 
         iconName:
-            icon?.getAttribute(
-                "data-lucide"
-            ) ?? null,
+            icon?.getAttribute("data-lucide") ?? null,
 
         iconClassName:
             icon?.className ?? null,
 
         labelText:
             label?.textContent ?? null,
-
-        textContent:
-            button.textContent.trim(),
     };
 }
 
 /**
  * Apply loading state to the Send button.
+ *
+ * @param {HTMLButtonElement} button
  */
-function applySendButtonLoadingState() {
-    const button = elements.sendButton;
-
-    if (!button) {
-        return;
-    }
-
+function applySendButtonLoadingState(button) {
     button.disabled = true;
 
     button.setAttribute(
@@ -493,9 +397,7 @@ function applySendButtonLoadingState() {
     );
 
     const icon =
-        button.querySelector(
-            "[data-lucide]"
-        );
+        button.querySelector("[data-lucide]");
 
     if (icon) {
         icon.setAttribute(
@@ -518,181 +420,102 @@ function applySendButtonLoadingState() {
 
 /**
  * Apply loading state to the Save button.
+ *
+ * @param {HTMLButtonElement} button
  */
-function applySaveButtonLoadingState() {
-    const button = elements.saveButton;
-
-    if (!button) {
-        return;
-    }
-
+function applySaveButtonLoadingState(button) {
     button.disabled = true;
 
     button.setAttribute(
-        "aria-disabled",
+        "aria-busy",
         "true"
     );
 }
 
 /**
- * Restore button state captured before loading.
+ * Restore button states captured before loading.
  */
 function restoreButtonStates() {
-    restoreSendButton();
-    restoreSaveButton();
+    restoreButton(
+        elements.sendButton,
+        loaderState.sendButtonSnapshot
+    );
+
+    restoreButton(
+        elements.saveButton,
+        loaderState.saveButtonSnapshot
+    );
+
+    loaderState.sendButtonSnapshot = null;
+    loaderState.saveButtonSnapshot = null;
 }
 
 /**
- * Restore Send button.
+ * Restore a button from its snapshot.
+ *
+ * @param {HTMLButtonElement|null} button
+ * @param {Object|null} snapshot
  */
-function restoreSendButton() {
-    const button = elements.sendButton;
-    const snapshot =
-        loaderState.sendButtonSnapshot;
-
-    if (!button) {
-        loaderState.sendButtonSnapshot = null;
+function restoreButton(button, snapshot) {
+    if (!button || !snapshot) {
         return;
     }
 
-    if (snapshot) {
-        button.disabled = snapshot.disabled;
+    button.disabled = snapshot.disabled;
 
-        restoreAttribute(
-            button,
-            "aria-busy",
-            snapshot.ariaBusy
-        );
-
-        restoreAttribute(
-            button,
-            "aria-disabled",
-            snapshot.ariaDisabled
-        );
-
-        restoreAttribute(
-            button,
-            "aria-label",
-            snapshot.ariaLabel
-        );
-
-        const icon =
-            button.querySelector(
-                "[data-lucide]"
-            );
-
-        if (icon) {
-            if (snapshot.iconName !== null) {
-                icon.setAttribute(
-                    "data-lucide",
-                    snapshot.iconName
-                );
-            } else {
-                icon.removeAttribute(
-                    "data-lucide"
-                );
-            }
-
-            if (
-                snapshot.iconClassName !== null
-            ) {
-                icon.className =
-                    snapshot.iconClassName;
-            }
-        }
-
-        const label =
-            getButtonLabelElement(button);
-
-        if (
-            label &&
-            snapshot.labelText !== null
-        ) {
-            label.textContent =
-                snapshot.labelText;
-        }
-
-        loaderState.sendButtonSnapshot =
-            null;
-
-        return;
-    }
-
-    // No snapshot means the loader did not initiate
-    // this loading cycle. Restore only the properties
-    // this module owns.
-    button.disabled = false;
-
-    button.setAttribute(
+    restoreAttribute(
+        button,
         "aria-busy",
-        "false"
+        snapshot.ariaBusy
     );
 
-    button.removeAttribute(
-        "aria-label"
+    restoreAttribute(
+        button,
+        "aria-disabled",
+        snapshot.ariaDisabled
+    );
+
+    restoreAttribute(
+        button,
+        "aria-label",
+        snapshot.ariaLabel
     );
 
     const icon =
-        button.querySelector(
-            "[data-lucide]"
-        );
+        button.querySelector("[data-lucide]");
 
     if (icon) {
-        icon.classList.remove(
-            "animate-spin"
-        );
+        if (snapshot.iconName !== null) {
+            icon.setAttribute(
+                "data-lucide",
+                snapshot.iconName
+            );
+        } else {
+            icon.removeAttribute(
+                "data-lucide"
+            );
+        }
+
+        if (snapshot.iconClassName !== null) {
+            icon.className =
+                snapshot.iconClassName;
+        }
+    }
+
+    const label =
+        getButtonLabelElement(button);
+
+    if (
+        label &&
+        snapshot.labelText !== null
+    ) {
+        label.textContent =
+            snapshot.labelText;
     }
 }
 
 /**
- * Restore Save button.
- */
-function restoreSaveButton() {
-    const button = elements.saveButton;
-    const snapshot =
-        loaderState.saveButtonSnapshot;
-
-    if (!button) {
-        loaderState.saveButtonSnapshot = null;
-        return;
-    }
-
-    if (snapshot) {
-        button.disabled = snapshot.disabled;
-
-        restoreAttribute(
-            button,
-            "aria-busy",
-            snapshot.ariaBusy
-        );
-
-        restoreAttribute(
-            button,
-            "aria-disabled",
-            snapshot.ariaDisabled
-        );
-
-        restoreAttribute(
-            button,
-            "aria-label",
-            snapshot.ariaLabel
-        );
-
-        loaderState.saveButtonSnapshot =
-            null;
-
-        return;
-    }
-
-    button.disabled = false;
-
-    button.removeAttribute(
-        "aria-disabled"
-    );
-}
-
-/**
- * Restore an attribute to its previous value.
+ * Restore an attribute to its original value.
  *
  * @param {HTMLElement} element
  * @param {string} name
@@ -731,32 +554,8 @@ function getButtonLabelElement(button) {
         button.querySelector(
             ".button-label"
         ) ||
-        button.querySelector(
-            "span"
-        )
+        button.querySelector("span")
     );
-}
-
-// ============================================================
-// Helpers
-// ============================================================
-
-/**
- * Normalize a loading message.
- *
- * @param {*} message
- * @returns {string}
- */
-function normalizeMessage(message) {
-    if (
-        message === null ||
-        message === undefined ||
-        String(message).trim() === ""
-    ) {
-        return "Loading...";
-    }
-
-    return String(message);
 }
 
 // ============================================================
@@ -764,10 +563,7 @@ function normalizeMessage(message) {
 // ============================================================
 
 /**
- * Run an async operation while showing the loader.
- *
- * The loader is always stopped when the operation completes,
- * whether it resolves or rejects.
+ * Run an async operation while displaying the loader.
  *
  * @param {Function} operation
  * @param {string} [message]
@@ -777,10 +573,7 @@ export async function withLoading(
     operation,
     message = DEFAULT_LOADING_MESSAGE
 ) {
-    if (
-        typeof operation !==
-        "function"
-    ) {
+    if (typeof operation !== "function") {
         throw new TypeError(
             "withLoading requires a function."
         );
@@ -796,7 +589,7 @@ export async function withLoading(
 }
 
 // ============================================================
-// Request Loading Helpers
+// Request Helpers
 // ============================================================
 
 /**
@@ -824,29 +617,18 @@ export function stopRequestLoading() {
 // ============================================================
 
 /**
- * Destroy the loader state.
+ * Destroy the loader controller.
  */
 export function destroyLoader() {
-    // Restore any UI controlled by this module before
-    // removing our references.
-    if (
-        loaderState.active ||
-        loaderState.sendButtonSnapshot ||
-        loaderState.saveButtonSnapshot
-    ) {
-        loaderState.active = false;
+    cacheElements();
 
-        syncGlobalLoadingState(false);
+    loaderState.active = false;
 
-        cacheElements();
+    syncGlobalLoadingState(false);
 
-        hideLoadingUI();
-    } else {
-        syncGlobalLoadingState(false);
-    }
+    hideLoadingUI();
 
     loaderState.initialized = false;
-    loaderState.active = false;
     loaderState.message =
         DEFAULT_LOADING_MESSAGE;
 
