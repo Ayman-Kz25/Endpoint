@@ -1,23 +1,21 @@
-// src/scripts/ui/dropdown.js
-
 /**
  * Dropdown UI
  *
- * Provides a reusable dropdown manager for the application.
+ * Reusable dropdown manager for application UI.
  *
  * Responsibilities:
  * - Open and close dropdowns
- * - Position dropdowns relative to trigger elements
- * - Handle outside clicks
+ * - Position dropdowns relative to triggers
+ * - Handle outside interaction
  * - Handle Escape
- * - Manage aria-expanded / aria-controls
- * - Support dynamically rendered dropdown content
+ * - Manage ARIA attributes
+ * - Support dynamic dropdown content
  * - Support keyboard navigation
  *
  * This module does not:
- * - Decide what dropdown content should contain
- * - Persist application state
- * - Handle business logic
+ * - decide dropdown business logic
+ * - persist application state
+ * - execute application actions
  */
 
 const DEFAULT_ROOT_SELECTOR = "#dropdown-root";
@@ -28,35 +26,26 @@ const VIEWPORT_MARGIN = 8;
 const state = {
     root: null,
     active: null,
-    trigger: null,
     cleanup: null,
 };
 
-/**
- * Initialize the dropdown system.
- *
- * @param {HTMLElement|string} root
- * @returns {Object} Dropdown API
- */
-export function initDropdown(root = DEFAULT_ROOT_SELECTOR) {
-    const resolvedRoot = resolveElement(root);
+// ============================================================
+// Initialization
+// ============================================================
 
-    // Clean up an existing manager before replacing its root.
-    if (state.root !== resolvedRoot && state.active) {
+export function initDropdown(
+    root = DEFAULT_ROOT_SELECTOR,
+) {
+    const nextRoot = resolveElement(root);
+
+    if (
+        state.active &&
+        state.root !== nextRoot
+    ) {
         closeDropdown();
     }
 
-    state.root = resolvedRoot;
-
-    if (!state.root) {
-        return {
-            open: () => null,
-            close: () => {},
-            toggle: () => null,
-            isOpen: () => false,
-            getActive: () => null,
-        };
-    }
+    state.root = nextRoot;
 
     return {
         open: openDropdown,
@@ -64,34 +53,23 @@ export function initDropdown(root = DEFAULT_ROOT_SELECTOR) {
         toggle: toggleDropdown,
         isOpen: isDropdownOpen,
         getActive: getActiveDropdown,
+        destroy: destroyDropdown,
     };
 }
 
-/**
- * Open a dropdown.
- *
- * @param {Object} options
- * @param {HTMLElement|string} options.trigger
- * @param {string|HTMLElement} options.content
- * @param {string} [options.id]
- * @param {string} [options.placement="bottom-start"]
- * @param {number} [options.offset=6]
- * @param {boolean} [options.closeOnSelect=true]
- * @param {boolean} [options.focusFirst=false]
- * @returns {HTMLElement|null}
- */
+// ============================================================
+// Open
+// ============================================================
+
 export function openDropdown(options = {}) {
-    ensureRoot();
+    const root = ensureRoot();
 
-    if (!state.root || !document.body.contains(state.root)) {
-        state.root = resolveElement(DEFAULT_ROOT_SELECTOR);
-    }
-
-    if (!state.root) {
+    if (!root) {
         return null;
     }
 
-    const trigger = resolveElement(options.trigger);
+    const trigger =
+        resolveElement(options.trigger);
 
     if (!trigger) {
         return null;
@@ -99,15 +77,15 @@ export function openDropdown(options = {}) {
 
     closeDropdown();
 
-    const dropdown = createDropdownElement(options);
+    const dropdown =
+        createDropdownElement(options);
 
     if (!dropdown) {
         return null;
     }
 
-    state.root.appendChild(dropdown);
+    root.appendChild(dropdown);
 
-    state.trigger = trigger;
     state.active = {
         element: dropdown,
         trigger,
@@ -115,18 +93,25 @@ export function openDropdown(options = {}) {
     };
 
     setTriggerExpanded(trigger, true);
-    setTriggerControls(trigger, dropdown.id);
+    setTriggerControls(
+        trigger,
+        dropdown.id,
+    );
 
-    // Position after the element has been inserted into the DOM.
-    positionDropdown(dropdown, trigger, options);
+    positionDropdown(
+        dropdown,
+        trigger,
+        options,
+    );
 
     bindActiveEvents();
 
-    // Focus is useful for keyboard navigation, but preserve the
-    // caller's choice when explicitly disabled.
     if (options.focusFirst === true) {
         requestAnimationFrame(() => {
-            if (!state.active || state.active.element !== dropdown) {
+            if (
+                state.active?.element !==
+                dropdown
+            ) {
                 return;
             }
 
@@ -134,65 +119,73 @@ export function openDropdown(options = {}) {
         });
     }
 
-    // Content can change size after insertion, especially when icons
-    // or asynchronously-rendered content are involved.
     requestAnimationFrame(() => {
-        if (!state.active || state.active.element !== dropdown) {
+        if (
+            state.active?.element !==
+            dropdown
+        ) {
             return;
         }
 
-        positionDropdown(dropdown, trigger, options);
+        positionDropdown(
+            dropdown,
+            trigger,
+            options,
+        );
     });
 
     return dropdown;
 }
 
-/**
- * Close the currently open dropdown.
- */
+// ============================================================
+// Close
+// ============================================================
+
 export function closeDropdown() {
-    if (!state.active) {
-        cleanupActiveEvents();
+    const active = state.active;
 
-        state.trigger = null;
+    cleanupActiveEvents();
 
+    if (!active) {
         return;
     }
 
     const {
         element,
         trigger,
-    } = state.active;
+    } = active;
 
-    cleanupActiveEvents();
-
-    if (element?.parentNode) {
-        element.parentNode.removeChild(element);
+    if (element?.isConnected) {
+        element.remove();
     }
 
-    setTriggerExpanded(trigger, false);
-    setTriggerControls(trigger, null);
+    setTriggerExpanded(
+        trigger,
+        false,
+    );
+
+    setTriggerControls(
+        trigger,
+        null,
+    );
 
     state.active = null;
-    state.trigger = null;
 }
 
-/**
- * Toggle a dropdown.
- *
- * @param {Object} options
- * @returns {HTMLElement|null}
- */
+// ============================================================
+// Toggle
+// ============================================================
+
 export function toggleDropdown(options = {}) {
-    const trigger = resolveElement(options.trigger);
+    const trigger =
+        resolveElement(options.trigger);
 
     if (!trigger) {
         return null;
     }
 
     if (
-        state.active &&
-        state.active.trigger === trigger
+        state.active?.trigger === trigger
     ) {
         closeDropdown();
         return null;
@@ -204,46 +197,41 @@ export function toggleDropdown(options = {}) {
     });
 }
 
-/**
- * Check whether a dropdown is currently open.
- *
- * @returns {boolean}
- */
 export function isDropdownOpen() {
     return Boolean(
-        state.active &&
-        state.active.element?.isConnected
+        state.active?.element?.isConnected,
     );
 }
 
-/**
- * Get the currently active dropdown.
- *
- * @returns {Object|null}
- */
 export function getActiveDropdown() {
     return state.active;
 }
 
-/* ============================================================
- * Element Creation
- * ============================================================ */
+// ============================================================
+// Creation
+// ============================================================
 
-/**
- * Create the dropdown DOM element.
- *
- * @param {Object} options
- * @returns {HTMLElement|null}
- */
-function createDropdownElement(options = {}) {
-    const dropdown = document.createElement("div");
+function createDropdownElement(
+    options = {},
+) {
+    const dropdown =
+        document.createElement("div");
 
     dropdown.id =
-        options.id ||
-        createUniqueDropdownId();
+        typeof options.id === "string" &&
+        options.id.trim()
+            ? options.id.trim()
+            : createUniqueDropdownId();
 
-    dropdown.setAttribute("role", "menu");
-    dropdown.setAttribute("tabindex", "-1");
+    dropdown.setAttribute(
+        "role",
+        "menu",
+    );
+
+    dropdown.setAttribute(
+        "tabindex",
+        "-1",
+    );
 
     dropdown.className =
         options.className ||
@@ -264,50 +252,56 @@ function createDropdownElement(options = {}) {
             "outline-none",
         ].join(" ");
 
-    if (typeof options.content === "string") {
-        dropdown.innerHTML = options.content;
-    } else if (
-        options.content instanceof HTMLElement
-    ) {
-        dropdown.appendChild(options.content);
-    } else if (
-        options.content instanceof DocumentFragment
-    ) {
-        dropdown.appendChild(options.content);
-    } else {
-        return null;
-    }
+    appendDropdownContent(
+        dropdown,
+        options.content,
+    );
 
-    if (options.closeOnSelect !== false) {
-        bindSelectionHandling(dropdown);
+    if (
+        options.closeOnSelect !== false
+    ) {
+        bindSelectionHandling(
+            dropdown,
+        );
     }
 
     return dropdown;
 }
 
-/* ============================================================
- * Positioning
- * ============================================================ */
-
-/**
- * Position the dropdown relative to its trigger.
- *
- * @param {HTMLElement} dropdown
- * @param {HTMLElement} trigger
- * @param {Object} options
- */
-function positionDropdown(
+function appendDropdownContent(
     dropdown,
-    trigger,
-    options = {}
+    content,
 ) {
-    if (!dropdown || !trigger) {
+    if (typeof content === "string") {
+        dropdown.innerHTML = content;
         return;
     }
 
     if (
-        !dropdown.isConnected ||
-        !trigger.isConnected
+        content instanceof HTMLElement ||
+        content instanceof DocumentFragment
+    ) {
+        dropdown.appendChild(content);
+        return;
+    }
+
+    throw new TypeError(
+        "Dropdown content must be a string, HTMLElement, or DocumentFragment.",
+    );
+}
+
+// ============================================================
+// Positioning
+// ============================================================
+
+function positionDropdown(
+    dropdown,
+    trigger,
+    options = {},
+) {
+    if (
+        !dropdown?.isConnected ||
+        !trigger?.isConnected
     ) {
         return;
     }
@@ -318,7 +312,9 @@ function positionDropdown(
             : DEFAULT_PLACEMENT;
 
     const offset =
-        Number.isFinite(Number(options.offset))
+        Number.isFinite(
+            Number(options.offset),
+        )
             ? Number(options.offset)
             : DEFAULT_OFFSET;
 
@@ -329,46 +325,35 @@ function positionDropdown(
         dropdown.getBoundingClientRect();
 
     const viewportWidth =
-        document.documentElement.clientWidth ||
+        document.documentElement
+            .clientWidth ||
         window.innerWidth;
 
     const viewportHeight =
-        document.documentElement.clientHeight ||
+        document.documentElement
+            .clientHeight ||
         window.innerHeight;
 
-    const margin = VIEWPORT_MARGIN;
+    const width = dropdownRect.width;
+    const height = dropdownRect.height;
 
-    const dropdownWidth = dropdownRect.width;
-    const dropdownHeight = dropdownRect.height;
-
-    let top;
-    let left;
+    let top = triggerRect.bottom + offset;
+    let left = triggerRect.left;
 
     switch (placement) {
         case "bottom-end":
             top = triggerRect.bottom + offset;
-            left = triggerRect.right - dropdownWidth;
+            left = triggerRect.right - width;
             break;
 
         case "top-start":
-            top =
-                triggerRect.top -
-                dropdownHeight -
-                offset;
-
+            top = triggerRect.top - height - offset;
             left = triggerRect.left;
             break;
 
         case "top-end":
-            top =
-                triggerRect.top -
-                dropdownHeight -
-                offset;
-
-            left =
-                triggerRect.right -
-                dropdownWidth;
-
+            top = triggerRect.top - height - offset;
+            left = triggerRect.right - width;
             break;
 
         case "right-start":
@@ -377,33 +362,18 @@ function positionDropdown(
             break;
 
         case "right-end":
-            top =
-                triggerRect.bottom -
-                dropdownHeight;
-
+            top = triggerRect.bottom - height;
             left = triggerRect.right + offset;
             break;
 
         case "left-start":
             top = triggerRect.top;
-
-            left =
-                triggerRect.left -
-                dropdownWidth -
-                offset;
-
+            left = triggerRect.left - width - offset;
             break;
 
         case "left-end":
-            top =
-                triggerRect.bottom -
-                dropdownHeight;
-
-            left =
-                triggerRect.left -
-                dropdownWidth -
-                offset;
-
+            top = triggerRect.bottom - height;
+            left = triggerRect.left - width - offset;
             break;
 
         case "bottom-start":
@@ -413,21 +383,18 @@ function positionDropdown(
             break;
     }
 
-    /*
-     * Vertical collision handling.
-     */
-
     const fitsBelow =
         triggerRect.bottom +
-        offset +
-        dropdownHeight <=
-        viewportHeight - margin;
+            offset +
+            height <=
+        viewportHeight -
+            VIEWPORT_MARGIN;
 
     const fitsAbove =
         triggerRect.top -
-        offset -
-        dropdownHeight >=
-        margin;
+            offset -
+            height >=
+        VIEWPORT_MARGIN;
 
     if (
         placement.startsWith("bottom") &&
@@ -436,31 +403,32 @@ function positionDropdown(
     ) {
         top =
             triggerRect.top -
-            dropdownHeight -
+            height -
             offset;
-    } else if (
+    }
+
+    if (
         placement.startsWith("top") &&
         !fitsAbove &&
         fitsBelow
     ) {
-        top = triggerRect.bottom + offset;
+        top =
+            triggerRect.bottom +
+            offset;
     }
-
-    /*
-     * Horizontal collision handling.
-     */
 
     const fitsRight =
         triggerRect.right +
-        offset +
-        dropdownWidth <=
-        viewportWidth - margin;
+            offset +
+            width <=
+        viewportWidth -
+            VIEWPORT_MARGIN;
 
     const fitsLeft =
         triggerRect.left -
-        offset -
-        dropdownWidth >=
-        margin;
+            offset -
+            width >=
+        VIEWPORT_MARGIN;
 
     if (
         placement.startsWith("right") &&
@@ -469,75 +437,68 @@ function positionDropdown(
     ) {
         left =
             triggerRect.left -
-            dropdownWidth -
+            width -
             offset;
-    } else if (
+    }
+
+    if (
         placement.startsWith("left") &&
         !fitsLeft &&
         fitsRight
     ) {
-        left = triggerRect.right + offset;
+        left =
+            triggerRect.right +
+            offset;
     }
 
-    /*
-     * Final viewport clamping.
-     *
-     * This prevents menus from becoming inaccessible when the
-     * dropdown is larger than the available viewport.
-     */
-
     const maxLeft = Math.max(
-        margin,
+        VIEWPORT_MARGIN,
         viewportWidth -
-            dropdownWidth -
-            margin
+            width -
+            VIEWPORT_MARGIN,
     );
 
     const maxTop = Math.max(
-        margin,
+        VIEWPORT_MARGIN,
         viewportHeight -
-            dropdownHeight -
-            margin
+            height -
+            VIEWPORT_MARGIN,
     );
 
     left = clamp(
         left,
-        margin,
-        maxLeft
+        VIEWPORT_MARGIN,
+        maxLeft,
     );
 
     top = clamp(
         top,
-        margin,
-        maxTop
+        VIEWPORT_MARGIN,
+        maxTop,
     );
-
-    dropdown.style.top =
-        `${Math.round(top)}px`;
 
     dropdown.style.left =
         `${Math.round(left)}px`;
+
+    dropdown.style.top =
+        `${Math.round(top)}px`;
 }
 
-/* ============================================================
- * Event Handling
- * ============================================================ */
+// ============================================================
+// Events
+// ============================================================
 
-/**
- * Bind global events for the active dropdown.
- */
 function bindActiveEvents() {
     cleanupActiveEvents();
 
-    const handlePointerDown = (event) => {
-        if (!state.active) {
+    const handlePointerDown = (
+        event,
+    ) => {
+        const active = state.active;
+
+        if (!active) {
             return;
         }
-
-        const {
-            element,
-            trigger,
-        } = state.active;
 
         const target = event.target;
 
@@ -546,8 +507,8 @@ function bindActiveEvents() {
         }
 
         if (
-            element.contains(target) ||
-            trigger.contains(target)
+            active.element.contains(target) ||
+            active.trigger.contains(target)
         ) {
             return;
         }
@@ -556,7 +517,9 @@ function bindActiveEvents() {
     };
 
     const handleKeyDown = (event) => {
-        if (!state.active) {
+        const active = state.active;
+
+        if (!active) {
             return;
         }
 
@@ -564,139 +527,124 @@ function bindActiveEvents() {
             event.preventDefault();
 
             const trigger =
-                state.active.trigger;
+                active.trigger;
 
             closeDropdown();
 
-            if (
-                trigger &&
-                typeof trigger.focus === "function"
-            ) {
-                trigger.focus();
-            }
+            trigger?.focus?.();
 
             return;
         }
 
         if (
-            event.key === "ArrowDown" ||
-            event.key === "ArrowUp"
+            isTextInputElement(
+                document.activeElement,
+            )
         ) {
-            if (isTextInputElement(
-                document.activeElement
-            )) {
-                return;
-            }
-
-            handleArrowNavigation(event);
+            return;
         }
 
-        if (event.key === "Home") {
-            if (isTextInputElement(
-                document.activeElement
-            )) {
-                return;
+        switch (event.key) {
+            case "ArrowDown":
+            case "ArrowUp":
+                handleArrowNavigation(event);
+                break;
+
+            case "Home":
+                focusMenuItemAtIndex(
+                    0,
+                    event,
+                );
+                break;
+
+            case "End": {
+                const items =
+                    getFocusableMenuItems();
+
+                focusMenuItemAtIndex(
+                    items.length - 1,
+                    event,
+                );
+
+                break;
             }
 
-            focusMenuItemAtIndex(0, event);
-        }
-
-        if (event.key === "End") {
-            if (isTextInputElement(
-                document.activeElement
-            )) {
-                return;
-            }
-
-            const items = getFocusableMenuItems();
-
-            focusMenuItemAtIndex(
-                items.length - 1,
-                event
-            );
+            default:
+                break;
         }
     };
 
     const handleViewportChange = () => {
-        if (!state.active) {
+        const active = state.active;
+
+        if (!active) {
             return;
         }
 
-        const {
-            element,
-            trigger,
-            options,
-        } = state.active;
-
         positionDropdown(
-            element,
-            trigger,
-            options
+            active.element,
+            active.trigger,
+            active.options,
         );
     };
 
     document.addEventListener(
         "pointerdown",
-        handlePointerDown
+        handlePointerDown,
     );
 
     document.addEventListener(
         "keydown",
-        handleKeyDown
+        handleKeyDown,
     );
 
     window.addEventListener(
         "resize",
-        handleViewportChange
+        handleViewportChange,
     );
 
     window.addEventListener(
         "scroll",
         handleViewportChange,
-        true
+        true,
     );
 
     state.cleanup = () => {
         document.removeEventListener(
             "pointerdown",
-            handlePointerDown
+            handlePointerDown,
         );
 
         document.removeEventListener(
             "keydown",
-            handleKeyDown
+            handleKeyDown,
         );
 
         window.removeEventListener(
             "resize",
-            handleViewportChange
+            handleViewportChange,
         );
 
         window.removeEventListener(
             "scroll",
             handleViewportChange,
-            true
+            true,
         );
     };
 }
 
-/**
- * Remove active global event handlers.
- */
 function cleanupActiveEvents() {
-    if (typeof state.cleanup === "function") {
-        state.cleanup();
-    }
-
+    state.cleanup?.();
     state.cleanup = null;
 }
 
-/**
- * Close the dropdown when a menu item is selected.
- *
- * @param {HTMLElement} dropdown
- */
-function bindSelectionHandling(dropdown) {
+// ============================================================
+// Selection
+// ============================================================
+
+function bindSelectionHandling(
+    dropdown,
+) {
     dropdown.addEventListener(
         "click",
         (event) => {
@@ -707,7 +655,7 @@ function bindSelectionHandling(dropdown) {
             }
 
             const item = target.closest(
-                '[role="menuitem"], [data-dropdown-item]'
+                '[role="menuitem"], [data-dropdown-item]',
             );
 
             if (!item) {
@@ -716,32 +664,35 @@ function bindSelectionHandling(dropdown) {
 
             if (
                 item.hasAttribute(
-                    "data-dropdown-keep-open"
+                    "data-dropdown-keep-open",
                 )
             ) {
                 return;
             }
 
             if (
-                item.getAttribute("aria-disabled") ===
-                "true" ||
+                item.getAttribute(
+                    "aria-disabled",
+                ) === "true" ||
                 item.hasAttribute("disabled")
             ) {
                 return;
             }
 
             closeDropdown();
-        }
+        },
     );
 }
 
-/**
- * Handle keyboard navigation between menu items.
- *
- * @param {KeyboardEvent} event
- */
-function handleArrowNavigation(event) {
-    const items = getFocusableMenuItems();
+// ============================================================
+// Keyboard Navigation
+// ============================================================
+
+function handleArrowNavigation(
+    event,
+) {
+    const items =
+        getFocusableMenuItems();
 
     if (!items.length) {
         return;
@@ -750,39 +701,33 @@ function handleArrowNavigation(event) {
     event.preventDefault();
 
     const currentIndex =
-        items.indexOf(document.activeElement);
+        items.indexOf(
+            document.activeElement,
+        );
 
-    let nextIndex;
-
-    if (event.key === "ArrowDown") {
-        nextIndex =
-            currentIndex < 0
+    const nextIndex =
+        event.key === "ArrowDown"
+            ? currentIndex < 0
                 ? 0
-                : (
-                    currentIndex + 1
-                ) % items.length;
-    } else {
-        nextIndex =
-            currentIndex < 0
+                : (currentIndex + 1) %
+                  items.length
+            : currentIndex < 0
                 ? items.length - 1
                 : (
                     currentIndex -
                     1 +
                     items.length
                 ) % items.length;
-    }
 
     items[nextIndex].focus();
 }
 
-/**
- * Focus a specific menu item.
- *
- * @param {number} index
- * @param {KeyboardEvent} event
- */
-function focusMenuItemAtIndex(index, event) {
-    const items = getFocusableMenuItems();
+function focusMenuItemAtIndex(
+    index,
+    event,
+) {
+    const items =
+        getFocusableMenuItems();
 
     if (!items.length) {
         return;
@@ -793,142 +738,162 @@ function focusMenuItemAtIndex(index, event) {
     const safeIndex = clamp(
         index,
         0,
-        items.length - 1
+        items.length - 1,
     );
 
     items[safeIndex].focus();
 }
 
-/**
- * Get currently focusable menu items.
- *
- * @returns {HTMLElement[]}
- */
-function getFocusableMenuItems() {
-    const dropdown =
-        state.active?.element;
+function focusFirstMenuItem(
+    dropdown,
+) {
+    const items =
+        getMenuItems(dropdown);
 
+    if (items.length) {
+        items[0].focus();
+        return;
+    }
+
+    dropdown.focus();
+}
+
+// ============================================================
+// Menu Items
+// ============================================================
+
+function getFocusableMenuItems() {
+    return getMenuItems(
+        state.active?.element,
+    );
+}
+
+function getMenuItems(dropdown) {
     if (!dropdown) {
         return [];
     }
 
     return Array.from(
         dropdown.querySelectorAll(
-            '[role="menuitem"], [data-dropdown-item]'
-        )
-    ).filter((item) => {
-        if (!(item instanceof HTMLElement)) {
-            return false;
-        }
-
-        if (
-            item.getAttribute("aria-disabled") ===
-            "true"
-        ) {
-            return false;
-        }
-
-        if (item.hasAttribute("disabled")) {
-            return false;
-        }
-
-        const style =
-            window.getComputedStyle(item);
-
-        if (
-            style.display === "none" ||
-            style.visibility === "hidden"
-        ) {
-            return false;
-        }
-
-        return item.getClientRects().length > 0;
-    });
+            '[role="menuitem"], [data-dropdown-item]',
+        ),
+    ).filter(isFocusableMenuItem);
 }
 
-/**
- * Focus the first menu item.
- *
- * @param {HTMLElement} dropdown
- */
-function focusFirstMenuItem(dropdown) {
-    const items = getMenuItems(dropdown);
-
-    if (items.length) {
-        items[0].focus();
-    } else {
-        dropdown.focus();
+function isFocusableMenuItem(
+    item,
+) {
+    if (!(item instanceof HTMLElement)) {
+        return false;
     }
+
+    if (
+        item.getAttribute(
+            "aria-disabled",
+        ) === "true"
+    ) {
+        return false;
+    }
+
+    if (item.hasAttribute("disabled")) {
+        return false;
+    }
+
+    const style =
+        window.getComputedStyle(item);
+
+    if (
+        style.display === "none" ||
+        style.visibility === "hidden"
+    ) {
+        return false;
+    }
+
+    return item.getClientRects().length > 0;
 }
 
-/**
- * Get focusable menu items from a specific dropdown.
- *
- * @param {HTMLElement} dropdown
- * @returns {HTMLElement[]}
- */
-function getMenuItems(dropdown) {
-    return Array.from(
-        dropdown.querySelectorAll(
-            '[role="menuitem"], [data-dropdown-item]'
-        )
-    ).filter((item) => {
-        if (!(item instanceof HTMLElement)) {
-            return false;
-        }
+// ============================================================
+// Root
+// ============================================================
 
-        if (
-            item.getAttribute("aria-disabled") ===
-            "true"
-        ) {
-            return false;
-        }
-
-        if (item.hasAttribute("disabled")) {
-            return false;
-        }
-
-        const style =
-            window.getComputedStyle(item);
-
-        return (
-            style.display !== "none" &&
-            style.visibility !== "hidden" &&
-            item.getClientRects().length > 0
-        );
-    });
-}
-
-/* ============================================================
- * Helpers
- * ============================================================ */
-
-/**
- * Ensure the global dropdown root exists.
- */
 function ensureRoot() {
     if (
         state.root &&
         document.documentElement.contains(
-            state.root
+            state.root,
         )
     ) {
         return state.root;
     }
 
-    state.root = resolveElement(
-        DEFAULT_ROOT_SELECTOR
-    );
+    state.root =
+        resolveElement(
+            DEFAULT_ROOT_SELECTOR,
+        );
 
     return state.root;
 }
 
-/**
- * Resolve an element from an element or selector.
- *
- * @param {HTMLElement|string|null} value
- * @returns {HTMLElement|null}
- */
+export function getDropdownRoot() {
+    return ensureRoot();
+}
+
+// ============================================================
+// Destroy
+// ============================================================
+
+export function destroyDropdown() {
+    closeDropdown();
+
+    if (state.root) {
+        state.root.replaceChildren();
+    }
+
+    state.root = null;
+}
+
+// ============================================================
+// ARIA
+// ============================================================
+
+function setTriggerExpanded(
+    trigger,
+    expanded,
+) {
+    if (!trigger) {
+        return;
+    }
+
+    trigger.setAttribute(
+        "aria-expanded",
+        String(expanded),
+    );
+}
+
+function setTriggerControls(
+    trigger,
+    id,
+) {
+    if (!trigger) {
+        return;
+    }
+
+    if (id) {
+        trigger.setAttribute(
+            "aria-controls",
+            id,
+        );
+    } else {
+        trigger.removeAttribute(
+            "aria-controls",
+        );
+    }
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
 function resolveElement(value) {
     if (!value) {
         return null;
@@ -938,130 +903,46 @@ function resolveElement(value) {
         return value;
     }
 
-    if (typeof value === "string") {
-        try {
-            const element =
-                document.querySelector(value);
-
-            return element instanceof HTMLElement
-                ? element
-                : null;
-        } catch {
-            return null;
-        }
+    if (typeof value !== "string") {
+        return null;
     }
 
-    return null;
-}
+    try {
+        const element =
+            document.querySelector(value);
 
-/**
- * Set aria-expanded on a trigger.
- *
- * @param {HTMLElement|null} trigger
- * @param {boolean} expanded
- */
-function setTriggerExpanded(
-    trigger,
-    expanded
-) {
-    if (!trigger) {
-        return;
-    }
-
-    trigger.setAttribute(
-        "aria-expanded",
-        String(expanded)
-    );
-}
-
-/**
- * Set aria-controls on a trigger.
- *
- * @param {HTMLElement|null} trigger
- * @param {string|null} id
- */
-function setTriggerControls(
-    trigger,
-    id
-) {
-    if (!trigger) {
-        return;
-    }
-
-    if (id) {
-        trigger.setAttribute(
-            "aria-controls",
-            id
-        );
-    } else {
-        trigger.removeAttribute(
-            "aria-controls"
-        );
+        return element instanceof HTMLElement
+            ? element
+            : null;
+    } catch {
+        return null;
     }
 }
 
-/**
- * Resolve the global dropdown root.
- *
- * @returns {HTMLElement|null}
- */
-export function getDropdownRoot() {
-    return ensureRoot();
-}
-
-/**
- * Remove all dropdowns and reset the manager.
- */
-export function destroyDropdown() {
-    closeDropdown();
-
-    if (state.root) {
-        state.root.innerHTML = "";
-    }
-
-    state.root = null;
-    state.active = null;
-    state.trigger = null;
-    state.cleanup = null;
-}
-
-/**
- * Create a unique dropdown ID.
- *
- * @returns {string}
- */
 function createUniqueDropdownId() {
     return `dropdown-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}`;
 }
 
-/**
- * Clamp a number between min and max.
- *
- * @param {number} value
- * @param {number} min
- * @param {number} max
- * @returns {number}
- */
-function clamp(value, min, max) {
+function clamp(
+    value,
+    min,
+    max,
+) {
     if (!Number.isFinite(value)) {
         return min;
     }
 
     return Math.min(
         Math.max(value, min),
-        max
+        max,
     );
 }
 
-/**
- * Determine whether an element is a text input.
- *
- * @param {Element|null} element
- * @returns {boolean}
- */
-function isTextInputElement(element) {
+function isTextInputElement(
+    element,
+) {
     if (!(element instanceof HTMLElement)) {
         return false;
     }
@@ -1097,36 +978,10 @@ function isTextInputElement(element) {
     ].includes(type);
 }
 
-/**
- * Escape HTML content used in generated dropdown markup.
- *
- * @param {*} value
- * @returns {string}
- */
-function escapeHtml(value) {
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+// ============================================================
+// Dropdown Item Factory
+// ============================================================
 
-/* ============================================================
- * Convenience API
- * ============================================================ */
-
-/**
- * Create a dropdown item.
- *
- * @param {Object} options
- * @param {string} options.label
- * @param {string} [options.icon]
- * @param {string} [options.value]
- * @param {string} [options.className]
- * @param {boolean} [options.disabled=false]
- * @returns {string}
- */
 export function createDropdownItem({
     label = "",
     icon = "",
@@ -1137,21 +992,11 @@ export function createDropdownItem({
     const safeLabel =
         escapeHtml(label);
 
-    const safeValue =
-        escapeHtml(value);
-
     const safeIcon =
         escapeHtml(icon);
 
-    const iconMarkup = icon
-        ? `
-            <i
-                data-lucide="${safeIcon}"
-                class="h-4 w-4 shrink-0"
-                aria-hidden="true"
-            ></i>
-        `
-        : "";
+    const safeValue =
+        escapeHtml(value);
 
     const classes = [
         "flex",
@@ -1168,27 +1013,41 @@ export function createDropdownItem({
         "hover:bg-surface-raised",
         "focus:bg-surface-raised",
         "focus:outline-none",
+
         disabled
             ? "pointer-events-none opacity-50"
             : "",
+
         className,
     ]
         .filter(Boolean)
         .join(" ");
+
+    const iconMarkup = icon
+        ? `
+            <i
+                data-lucide="${safeIcon}"
+                class="h-4 w-4 shrink-0"
+                aria-hidden="true"
+            ></i>
+        `
+        : "";
+
+    const valueAttribute = safeValue
+        ? `data-value="${safeValue}"`
+        : "";
+
+    const disabledAttributes = disabled
+        ? 'aria-disabled="true" disabled'
+        : "";
 
     return `
         <button
             type="button"
             role="menuitem"
             data-dropdown-item
-            ${safeValue
-                ? `data-value="${safeValue}"`
-                : ""}
-            ${
-                disabled
-                    ? 'aria-disabled="true" disabled'
-                    : ""
-            }
+            ${valueAttribute}
+            ${disabledAttributes}
             class="${classes}"
         >
             ${iconMarkup}
@@ -1200,18 +1059,29 @@ export function createDropdownItem({
     `;
 }
 
-/* ============================================================
- * Default Export
- * ============================================================ */
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// ============================================================
+// Default Export
+// ============================================================
 
 export default {
     initDropdown,
     openDropdown,
     closeDropdown,
     toggleDropdown,
+
     isDropdownOpen,
     getActiveDropdown,
     getDropdownRoot,
+
     destroyDropdown,
     createDropdownItem,
 };
