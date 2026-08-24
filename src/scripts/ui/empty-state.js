@@ -28,12 +28,7 @@ const DEFAULT_EMPTY_MESSAGE = "Nothing to show yet.";
 // ============================================================
 
 /**
- * Resolve an element from either a DOM element or selector.
- *
- * Supports:
- * - HTMLElement
- * - Element ID
- * - CSS selector
+ * Resolve an element from either a DOM element or an element ID.
  *
  * @param {HTMLElement|string|null} target
  * @returns {HTMLElement|null}
@@ -47,33 +42,18 @@ function resolveElement(target) {
         return target;
     }
 
-    if (typeof target !== "string") {
-        return null;
+    if (typeof target === "string") {
+        return document.getElementById(target);
     }
 
-    // Preserve convenient ID-based usage.
-    const byId = document.getElementById(target);
-
-    if (byId instanceof HTMLElement) {
-        return byId;
-    }
-
-    // Also support CSS selectors.
-    try {
-        const element = document.querySelector(target);
-
-        return element instanceof HTMLElement
-            ? element
-            : null;
-    } catch {
-        return null;
-    }
+    return null;
 }
 
 /**
  * Find the text element inside an empty-state container.
  *
- * Looks for common selectors first, then falls back to the container itself.
+ * Looks for common selectors first, then falls back to the
+ * container itself.
  *
  * @param {HTMLElement} container
  * @returns {HTMLElement}
@@ -155,7 +135,7 @@ export function hideEmptyState(target) {
  * @returns {HTMLElement|null}
  */
 export function toggleEmptyState(target, show) {
-    return Boolean(show)
+    return show
         ? showEmptyState(target)
         : hideEmptyState(target);
 }
@@ -209,7 +189,8 @@ export function getEmptyStateMessage(target) {
 // ============================================================
 
 /**
- * Show or hide an empty state based on whether a collection has items.
+ * Show or hide an empty state based on whether a collection
+ * contains items.
  *
  * @param {HTMLElement|string} target
  * @param {Array} items
@@ -236,7 +217,7 @@ export function showIfEmpty(target, items) {
 }
 
 /**
- * Hide an empty state when a collection has items.
+ * Hide an empty state when a collection contains items.
  *
  * @param {HTMLElement|string} target
  * @param {Array} items
@@ -290,7 +271,6 @@ export function createEmptyState({
 
     element.appendChild(text);
 
-    // Always normalize visibility + accessibility together.
     if (hidden) {
         hideEmptyState(element);
     } else {
@@ -308,10 +288,7 @@ export function createEmptyState({
  * Initialize an existing empty-state element.
  *
  * Adds the expected accessibility attributes and optionally
- * sets its initial message/visibility.
- *
- * If `visible` is not supplied, the existing `hidden` class
- * is used to determine the accessibility state.
+ * sets its initial message and visibility.
  *
  * @param {HTMLElement|string} target
  * @param {Object} options
@@ -340,16 +317,10 @@ export function initEmptyState(
 
     if (visible !== undefined) {
         toggleEmptyState(element, visible);
+    } else if (element.classList.contains("hidden")) {
+        element.setAttribute("aria-hidden", "true");
     } else {
-        // Normalize accessibility state to match the existing
-        // visual state instead of leaving stale aria attributes.
-        const isHidden = element.classList.contains("hidden");
-
-        if (isHidden) {
-            element.setAttribute("aria-hidden", "true");
-        } else {
-            element.removeAttribute("aria-hidden");
-        }
+        element.removeAttribute("aria-hidden");
     }
 
     return element;
