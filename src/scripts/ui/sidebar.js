@@ -3,32 +3,17 @@
 /**
  * Sidebar UI
  *
- * Controls the application sidebar, with responsive mobile behavior.
- *
- * Responsibilities:
- * - Open and close the sidebar
- * - Toggle the mobile sidebar
- * - Manage the mobile backdrop
- * - Manage aria-expanded / aria-hidden state
- * - Close on backdrop click
- * - Close on Escape
- * - Close on navigation item selection on mobile
- *
- * This module does not:
- * - Manage sidebar navigation business logic
- * - Render history items
- * - Manage application state
+ * Controls the application sidebar with responsive mobile behavior.
  */
+
+import {
+    getDOM,
+    initDOM,
+} from "./dom.js";
 
 const SIDEBAR_ID = "sidebar";
 const BACKDROP_ID = "sidebar-backdrop";
 const TOGGLE_ID = "mobile-sidebar-button";
-
-const elements = {
-    sidebar: null,
-    backdrop: null,
-    toggleButton: null,
-};
 
 const state = {
     initialized: false,
@@ -38,23 +23,35 @@ const state = {
     previousActiveElement: null,
 };
 
+let sidebar = null;
+let backdrop = null;
+let toggleButton = null;
+
 // ============================================================
 // Initialization
 // ============================================================
 
-/**
- * Initialize the sidebar.
- *
- * @returns {Object} Sidebar API
- */
 export function initSidebar() {
     cleanupEvents();
 
+    /*
+     * Refresh DOM references.
+     *
+     * This is important when the application shell has
+     * been rendered or replaced dynamically.
+     */
+    initDOM(document);
+
     cacheElements();
 
-    if (!elements.sidebar) {
+    if (!sidebar) {
         state.initialized = false;
         state.open = false;
+
+        console.warn(
+            "[Sidebar] Sidebar element was not found."
+        );
+
         return createApi();
     }
 
@@ -66,16 +63,21 @@ export function initSidebar() {
     return createApi();
 }
 
-/**
- * Cache sidebar DOM elements.
- */
-function cacheElements() {
-    elements.sidebar = document.getElementById(SIDEBAR_ID);
+// ============================================================
+// DOM
+// ============================================================
 
-    elements.backdrop =
+function cacheElements() {
+    sidebar =
+        getDOM("sidebar") ||
+        document.getElementById(SIDEBAR_ID);
+
+    backdrop =
+        getDOM("sidebarBackdrop") ||
         document.getElementById(BACKDROP_ID);
 
-    elements.toggleButton =
+    toggleButton =
+        getDOM("mobileSidebarButton") ||
         document.getElementById(TOGGLE_ID);
 }
 
@@ -83,26 +85,18 @@ function cacheElements() {
 // Public API
 // ============================================================
 
-/**
- * Open the sidebar.
- *
- * On desktop the sidebar is always visible, so opening it simply
- * synchronizes the UI without creating a mobile overlay.
- *
- * @returns {boolean}
- */
 export function openSidebar() {
-    if (!elements.sidebar) {
-        cacheElements();
-    }
+    ensureElements();
 
-    if (!elements.sidebar) {
+    if (!sidebar) {
         return false;
     }
 
     if (isMobileSidebar()) {
-        state.previousActiveElement =
-            document.activeElement;
+        if (!state.open) {
+            state.previousActiveElement =
+                document.activeElement;
+        }
 
         state.open = true;
     }
@@ -112,19 +106,12 @@ export function openSidebar() {
     return true;
 }
 
-/**
- * Close the sidebar.
- *
- * @returns {boolean}
- */
 export function closeSidebar({
     restoreFocus = true,
 } = {}) {
-    if (!elements.sidebar) {
-        cacheElements();
-    }
+    ensureElements();
 
-    if (!elements.sidebar) {
+    if (!sidebar) {
         return false;
     }
 
@@ -137,21 +124,26 @@ export function closeSidebar({
 
     syncUI();
 
-    if (
-        shouldRestoreFocus &&
-        state.previousActiveElement &&
-        typeof state.previousActiveElement.focus === "function" &&
-        document.contains(state.previousActiveElement)
-    ) {
+    if (shouldRestoreFocus) {
+        const previous =
+            state.previousActiveElement;
+
         requestAnimationFrame(() => {
-            state.previousActiveElement?.focus();
-        });
-    } else if (
-        shouldRestoreFocus &&
-        elements.toggleButton
-    ) {
-        requestAnimationFrame(() => {
-            elements.toggleButton?.focus();
+            if (
+                previous &&
+                typeof previous.focus === "function" &&
+                document.contains(previous)
+            ) {
+                previous.focus();
+                return;
+            }
+
+            if (
+                toggleButton &&
+                typeof toggleButton.focus === "function"
+            ) {
+                toggleButton.focus();
+            }
         });
     }
 
@@ -160,17 +152,10 @@ export function closeSidebar({
     return true;
 }
 
-/**
- * Toggle the sidebar.
- *
- * @returns {boolean}
- */
 export function toggleSidebar() {
-    if (!elements.sidebar) {
-        cacheElements();
-    }
+    ensureElements();
 
-    if (!elements.sidebar) {
+    if (!sidebar) {
         return false;
     }
 
@@ -189,33 +174,39 @@ export function toggleSidebar() {
     return state.open;
 }
 
-/**
- * Check whether the mobile sidebar is currently open.
- *
- * @returns {boolean}
- */
 export function isSidebarOpen() {
     return Boolean(
-        state.open && isMobileSidebar()
+        state.open &&
+        isMobileSidebar()
     );
 }
 
-/**
- * Return whether the current viewport is considered mobile.
- *
- * @returns {boolean}
- */
 export function isMobileSidebar() {
-    return window.innerWidth < state.mobileBreakpoint;
+    return (
+        typeof window !== "undefined" &&
+        window.innerWidth <
+            state.mobileBreakpoint
+    );
 }
 
 // ============================================================
-// Event Binding
+// DOM Safety
 // ============================================================
 
-/**
- * Bind sidebar events.
- */
+function ensureElements() {
+    if (
+        !sidebar ||
+        !document.contains(sidebar)
+    ) {
+        initDOM(document);
+        cacheElements();
+    }
+}
+
+// ============================================================
+// Events
+// ============================================================
+
 function bindEvents() {
     cleanupEvents();
 
@@ -225,7 +216,9 @@ function bindEvents() {
     };
 
     const handleBackdropClick = (event) => {
-        if (event.target !== elements.backdrop) {
+        if (
+            event.target !== backdrop
+        ) {
             return;
         }
 
@@ -242,6 +235,7 @@ function bindEvents() {
         }
 
         event.preventDefault();
+
         closeSidebar();
     };
 
@@ -250,7 +244,10 @@ function bindEvents() {
     };
 
     const handleNavigationClick = (event) => {
-        if (!isMobileSidebar() || !state.open) {
+        if (
+            !isMobileSidebar() ||
+            !state.open
+        ) {
             return;
         }
 
@@ -260,31 +257,28 @@ function bindEvents() {
             return;
         }
 
-        const button = target.closest(
-            "button, a"
-        );
-
-        if (!button || !elements.sidebar?.contains(button)) {
-            return;
-        }
+        const button =
+            target.closest("button, a");
 
         if (
-            button === elements.toggleButton ||
-            button.closest("[data-sidebar-ignore-close]") ||
-            button.hasAttribute("data-sidebar-ignore-close")
+            !button ||
+            !sidebar?.contains(button)
         ) {
             return;
         }
 
-        /*
-         * Only close automatically for actual navigation items.
-         *
-         * Supported patterns:
-         * - <a href="...">
-         * - [data-sidebar-nav]
-         *
-         * Other sidebar controls remain usable.
-         */
+        if (
+            button === toggleButton ||
+            button.closest(
+                "[data-sidebar-ignore-close]"
+            ) ||
+            button.hasAttribute(
+                "data-sidebar-ignore-close"
+            )
+        ) {
+            return;
+        }
+
         const isNavigationItem =
             button.matches(
                 "a[href], [data-sidebar-nav]"
@@ -299,17 +293,17 @@ function bindEvents() {
         });
     };
 
-    elements.toggleButton?.addEventListener(
+    toggleButton?.addEventListener(
         "click",
         handleToggle
     );
 
-    elements.backdrop?.addEventListener(
+    backdrop?.addEventListener(
         "click",
         handleBackdropClick
     );
 
-    elements.sidebar?.addEventListener(
+    sidebar?.addEventListener(
         "click",
         handleNavigationClick
     );
@@ -325,17 +319,17 @@ function bindEvents() {
     );
 
     state.cleanup = () => {
-        elements.toggleButton?.removeEventListener(
+        toggleButton?.removeEventListener(
             "click",
             handleToggle
         );
 
-        elements.backdrop?.removeEventListener(
+        backdrop?.removeEventListener(
             "click",
             handleBackdropClick
         );
 
-        elements.sidebar?.removeEventListener(
+        sidebar?.removeEventListener(
             "click",
             handleNavigationClick
         );
@@ -352,9 +346,6 @@ function bindEvents() {
     };
 }
 
-/**
- * Remove previously bound events.
- */
 function cleanupEvents() {
     if (state.cleanup) {
         state.cleanup();
@@ -366,27 +357,21 @@ function cleanupEvents() {
 // UI Synchronization
 // ============================================================
 
-/**
- * Synchronize sidebar state with the DOM.
- */
 function syncUI() {
-    if (!elements.sidebar) {
+    ensureElements();
+
+    if (!sidebar) {
         return;
     }
 
     const mobile = isMobileSidebar();
 
     if (!mobile) {
-        /*
-         * Desktop sidebar is always visible.
-         *
-         * Reset the mobile state here so switching back to mobile
-         * does not unexpectedly reopen an old mobile session.
-         */
         state.open = false;
         state.previousActiveElement = null;
 
         showDesktopSidebar();
+
         return;
     }
 
@@ -401,44 +386,44 @@ function syncUI() {
 // Desktop
 // ============================================================
 
-/**
- * Show sidebar on desktop.
- */
 function showDesktopSidebar() {
-    elements.sidebar.classList.remove("hidden");
-    elements.sidebar.classList.add("flex");
+    sidebar.hidden = false;
 
-    elements.sidebar.setAttribute(
+    sidebar.classList.remove("hidden");
+    sidebar.classList.add("flex");
+
+    sidebar.setAttribute(
         "aria-hidden",
         "false"
     );
 
-    elements.backdrop?.classList.add("hidden");
+    if (backdrop) {
+        backdrop.hidden = true;
+        backdrop.classList.add("hidden");
 
-    elements.backdrop?.setAttribute(
-        "aria-hidden",
-        "true"
-    );
+        backdrop.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+    }
 
-    elements.toggleButton?.setAttribute(
-        "aria-expanded",
-        "false"
-    );
+    if (toggleButton) {
+        toggleButton.setAttribute(
+            "aria-expanded",
+            "false"
+        );
 
-    elements.toggleButton?.setAttribute(
-        "aria-label",
-        "Open navigation"
-    );
+        toggleButton.setAttribute(
+            "aria-label",
+            "Open navigation"
+        );
 
-    elements.toggleButton?.setAttribute(
-        "title",
-        "Open navigation"
-    );
+        toggleButton.setAttribute(
+            "title",
+            "Open navigation"
+        );
+    }
 
-    /*
-     * Critical:
-     * Desktop must never inherit the mobile scroll lock.
-     */
     document.body.classList.remove(
         "overflow-hidden"
     );
@@ -448,78 +433,86 @@ function showDesktopSidebar() {
 // Mobile
 // ============================================================
 
-/**
- * Show sidebar on mobile.
- */
 function showMobileSidebar() {
-    elements.sidebar.classList.remove("hidden");
-    elements.sidebar.classList.add("flex");
+    sidebar.hidden = false;
 
-    elements.sidebar.setAttribute(
+    sidebar.classList.remove("hidden");
+    sidebar.classList.add("flex");
+
+    sidebar.setAttribute(
         "aria-hidden",
         "false"
     );
 
-    elements.backdrop?.classList.remove("hidden");
+    if (backdrop) {
+        backdrop.hidden = false;
+        backdrop.classList.remove("hidden");
 
-    elements.backdrop?.setAttribute(
-        "aria-hidden",
-        "false"
-    );
+        backdrop.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+    }
 
-    elements.toggleButton?.setAttribute(
-        "aria-expanded",
-        "true"
-    );
+    if (toggleButton) {
+        toggleButton.setAttribute(
+            "aria-expanded",
+            "true"
+        );
 
-    elements.toggleButton?.setAttribute(
-        "aria-label",
-        "Close navigation"
-    );
+        toggleButton.setAttribute(
+            "aria-label",
+            "Close navigation"
+        );
 
-    elements.toggleButton?.setAttribute(
-        "title",
-        "Close navigation"
-    );
+        toggleButton.setAttribute(
+            "title",
+            "Close navigation"
+        );
+    }
 
     document.body.classList.add(
         "overflow-hidden"
     );
 }
 
-/**
- * Hide sidebar on mobile.
- */
 function hideMobileSidebar() {
-    elements.sidebar.classList.add("hidden");
-    elements.sidebar.classList.remove("flex");
+    sidebar.hidden = true;
 
-    elements.sidebar.setAttribute(
+    sidebar.classList.add("hidden");
+    sidebar.classList.remove("flex");
+
+    sidebar.setAttribute(
         "aria-hidden",
         "true"
     );
 
-    elements.backdrop?.classList.add("hidden");
+    if (backdrop) {
+        backdrop.hidden = true;
+        backdrop.classList.add("hidden");
 
-    elements.backdrop?.setAttribute(
-        "aria-hidden",
-        "true"
-    );
+        backdrop.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+    }
 
-    elements.toggleButton?.setAttribute(
-        "aria-expanded",
-        "false"
-    );
+    if (toggleButton) {
+        toggleButton.setAttribute(
+            "aria-expanded",
+            "false"
+        );
 
-    elements.toggleButton?.setAttribute(
-        "aria-label",
-        "Open navigation"
-    );
+        toggleButton.setAttribute(
+            "aria-label",
+            "Open navigation"
+        );
 
-    elements.toggleButton?.setAttribute(
-        "title",
-        "Open navigation"
-    );
+        toggleButton.setAttribute(
+            "title",
+            "Open navigation"
+        );
+    }
 
     document.body.classList.remove(
         "overflow-hidden"
@@ -527,21 +520,18 @@ function hideMobileSidebar() {
 }
 
 // ============================================================
-// Focus Management
+// Focus
 // ============================================================
 
-/**
- * Focus the first useful element inside the sidebar.
- *
- * @returns {boolean}
- */
 export function focusSidebar() {
-    if (!elements.sidebar) {
+    ensureElements();
+
+    if (!sidebar) {
         return false;
     }
 
     const target =
-        elements.sidebar.querySelector(
+        sidebar.querySelector(
             [
                 "button:not([disabled])",
                 "a[href]",
@@ -561,12 +551,9 @@ export function focusSidebar() {
     return true;
 }
 
-/**
- * Open the sidebar and move focus into it.
- *
- * @returns {boolean}
- */
 export function openSidebarAndFocus() {
+    ensureElements();
+
     if (!isMobileSidebar()) {
         openSidebar();
         return true;
@@ -588,14 +575,9 @@ export function openSidebarAndFocus() {
 }
 
 // ============================================================
-// Breakpoint Configuration
+// Breakpoint
 // ============================================================
 
-/**
- * Set the mobile breakpoint.
- *
- * @param {number} breakpoint
- */
 export function setSidebarBreakpoint(
     breakpoint
 ) {
@@ -613,11 +595,6 @@ export function setSidebarBreakpoint(
     syncUI();
 }
 
-/**
- * Get the current mobile breakpoint.
- *
- * @returns {number}
- */
 export function getSidebarBreakpoint() {
     return state.mobileBreakpoint;
 }
@@ -626,11 +603,6 @@ export function getSidebarBreakpoint() {
 // Destroy
 // ============================================================
 
-/**
- * Destroy the sidebar controller.
- *
- * Useful if the application shell is replaced dynamically.
- */
 export function destroySidebar() {
     cleanupEvents();
 
@@ -642,9 +614,9 @@ export function destroySidebar() {
     state.open = false;
     state.previousActiveElement = null;
 
-    elements.sidebar = null;
-    elements.backdrop = null;
-    elements.toggleButton = null;
+    sidebar = null;
+    backdrop = null;
+    toggleButton = null;
 }
 
 // ============================================================
