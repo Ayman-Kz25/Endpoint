@@ -3,19 +3,20 @@
 /**
  * Editor Configuration
  *
- * Centralizes configuration used by the request/response editors.
+ * Centralizes configuration used by request and response editors.
  *
  * Responsibilities:
- * - Provide editor defaults
  * - Define supported editor modes
- * - Provide syntax highlighting configuration
- * - Keep editor-related constants out of UI modules
+ * - Provide editor defaults
+ * - Map HTTP/content metadata to editor modes
+ * - Build request/response editor configuration
+ * - Provide shared editor selectors
  *
  * This module does not:
  * - manipulate the DOM
- * - manage editor instances
+ * - create or manage editor instances
  * - update application state
- * - execute requests
+ * - execute HTTP requests
  */
 
 // ============================================================
@@ -23,14 +24,14 @@
 // ============================================================
 
 export const EDITOR_MODES = Object.freeze({
-  TEXT: "text",
-  JSON: "json",
-  JAVASCRIPT: "javascript",
-  HTML: "html",
-  CSS: "css",
-  XML: "xml",
-  SQL: "sql",
-  MARKDOWN: "markdown",
+    TEXT: "text",
+    JSON: "json",
+    JAVASCRIPT: "javascript",
+    HTML: "html",
+    CSS: "css",
+    XML: "xml",
+    SQL: "sql",
+    MARKDOWN: "markdown",
 });
 
 // ============================================================
@@ -38,8 +39,8 @@ export const EDITOR_MODES = Object.freeze({
 // ============================================================
 
 export const EDITOR_TYPES = Object.freeze({
-  REQUEST_BODY: "request-body",
-  RESPONSE_BODY: "response-body",
+    REQUEST_BODY: "request-body",
+    RESPONSE_BODY: "response-body",
 });
 
 // ============================================================
@@ -47,15 +48,15 @@ export const EDITOR_TYPES = Object.freeze({
 // ============================================================
 
 export const EDITOR_DEFAULTS = Object.freeze({
-  mode: EDITOR_MODES.TEXT,
-  tabSize: 2,
-  indentUnit: 2,
-  lineNumbers: true,
-  lineWrapping: true,
-  readOnly: false,
-  autofocus: false,
-  cursorBlinkRate: 530,
-  viewportMargin: Infinity,
+    mode: EDITOR_MODES.TEXT,
+    tabSize: 2,
+    indentUnit: 2,
+    lineNumbers: true,
+    lineWrapping: true,
+    readOnly: false,
+    autofocus: false,
+    cursorBlinkRate: 530,
+    viewportMargin: Infinity,
 });
 
 // ============================================================
@@ -63,15 +64,15 @@ export const EDITOR_DEFAULTS = Object.freeze({
 // ============================================================
 
 export const REQUEST_EDITOR_CONFIG = Object.freeze({
-  ...EDITOR_DEFAULTS,
+    ...EDITOR_DEFAULTS,
 
-  type: EDITOR_TYPES.REQUEST_BODY,
+    type: EDITOR_TYPES.REQUEST_BODY,
 
-  readOnly: false,
+    mode: EDITOR_MODES.TEXT,
 
-  placeholder: "Enter request body...",
+    readOnly: false,
 
-  mode: EDITOR_MODES.TEXT,
+    placeholder: "Enter request body...",
 });
 
 // ============================================================
@@ -79,30 +80,30 @@ export const REQUEST_EDITOR_CONFIG = Object.freeze({
 // ============================================================
 
 export const RESPONSE_EDITOR_CONFIG = Object.freeze({
-  ...EDITOR_DEFAULTS,
+    ...EDITOR_DEFAULTS,
 
-  type: EDITOR_TYPES.RESPONSE_BODY,
+    type: EDITOR_TYPES.RESPONSE_BODY,
 
-  readOnly: true,
+    mode: EDITOR_MODES.TEXT,
 
-  placeholder: "Response body will appear here...",
+    readOnly: true,
 
-  mode: EDITOR_MODES.TEXT,
+    placeholder: "Response body will appear here...",
 });
 
 // ============================================================
-// Language / MIME Type Mapping
+// MIME Types
 // ============================================================
 
 export const MIME_TYPES = Object.freeze({
-  JSON: "application/json",
-  JAVASCRIPT: "application/javascript",
-  HTML: "text/html",
-  CSS: "text/css",
-  XML: "application/xml",
-  TEXT: "text/plain",
-  SQL: "application/sql",
-  FORM_URLENCODED: "application/x-www-form-urlencoded",
+    JSON: "application/json",
+    JAVASCRIPT: "application/javascript",
+    HTML: "text/html",
+    CSS: "text/css",
+    XML: "application/xml",
+    TEXT: "text/plain",
+    SQL: "application/sql",
+    FORM_URLENCODED: "application/x-www-form-urlencoded",
 });
 
 // ============================================================
@@ -110,24 +111,40 @@ export const MIME_TYPES = Object.freeze({
 // ============================================================
 
 const MIME_MODE_MAP = Object.freeze({
-  [MIME_TYPES.JSON]: EDITOR_MODES.JSON,
-  "application/ld+json": EDITOR_MODES.JSON,
-  "application/problem+json": EDITOR_MODES.JSON,
+    // JSON
+    "application/json": EDITOR_MODES.JSON,
+    "application/ld+json": EDITOR_MODES.JSON,
+    "application/problem+json": EDITOR_MODES.JSON,
+    "application/geo+json": EDITOR_MODES.JSON,
+    "application/manifest+json": EDITOR_MODES.JSON,
 
-  [MIME_TYPES.JAVASCRIPT]: EDITOR_MODES.JAVASCRIPT,
-  "text/javascript": EDITOR_MODES.JAVASCRIPT,
+    // JavaScript
+    "application/javascript": EDITOR_MODES.JAVASCRIPT,
+    "application/x-javascript": EDITOR_MODES.JAVASCRIPT,
+    "text/javascript": EDITOR_MODES.JAVASCRIPT,
+    "text/ecmascript": EDITOR_MODES.JAVASCRIPT,
+    "application/ecmascript": EDITOR_MODES.JAVASCRIPT,
 
-  [MIME_TYPES.HTML]: EDITOR_MODES.HTML,
-  "application/xhtml+xml": EDITOR_MODES.HTML,
+    // HTML
+    "text/html": EDITOR_MODES.HTML,
+    "application/xhtml+xml": EDITOR_MODES.HTML,
 
-  [MIME_TYPES.CSS]: EDITOR_MODES.CSS,
+    // CSS
+    "text/css": EDITOR_MODES.CSS,
 
-  [MIME_TYPES.XML]: EDITOR_MODES.XML,
-  "text/xml": EDITOR_MODES.XML,
+    // XML
+    "application/xml": EDITOR_MODES.XML,
+    "text/xml": EDITOR_MODES.XML,
+    "application/rss+xml": EDITOR_MODES.XML,
+    "application/atom+xml": EDITOR_MODES.XML,
+    "image/svg+xml": EDITOR_MODES.XML,
 
-  [MIME_TYPES.SQL]: EDITOR_MODES.SQL,
+    // SQL
+    "application/sql": EDITOR_MODES.SQL,
+    "text/x-sql": EDITOR_MODES.SQL,
 
-  [MIME_TYPES.TEXT]: EDITOR_MODES.TEXT,
+    // Plain text
+    "text/plain": EDITOR_MODES.TEXT,
 });
 
 // ============================================================
@@ -135,40 +152,55 @@ const MIME_MODE_MAP = Object.freeze({
 // ============================================================
 
 const EXTENSION_MODE_MAP = Object.freeze({
-  json: EDITOR_MODES.JSON,
-  jsonc: EDITOR_MODES.JSON,
+    // JSON
+    json: EDITOR_MODES.JSON,
+    jsonc: EDITOR_MODES.JSON,
 
-  js: EDITOR_MODES.JAVASCRIPT,
-  mjs: EDITOR_MODES.JAVASCRIPT,
-  cjs: EDITOR_MODES.JAVASCRIPT,
+    // JavaScript
+    js: EDITOR_MODES.JAVASCRIPT,
+    mjs: EDITOR_MODES.JAVASCRIPT,
+    cjs: EDITOR_MODES.JAVASCRIPT,
+    jsx: EDITOR_MODES.JAVASCRIPT,
 
-  html: EDITOR_MODES.HTML,
-  htm: EDITOR_MODES.HTML,
+    // HTML
+    html: EDITOR_MODES.HTML,
+    htm: EDITOR_MODES.HTML,
+    xhtml: EDITOR_MODES.HTML,
 
-  css: EDITOR_MODES.CSS,
+    // CSS
+    css: EDITOR_MODES.CSS,
 
-  xml: EDITOR_MODES.XML,
-  svg: EDITOR_MODES.XML,
+    // XML
+    xml: EDITOR_MODES.XML,
+    xsd: EDITOR_MODES.XML,
+    xsl: EDITOR_MODES.XML,
+    xslt: EDITOR_MODES.XML,
+    svg: EDITOR_MODES.XML,
 
-  sql: EDITOR_MODES.SQL,
+    // SQL
+    sql: EDITOR_MODES.SQL,
 
-  md: EDITOR_MODES.MARKDOWN,
-  markdown: EDITOR_MODES.MARKDOWN,
+    // Markdown
+    md: EDITOR_MODES.MARKDOWN,
+    markdown: EDITOR_MODES.MARKDOWN,
 
-  txt: EDITOR_MODES.TEXT,
+    // Text
+    txt: EDITOR_MODES.TEXT,
 });
 
 // ============================================================
-// Method -> Suggested Body Mode
+// HTTP Method -> Suggested Body Mode
 // ============================================================
 
 const METHOD_MODE_MAP = Object.freeze({
-  GET: EDITOR_MODES.TEXT,
-  HEAD: EDITOR_MODES.TEXT,
-  POST: EDITOR_MODES.JSON,
-  PUT: EDITOR_MODES.JSON,
-  PATCH: EDITOR_MODES.JSON,
-  DELETE: EDITOR_MODES.JSON,
+    GET: EDITOR_MODES.TEXT,
+    HEAD: EDITOR_MODES.TEXT,
+
+    POST: EDITOR_MODES.JSON,
+    PUT: EDITOR_MODES.JSON,
+    PATCH: EDITOR_MODES.JSON,
+
+    DELETE: EDITOR_MODES.JSON,
 });
 
 // ============================================================
@@ -178,27 +210,33 @@ const METHOD_MODE_MAP = Object.freeze({
 /**
  * Check whether an editor mode is supported.
  *
- * @param {string} mode
+ * @param {unknown} mode
  * @returns {boolean}
  */
 export function isSupportedEditorMode(mode) {
-  return Object.values(EDITOR_MODES).includes(mode);
+    return Object.values(EDITOR_MODES).includes(mode);
 }
 
 /**
  * Normalize an editor mode.
  *
- * @param {string} mode
+ * @param {unknown} mode
  * @returns {string}
  */
 export function normalizeEditorMode(mode) {
-  if (!mode || typeof mode !== "string") {
-    return EDITOR_MODES.TEXT;
-  }
+    if (typeof mode !== "string") {
+        return EDITOR_MODES.TEXT;
+    }
 
-  const normalized = mode.trim().toLowerCase();
+    const normalized = mode.trim().toLowerCase();
 
-  return isSupportedEditorMode(normalized) ? normalized : EDITOR_MODES.TEXT;
+    if (!normalized) {
+        return EDITOR_MODES.TEXT;
+    }
+
+    return isSupportedEditorMode(normalized)
+        ? normalized
+        : EDITOR_MODES.TEXT;
 }
 
 // ============================================================
@@ -208,62 +246,139 @@ export function normalizeEditorMode(mode) {
 /**
  * Normalize a Content-Type value.
  *
- * Handles values such as:
+ * Examples:
  * application/json; charset=utf-8
+ * TEXT/HTML
  *
- * @param {string} contentType
+ * @param {unknown} contentType
  * @returns {string}
  */
 export function normalizeContentType(contentType = "") {
-  if (!contentType || typeof contentType !== "string") {
-    return "";
-  }
+    if (typeof contentType !== "string") {
+        return "";
+    }
 
-  return contentType.split(";")[0].trim().toLowerCase();
+    return contentType
+        .split(";", 1)[0]
+        .trim()
+        .toLowerCase();
 }
 
 /**
- * Get the editor mode for a MIME type.
+ * Get the editor mode from a MIME type.
  *
- * @param {string} contentType
+ * @param {unknown} contentType
  * @returns {string}
  */
 export function getModeFromContentType(contentType) {
-  const normalized = normalizeContentType(contentType);
+    const normalized =
+        normalizeContentType(contentType);
 
-  if (!normalized) {
+    if (!normalized) {
+        return EDITOR_MODES.TEXT;
+    }
+
+    const exactMode =
+        MIME_MODE_MAP[normalized];
+
+    if (exactMode) {
+        return exactMode;
+    }
+
+    /*
+     * Structured syntax suffixes are common for API responses.
+     *
+     * Examples:
+     * application/vnd.api+json
+     * application/custom+xml
+     */
+    if (normalized.endsWith("+json")) {
+        return EDITOR_MODES.JSON;
+    }
+
+    if (normalized.endsWith("+xml")) {
+        return EDITOR_MODES.XML;
+    }
+
     return EDITOR_MODES.TEXT;
-  }
-
-  return MIME_MODE_MAP[normalized] || EDITOR_MODES.TEXT;
 }
 
 // ============================================================
-// Extension Helpers
+// Filename Helpers
 // ============================================================
 
 /**
- * Get the editor mode from a file name or extension.
+ * Remove URL query/hash information from a filename.
  *
  * @param {string} filename
  * @returns {string}
  */
+function cleanFilename(filename) {
+    return filename
+        .split(/[?#]/, 1)[0]
+        .trim()
+        .toLowerCase();
+}
+
+/**
+ * Get the final file extension.
+ *
+ * @param {string} filename
+ * @returns {string}
+ */
+function getFileExtension(filename) {
+    const cleanName = cleanFilename(filename);
+
+    if (!cleanName) {
+        return "";
+    }
+
+    const lastSlash =
+        Math.max(
+            cleanName.lastIndexOf("/"),
+            cleanName.lastIndexOf("\\"),
+        );
+
+    const basename =
+        cleanName.slice(lastSlash + 1);
+
+    const lastDot =
+        basename.lastIndexOf(".");
+
+    if (
+        lastDot <= 0 ||
+        lastDot === basename.length - 1
+    ) {
+        return "";
+    }
+
+    return basename
+        .slice(lastDot + 1)
+        .toLowerCase();
+}
+
+/**
+ * Get the editor mode from a filename or extension.
+ *
+ * @param {unknown} filename
+ * @returns {string}
+ */
 export function getModeFromFilename(filename = "") {
-  if (!filename || typeof filename !== "string") {
-    return EDITOR_MODES.TEXT;
-  }
+    if (typeof filename !== "string") {
+        return EDITOR_MODES.TEXT;
+    }
 
-  const cleanName = filename.split("?")[0].split("#")[0].trim().toLowerCase();
+    const extension =
+        getFileExtension(filename);
 
-  const parts = cleanName.split(".");
+    if (!extension) {
+        return EDITOR_MODES.TEXT;
+    }
 
-  if (parts.length < 2) {
-    return EDITOR_MODES.TEXT;
-  }
-
-  const extension = parts.pop();
-
-  return EXTENSION_MODE_MAP[extension] || EDITOR_MODES.TEXT;
+    return (
+        EXTENSION_MODE_MAP[extension] ||
+        EDITOR_MODES.TEXT
+    );
 }
 
 // ============================================================
@@ -271,19 +386,30 @@ export function getModeFromFilename(filename = "") {
 // ============================================================
 
 /**
- * Get a sensible editor mode for an HTTP method.
+ * Get the suggested editor mode for an HTTP method.
  *
- * @param {string} method
+ * This is a suggestion only. Explicit content-type or editor-mode
+ * information should take precedence when available.
+ *
+ * @param {unknown} method
  * @returns {string}
  */
 export function getModeFromMethod(method) {
-  if (!method || typeof method !== "string") {
-    return EDITOR_MODES.TEXT;
-  }
+    if (typeof method !== "string") {
+        return EDITOR_MODES.TEXT;
+    }
 
-  const normalizedMethod = method.trim().toUpperCase();
+    const normalized =
+        method.trim().toUpperCase();
 
-  return METHOD_MODE_MAP[normalizedMethod] || EDITOR_MODES.TEXT;
+    if (!normalized) {
+        return EDITOR_MODES.TEXT;
+    }
+
+    return (
+        METHOD_MODE_MAP[normalized] ||
+        EDITOR_MODES.TEXT
+    );
 }
 
 // ============================================================
@@ -291,36 +417,52 @@ export function getModeFromMethod(method) {
 // ============================================================
 
 /**
- * Detect whether text looks like JSON.
+ * Detect whether a value contains valid JSON.
  *
- * @param {string} value
+ * @param {unknown} value
  * @returns {boolean}
  */
 export function looksLikeJson(value) {
-  if (!value || typeof value !== "string") {
-    return false;
-  }
+    if (typeof value !== "string") {
+        return false;
+    }
 
-  const trimmed = value.trim();
+    const trimmed = value.trim();
 
-  if (!trimmed) {
-    return false;
-  }
+    if (!trimmed) {
+        return false;
+    }
 
-  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
-    return false;
-  }
+    const firstCharacter =
+        trimmed[0];
 
-  try {
-    JSON.parse(trimmed);
-    return true;
-  } catch {
-    return false;
-  }
+    if (
+        firstCharacter !== "{" &&
+        firstCharacter !== "["
+    ) {
+        return false;
+    }
+
+    try {
+        JSON.parse(trimmed);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
+// ============================================================
+// Editor Mode Detection
+// ============================================================
+
 /**
- * Detect a reasonable editor mode from response content.
+ * Detect a suitable editor mode from response metadata/content.
+ *
+ * Priority:
+ * 1. Content-Type
+ * 2. Filename
+ * 3. JSON content detection
+ * 4. Plain text
  *
  * @param {Object} options
  * @param {string} [options.contentType]
@@ -329,27 +471,37 @@ export function looksLikeJson(value) {
  * @returns {string}
  */
 export function detectEditorMode({
-  contentType = "",
-  filename = "",
-  value = "",
+    contentType = "",
+    filename = "",
+    value = "",
 } = {}) {
-  const contentMode = getModeFromContentType(contentType);
+    const contentTypeMode =
+        getModeFromContentType(
+            contentType,
+        );
 
-  if (contentMode !== EDITOR_MODES.TEXT) {
-    return contentMode;
-  }
+    if (
+        contentTypeMode !==
+        EDITOR_MODES.TEXT
+    ) {
+        return contentTypeMode;
+    }
 
-  const filenameMode = getModeFromFilename(filename);
+    const filenameMode =
+        getModeFromFilename(filename);
 
-  if (filenameMode !== EDITOR_MODES.TEXT) {
-    return filenameMode;
-  }
+    if (
+        filenameMode !==
+        EDITOR_MODES.TEXT
+    ) {
+        return filenameMode;
+    }
 
-  if (looksLikeJson(value)) {
-    return EDITOR_MODES.JSON;
-  }
+    if (looksLikeJson(value)) {
+        return EDITOR_MODES.JSON;
+    }
 
-  return EDITOR_MODES.TEXT;
+    return EDITOR_MODES.TEXT;
 }
 
 // ============================================================
@@ -357,32 +509,71 @@ export function detectEditorMode({
 // ============================================================
 
 /**
- * Create request-editor configuration.
+ * Create a request-editor configuration.
+ *
+ * Explicit options override the defaults.
  *
  * @param {Object} options
  * @returns {Object}
  */
-export function getRequestEditorConfig(options = {}) {
-  return {
-    ...REQUEST_EDITOR_CONFIG,
-    ...options,
-    mode: normalizeEditorMode(options.mode || REQUEST_EDITOR_CONFIG.mode),
-  };
+export function getRequestEditorConfig(
+    options = {},
+) {
+    const safeOptions =
+        options &&
+        typeof options === "object"
+            ? options
+            : {};
+
+    return {
+        ...REQUEST_EDITOR_CONFIG,
+        ...safeOptions,
+
+        type: EDITOR_TYPES.REQUEST_BODY,
+
+        mode: normalizeEditorMode(
+            safeOptions.mode ??
+                REQUEST_EDITOR_CONFIG.mode,
+        ),
+    };
 }
 
 /**
- * Create response-editor configuration.
+ * Create a response-editor configuration.
+ *
+ * Response editors are read-only by default, but an explicit
+ * readOnly option may override that behavior.
  *
  * @param {Object} options
  * @returns {Object}
  */
-export function getResponseEditorConfig(options = {}) {
-  return {
-    ...RESPONSE_EDITOR_CONFIG,
-    ...options,
-    mode: normalizeEditorMode(options.mode || RESPONSE_EDITOR_CONFIG.mode),
-    readOnly: options.readOnly !== undefined ? Boolean(options.readOnly) : true,
-  };
+export function getResponseEditorConfig(
+    options = {},
+) {
+    const safeOptions =
+        options &&
+        typeof options === "object"
+            ? options
+            : {};
+
+    return {
+        ...RESPONSE_EDITOR_CONFIG,
+        ...safeOptions,
+
+        type: EDITOR_TYPES.RESPONSE_BODY,
+
+        mode: normalizeEditorMode(
+            safeOptions.mode ??
+                RESPONSE_EDITOR_CONFIG.mode,
+        ),
+
+        readOnly:
+            safeOptions.readOnly === undefined
+                ? RESPONSE_EDITOR_CONFIG.readOnly
+                : Boolean(
+                      safeOptions.readOnly,
+                  ),
+    };
 }
 
 /**
@@ -391,48 +582,63 @@ export function getResponseEditorConfig(options = {}) {
  * @param {Object} options
  * @returns {Object}
  */
-export function getEditorConfig(options = {}) {
-  return {
-    ...EDITOR_DEFAULTS,
-    ...options,
-    mode: normalizeEditorMode(options.mode || EDITOR_DEFAULTS.mode),
-  };
+export function getEditorConfig(
+    options = {},
+) {
+    const safeOptions =
+        options &&
+        typeof options === "object"
+            ? options
+            : {};
+
+    return {
+        ...EDITOR_DEFAULTS,
+        ...safeOptions,
+
+        mode: normalizeEditorMode(
+            safeOptions.mode ??
+                EDITOR_DEFAULTS.mode,
+        ),
+    };
 }
 
 // ============================================================
-// Editor DOM Defaults
+// Editor DOM Selectors
 // ============================================================
 
 export const EDITOR_SELECTORS = Object.freeze({
-  requestBody: "#request-body",
-  responseBody: "#response-body",
-  requestEditor: "#request-editor",
-  responseEditor: "#response-editor",
+    requestBody: "#request-body",
+    responseBody: "#response-body",
+    requestEditor: "#request-editor",
+    responseEditor: "#response-editor",
 });
 
 // ============================================================
-// Exports
+// Default Export
 // ============================================================
 
 export default {
-  EDITOR_MODES,
-  EDITOR_TYPES,
-  EDITOR_DEFAULTS,
-  REQUEST_EDITOR_CONFIG,
-  RESPONSE_EDITOR_CONFIG,
-  MIME_TYPES,
-  EDITOR_SELECTORS,
+    EDITOR_MODES,
+    EDITOR_TYPES,
+    EDITOR_DEFAULTS,
+    REQUEST_EDITOR_CONFIG,
+    RESPONSE_EDITOR_CONFIG,
+    MIME_TYPES,
+    EDITOR_SELECTORS,
 
-  isSupportedEditorMode,
-  normalizeEditorMode,
-  normalizeContentType,
-  getModeFromContentType,
-  getModeFromFilename,
-  getModeFromMethod,
-  looksLikeJson,
-  detectEditorMode,
+    isSupportedEditorMode,
+    normalizeEditorMode,
 
-  getRequestEditorConfig,
-  getResponseEditorConfig,
-  getEditorConfig,
+    normalizeContentType,
+    getModeFromContentType,
+
+    getModeFromFilename,
+    getModeFromMethod,
+
+    looksLikeJson,
+    detectEditorMode,
+
+    getRequestEditorConfig,
+    getResponseEditorConfig,
+    getEditorConfig,
 };
