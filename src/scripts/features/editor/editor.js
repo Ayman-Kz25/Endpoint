@@ -3,21 +3,31 @@
 /**
  * Editor Feature
  *
- * Manages editable code/content areas used by the application.
+ * Manages an editor content area and its associated controls.
  *
  * Responsibilities:
- * - Initialize editor controls
+ * - Initialize the editor UI
  * - Read and write editor content
+ * - Handle editor keyboard interactions
  * - Handle formatting
  * - Handle copy and clear actions
- * - Keep editor UI synchronized
+ * - Track editor metadata
+ * - Track the selected editor language
  *
  * This module does not:
  * - execute HTTP requests
  * - manage application state globally
  * - render API responses
  * - show toast notifications
+ * - define editor configuration
  */
+
+import {
+    EDITOR_MODES,
+    EDITOR_DEFAULTS,
+    EDITOR_SELECTORS,
+    normalizeEditorMode,
+} from "./editor-config.js";
 
 // ============================================================
 // DOM References
@@ -38,6 +48,7 @@ const elements = {
 // ============================================================
 
 let editorValue = "";
+let editorLanguage = EDITOR_MODES.TEXT;
 let initialized = false;
 
 // ============================================================
@@ -47,23 +58,47 @@ let initialized = false;
 /**
  * Initialize the editor.
  *
+ * Calling initEditor() more than once is safe. Existing event
+ * listeners are not registered repeatedly.
+ *
  * @param {Object} [options]
- * @param {string} [options.initialValue=""]
+ * @param {string} [options.initialValue]
+ * @param {string} [options.mode]
+ * @param {string} [options.language]
  * @returns {Object} Editor API
  */
 export function initEditor(options = {}) {
     cacheElements();
-    bindEvents();
 
-    initialized = true;
+    if (!initialized) {
+        bindEvents();
+        initialized = true;
+    }
 
     if (typeof options.initialValue === "string") {
         setEditorValue(options.initialValue);
     } else {
         syncFromUI();
-        updateEditorMeta();
     }
 
+    const requestedLanguage =
+        options.language ??
+        options.mode ??
+        getEditorLanguage();
+
+    setEditorLanguage(requestedLanguage);
+
+    updateEditorMeta();
+
+    return createEditorApi();
+}
+
+/**
+ * Create the public editor API.
+ *
+ * @returns {Object}
+ */
+function createEditorApi() {
     return {
         getValue,
         setValue: setEditorValue,
@@ -74,6 +109,10 @@ export function initEditor(options = {}) {
         syncFromUI,
         syncToUI,
         isEmpty: isEditorEmpty,
+        getStats: getEditorStats,
+        setLanguage: setEditorLanguage,
+        getLanguage: getEditorLanguage,
+        isInitialized: isEditorInitialized,
     };
 }
 
@@ -82,56 +121,87 @@ export function initEditor(options = {}) {
 // ============================================================
 
 /**
- * Cache editor DOM elements.
+ * Cache editor-related DOM elements.
  */
 function cacheElements() {
-    elements.editor =
-        document.getElementById("code-editor") ||
-        document.querySelector("[data-editor]");
+    elements.editor = findElement(
+        EDITOR_SELECTORS.requestEditor,
+        EDITOR_SELECTORS.requestBody,
+        "[data-editor]",
+    );
 
-    elements.copyButton =
-        document.getElementById("editor-copy") ||
-        document.querySelector("[data-editor-copy]");
+    elements.copyButton = findElement(
+        "#editor-copy",
+        "[data-editor-copy]",
+    );
 
-    elements.clearButton =
-        document.getElementById("editor-clear") ||
-        document.querySelector("[data-editor-clear]");
+    elements.clearButton = findElement(
+        "#editor-clear",
+        "[data-editor-clear]",
+    );
 
-    elements.formatButton =
-        document.getElementById("editor-format") ||
-        document.querySelector("[data-editor-format]");
+    elements.formatButton = findElement(
+        "#editor-format",
+        "[data-editor-format]",
+    );
 
-    elements.language =
-        document.getElementById("editor-language") ||
-        document.querySelector("[data-editor-language]");
+    elements.language = findElement(
+        "#editor-language",
+        "[data-editor-language]",
+    );
 
-    elements.characterCount =
-        document.getElementById("editor-character-count") ||
-        document.querySelector("[data-editor-character-count]");
+    elements.characterCount = findElement(
+        "#editor-character-count",
+        "[data-editor-character-count]",
+    );
 
-    elements.lineCount =
-        document.getElementById("editor-line-count") ||
-        document.querySelector("[data-editor-line-count]");
+    elements.lineCount = findElement(
+        "#editor-line-count",
+        "[data-editor-line-count]",
+    );
 }
+
+/**
+ * Find the first matching element.
+ *
+ * @param {...string} selectors
+ * @returns {Element|null}
+ */
+function findElement(...selectors) {
+    for (const selector of selectors) {
+        if (!selector) {
+            continue;
+        }
+
+        const element = document.querySelector(selector);
+
+        if (element) {
+            return element;
+        }
+    }
+
+    return null;
+}
+
+// ============================================================
+// Events
+// ============================================================
 
 /**
  * Bind editor events.
  */
 function bindEvents() {
-    if (!elements.editor) {
-        return;
+    if (elements.editor) {
+        elements.editor.addEventListener(
+            "input",
+            handleEditorInput,
+        );
+
+        elements.editor.addEventListener(
+            "keydown",
+            handleEditorKeydown,
+        );
     }
-
-    elements.editor.addEventListener("input", handleEditorInput);
-
-    elements.editor.addEventListener("keydown", handleEditorKeydown);
-
-    elements.editor.addEventListener("paste", () => {
-        requestAnimationFrame(() => {
-            syncFromUI();
-            updateEditorMeta();
-        });
-    });
 
     if (elements.copyButton) {
         elements.copyButton.addEventListener(
@@ -155,10 +225,6 @@ function bindEvents() {
     }
 }
 
-// ============================================================
-// Event Handlers
-// ============================================================
-
 /**
  * Handle editor input.
  *
@@ -175,18 +241,18 @@ function handleEditorInput(event) {
  * @param {KeyboardEvent} event
  */
 function handleEditorKeydown(event) {
-    if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "s"
-    ) {
+    const modifierPressed = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+
+    if (modifierPressed && key === "s") {
         event.preventDefault();
         return;
     }
 
     if (
-        (event.ctrlKey || event.metaKey) &&
+        modifierPressed &&
         event.shiftKey &&
-        event.key.toLowerCase() === "f"
+        key === "f"
     ) {
         event.preventDefault();
         formatEditor();
@@ -195,27 +261,30 @@ function handleEditorKeydown(event) {
 
     if (event.key === "Tab") {
         event.preventDefault();
-
-        insertAtCursor("    ");
+        insertAtCursor(" ".repeat(
+            Number.isInteger(EDITOR_DEFAULTS.indentUnit)
+                ? EDITOR_DEFAULTS.indentUnit
+                : 2,
+        ));
     }
 }
 
 /**
- * Handle copy button.
+ * Handle copy action.
  */
 function handleCopy() {
-    copyEditorContent();
+    void copyEditorContent();
 }
 
 /**
- * Handle clear button.
+ * Handle clear action.
  */
 function handleClear() {
     clearEditor();
 }
 
 /**
- * Handle format button.
+ * Handle format action.
  */
 function handleFormat() {
     formatEditor();
@@ -226,7 +295,7 @@ function handleFormat() {
 // ============================================================
 
 /**
- * Read the current editor value.
+ * Get the current editor value.
  *
  * @returns {string}
  */
@@ -239,7 +308,7 @@ export function getValue() {
 }
 
 /**
- * Set editor value.
+ * Set the editor value.
  *
  * @param {unknown} value
  * @returns {string}
@@ -248,7 +317,6 @@ export function setEditorValue(value = "") {
     editorValue = String(value ?? "");
 
     syncToUI();
-    updateEditorMeta();
 
     return editorValue;
 }
@@ -256,7 +324,7 @@ export function setEditorValue(value = "") {
 /**
  * Read a value from an input, textarea, or contenteditable element.
  *
- * @param {HTMLElement} element
+ * @param {Element|null} element
  * @returns {string}
  */
 function getElementValue(element) {
@@ -279,7 +347,7 @@ function getElementValue(element) {
 // ============================================================
 
 /**
- * Synchronize the editor value from the UI.
+ * Synchronize editor state from the DOM.
  *
  * @returns {string}
  */
@@ -294,12 +362,13 @@ export function syncFromUI() {
 }
 
 /**
- * Synchronize the editor value into the UI.
+ * Synchronize editor state into the DOM.
  *
  * @returns {string}
  */
 export function syncToUI() {
     if (!elements.editor) {
+        updateEditorMeta();
         return editorValue;
     }
 
@@ -324,8 +393,9 @@ export function syncToUI() {
 /**
  * Format the current editor content.
  *
- * The formatter detects JSON automatically. Non-JSON content
- * is returned unchanged after basic whitespace normalization.
+ * JSON is formatted when valid JSON is detected.
+ * Other content is normalized only for line endings and trailing
+ * whitespace. The original content is otherwise preserved.
  *
  * @returns {string}
  */
@@ -333,57 +403,87 @@ export function formatEditor() {
     const value = getValue();
 
     if (!value.trim()) {
-        return "";
+        return value;
     }
 
-    const formatted = formatContent(value);
+    const formatted = formatContent(
+        value,
+        editorLanguage,
+    );
 
     if (formatted !== value) {
-        editorValue = formatted;
-        syncToUI();
+        setEditorValue(formatted);
     }
 
     return editorValue;
 }
 
 /**
- * Format supported content.
+ * Format supported editor content.
  *
  * @param {string} value
+ * @param {string} mode
  * @returns {string}
  */
-function formatContent(value) {
-    const trimmed = value.trim();
+function formatContent(value, mode) {
+    if (mode === EDITOR_MODES.JSON || looksLikeJson(value)) {
+        try {
+            const parsed = JSON.parse(value);
 
-    if (!trimmed) {
-        return "";
+            return JSON.stringify(
+                parsed,
+                null,
+                EDITOR_DEFAULTS.indentUnit,
+            );
+        } catch {
+            // Preserve invalid JSON rather than damaging it.
+        }
     }
 
-    try {
-        const parsed = JSON.parse(trimmed);
-
-        return JSON.stringify(parsed, null, 2);
-    } catch {
-        return formatJavaScriptLikeContent(value);
-    }
+    return normalizeLineEndings(value);
 }
 
 /**
- * Apply lightweight formatting to JavaScript-like code.
- *
- * This intentionally avoids aggressive source rewriting.
+ * Normalize line endings and remove trailing whitespace.
  *
  * @param {string} value
  * @returns {string}
  */
-function formatJavaScriptLikeContent(value) {
+function normalizeLineEndings(value) {
     return value
         .replace(/\r\n/g, "\n")
         .replace(/\r/g, "\n")
         .split("\n")
         .map((line) => line.replace(/[ \t]+$/g, ""))
-        .join("\n")
-        .trim();
+        .join("\n");
+}
+
+/**
+ * Determine whether a string contains valid JSON.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+function looksLikeJson(value) {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+        return false;
+    }
+
+    if (
+        !trimmed.startsWith("{") &&
+        !trimmed.startsWith("[")
+    ) {
+        return false;
+    }
+
+    try {
+        JSON.parse(trimmed);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 // ============================================================
@@ -408,7 +508,6 @@ function insertAtCursor(text) {
     ) {
         const start = element.selectionStart;
         const end = element.selectionEnd;
-
         const value = getElementValue(element);
 
         const nextValue =
@@ -418,7 +517,10 @@ function insertAtCursor(text) {
 
         editorValue = nextValue;
 
-        if ("value" in element) {
+        if (
+            "value" in element &&
+            typeof element.value === "string"
+        ) {
             element.value = nextValue;
         } else {
             element.textContent = nextValue;
@@ -426,7 +528,10 @@ function insertAtCursor(text) {
 
         const cursorPosition = start + text.length;
 
-        if (typeof element.setSelectionRange === "function") {
+        if (
+            typeof element.setSelectionRange ===
+            "function"
+        ) {
             element.setSelectionRange(
                 cursorPosition,
                 cursorPosition,
@@ -434,6 +539,7 @@ function insertAtCursor(text) {
         }
 
         updateEditorMeta();
+
         return;
     }
 
@@ -447,7 +553,10 @@ function insertAtCursor(text) {
  * @returns {boolean}
  */
 export function focusEditor() {
-    if (!elements.editor) {
+    if (
+        !elements.editor ||
+        typeof elements.editor.focus !== "function"
+    ) {
         return false;
     }
 
@@ -472,40 +581,58 @@ export async function copyEditorContent() {
         return false;
     }
 
-    try {
-        if (
-            navigator.clipboard &&
-            typeof navigator.clipboard.writeText === "function"
-        ) {
+    if (
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+    ) {
+        try {
             await navigator.clipboard.writeText(value);
             return true;
+        } catch {
+            // Use the fallback below.
         }
-    } catch {
-        // Fall back to the legacy clipboard implementation.
     }
 
     return copyWithFallback(value);
 }
 
 /**
- * Copy text using a temporary textarea.
+ * Copy text using the legacy clipboard API.
  *
  * @param {string} value
  * @returns {boolean}
  */
 function copyWithFallback(value) {
+    if (!document.body) {
+        return false;
+    }
+
     const textarea = document.createElement("textarea");
 
     textarea.value = value;
     textarea.setAttribute("readonly", "");
+    textarea.setAttribute("aria-hidden", "true");
+
     textarea.style.position = "fixed";
+    textarea.style.top = "0";
+    textarea.style.left = "-9999px";
     textarea.style.opacity = "0";
     textarea.style.pointerEvents = "none";
 
     document.body.appendChild(textarea);
 
+    textarea.focus();
     textarea.select();
-    textarea.setSelectionRange(0, textarea.value.length);
+
+    if (
+        typeof textarea.setSelectionRange ===
+        "function"
+    ) {
+        textarea.setSelectionRange(
+            0,
+            textarea.value.length,
+        );
+    }
 
     let copied = false;
 
@@ -530,16 +657,11 @@ function copyWithFallback(value) {
  * @returns {string}
  */
 export function clearEditor() {
-    editorValue = "";
-
-    syncToUI();
-    updateEditorMeta();
-
-    return editorValue;
+    return setEditorValue("");
 }
 
 /**
- * Check whether the editor is empty.
+ * Determine whether the editor is empty.
  *
  * @returns {boolean}
  */
@@ -552,7 +674,7 @@ export function isEditorEmpty() {
 // ============================================================
 
 /**
- * Update character and line counters.
+ * Update editor character and line counters.
  */
 function updateEditorMeta() {
     const value = editorValue;
@@ -563,30 +685,30 @@ function updateEditorMeta() {
     }
 
     if (elements.lineCount) {
-        const lines = value
-            ? value.split("\n").length
-            : 0;
-
-        elements.lineCount.textContent = String(lines);
+        elements.lineCount.textContent =
+            String(value ? value.split("\n").length : 0);
     }
 }
 
 /**
- * Get editor metadata.
+ * Get editor statistics.
  *
- * @returns {{ characters: number, lines: number, words: number }}
+ * @returns {{
+ *   characters: number,
+ *   lines: number,
+ *   words: number
+ * }}
  */
 export function getEditorStats() {
     const value = getValue();
-
-    const words = value.trim()
-        ? value.trim().split(/\s+/).length
-        : 0;
+    const trimmed = value.trim();
 
     return {
         characters: value.length,
         lines: value ? value.split("\n").length : 0,
-        words,
+        words: trimmed
+            ? trimmed.split(/\s+/).length
+            : 0,
     };
 }
 
@@ -595,47 +717,62 @@ export function getEditorStats() {
 // ============================================================
 
 /**
- * Set the editor language label.
+ * Set the editor language/mode.
  *
  * @param {string} language
  * @returns {string}
  */
-export function setEditorLanguage(language = "javascript") {
-    const normalized = String(language || "javascript").trim();
+export function setEditorLanguage(
+    language = EDITOR_MODES.TEXT,
+) {
+    const normalized = normalizeEditorMode(language);
+
+    editorLanguage = normalized;
 
     if (elements.language) {
-        if (
-            "value" in elements.language &&
-            typeof elements.language.value === "string"
-        ) {
-            elements.language.value = normalized;
-        } else {
-            elements.language.textContent = normalized;
-        }
+        setElementValue(
+            elements.language,
+            normalized,
+        );
     }
 
     if (elements.editor) {
         elements.editor.dataset.language = normalized;
+        elements.editor.dataset.mode = normalized;
     }
 
     return normalized;
 }
 
 /**
- * Get the current editor language.
+ * Get the current editor language/mode.
  *
  * @returns {string}
  */
 export function getEditorLanguage() {
-    if (elements.language) {
-        return getElementValue(elements.language) || "javascript";
+    return editorLanguage;
+}
+
+/**
+ * Set the value of a DOM element.
+ *
+ * @param {Element} element
+ * @param {string} value
+ */
+function setElementValue(element, value) {
+    if (
+        "value" in element &&
+        typeof element.value === "string"
+    ) {
+        element.value = value;
+        return;
     }
 
-    return elements.editor?.dataset?.language || "javascript";
+    element.textContent = value;
 }
 
 // ============================================================
-// Public API
+// Initialization State
 // ============================================================
 
 /**
@@ -646,6 +783,10 @@ export function getEditorLanguage() {
 export function isEditorInitialized() {
     return initialized;
 }
+
+// ============================================================
+// Default Export
+// ============================================================
 
 export default {
     initEditor,
