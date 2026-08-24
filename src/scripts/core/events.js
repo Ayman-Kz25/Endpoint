@@ -1,23 +1,23 @@
 /**
- //src/scripts/core/events.js
-
- * Application Event Bus
+ * Application Event Bus.
  *
- * Provides a simple way for different parts of the application
- * to communicate without creating direct dependencies between them.
+ * Allows modules to communicate without creating direct
+ * dependencies between each other.
  *
  * Example:
  *
  * import events from "./events.js";
  *
- * events.on("request:changed", (data) => {
- *     console.log(data);
+ * const unsubscribe = events.on("request:changed", (payload) => {
+ *     console.log(payload);
  * });
  *
  * events.emit("request:changed", {
  *     field: "url",
  *     value: "https://example.com",
  * });
+ *
+ * unsubscribe();
  */
 
 // ============================================================
@@ -25,6 +25,29 @@
 // ============================================================
 
 const listeners = new Map();
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function validateEventName(eventName) {
+    if (
+        typeof eventName !== "string" ||
+        !eventName.trim()
+    ) {
+        throw new TypeError(
+            "Event name must be a non-empty string.",
+        );
+    }
+}
+
+function validateCallback(callback) {
+    if (typeof callback !== "function") {
+        throw new TypeError(
+            "Event listener must be a function.",
+        );
+    }
+}
 
 // ============================================================
 // Event Bus
@@ -39,13 +62,8 @@ const events = {
      * @returns {Function} unsubscribe function
      */
     on(eventName, callback) {
-        if (typeof eventName !== "string" || !eventName.trim()) {
-            throw new TypeError("Event name must be a non-empty string.");
-        }
-
-        if (typeof callback !== "function") {
-            throw new TypeError("Event listener must be a function.");
-        }
+        validateEventName(eventName);
+        validateCallback(callback);
 
         if (!listeners.has(eventName)) {
             listeners.set(eventName, new Set());
@@ -59,20 +77,15 @@ const events = {
     },
 
     /**
-     * Register a listener that runs only once.
+     * Register a listener that runs once.
      *
      * @param {string} eventName
      * @param {Function} callback
      * @returns {Function} unsubscribe function
      */
     once(eventName, callback) {
-        if (typeof eventName !== "string" || !eventName.trim()) {
-            throw new TypeError("Event name must be a non-empty string.");
-        }
-
-        if (typeof callback !== "function") {
-            throw new TypeError("Event listener must be a function.");
-        }
+        validateEventName(eventName);
+        validateCallback(callback);
 
         const wrapper = (payload) => {
             this.off(eventName, wrapper);
@@ -109,13 +122,15 @@ const events = {
      * @param {*} payload
      */
     emit(eventName, payload = undefined) {
+        validateEventName(eventName);
+
         const eventListeners = listeners.get(eventName);
 
         if (!eventListeners) {
             return;
         }
 
-        // Create a copy so listeners can safely remove themselves
+        // Copy the Set so listeners can safely unsubscribe
         // while the event is being dispatched.
         [...eventListeners].forEach((callback) => {
             try {
@@ -130,22 +145,17 @@ const events = {
     },
 
     /**
-     * Remove all listeners for an event.
+     * Remove every listener for an event.
      *
      * @param {string} eventName
      */
     clear(eventName) {
-        if (!eventName) {
-            return;
-        }
-
+        validateEventName(eventName);
         listeners.delete(eventName);
     },
 
     /**
-     * Remove every registered listener.
-     *
-     * Useful when resetting the application or during testing.
+     * Remove all registered listeners.
      */
     clearAll() {
         listeners.clear();
@@ -158,9 +168,7 @@ const events = {
      * @returns {boolean}
      */
     has(eventName) {
-        const eventListeners = listeners.get(eventName);
-
-        return Boolean(eventListeners && eventListeners.size > 0);
+        return this.listenerCount(eventName) > 0;
     },
 
     /**

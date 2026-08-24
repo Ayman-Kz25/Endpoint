@@ -1,72 +1,46 @@
-// src/scripts/api/request.js
-
 /**
- * HTTP Request Service
+ * HTTP Request Service.
  *
- * Responsible for executing HTTP requests through the Fetch API
- * and normalizing the resulting response.
+ * Responsible for:
+ * - validating request URLs
+ * - building Fetch request configuration
+ * - applying authentication
+ * - executing HTTP requests
+ * - normalizing the resulting response
  *
  * This module does not:
  * - manipulate the DOM
- * - render responses
  * - update application state
+ * - render responses
  * - show notifications
- *
- * It only handles HTTP request execution and response normalization.
+ * - emit application events
  */
 
-import { UI } from "../core/constants.js";
+import {
+    UI,
+    HTTP_METHODS_WITHOUT_BODY,
+    ERROR_MESSAGES,
+} from "../core/constants.js";
 
-// ============================================================
-// Constants
-// ============================================================
-
-const BODYLESS_METHODS = new Set([
-    "GET",
-    "HEAD",
-]);
-
-// ============================================================
-// Timeout
-// ============================================================
-
-/**
- * Create an AbortController with a timeout.
- *
- * @param {number} timeout
- * @returns {{
- *   controller: AbortController,
- *   timeoutId: number
- * }}
- */
-function createTimeoutController(timeout = UI.REQUEST_TIMEOUT) {
-    const controller = new AbortController();
-
-    const timeoutId = window.setTimeout(() => {
-        controller.abort();
-    }, timeout);
-
-    return {
-        controller,
-        timeoutId,
-    };
-}
+import {
+    normalizeResponse,
+} from "./response.js";
 
 // ============================================================
 // URL Validation
 // ============================================================
 
-/**
- * Validate and normalize a request URL.
- *
- * @param {unknown} url
- * @returns {string}
- * @throws {Error}
- */
 function validateRequestUrl(url) {
-    if (typeof url !== "string" || !url.trim()) {
-        const error = new Error("Please enter a valid URL.");
+    if (
+        typeof url !== "string" ||
+        !url.trim()
+    ) {
+        const error = new Error(
+            ERROR_MESSAGES.INVALID_URL,
+        );
+
         error.code = "INVALID_URL";
+
         throw error;
     }
 
@@ -75,17 +49,22 @@ function validateRequestUrl(url) {
     try {
         parsedUrl = new URL(url.trim());
     } catch {
-        const error = new Error("Please enter a valid URL.");
+        const error = new Error(
+            ERROR_MESSAGES.INVALID_URL,
+        );
+
         error.code = "INVALID_URL";
+
         throw error;
     }
 
     if (
-        parsedUrl.protocol !== "http:" &&
-        parsedUrl.protocol !== "https:"
+        !["http:", "https:"].includes(
+            parsedUrl.protocol,
+        )
     ) {
         const error = new Error(
-            "Only HTTP and HTTPS URLs are supported.",
+            ERROR_MESSAGES.INVALID_PROTOCOL,
         );
 
         error.code = "INVALID_PROTOCOL";
@@ -93,33 +72,14 @@ function validateRequestUrl(url) {
         throw error;
     }
 
-    return parsedUrl.href;
+    return parsedUrl;
 }
 
 // ============================================================
-// Header Normalization
+// Headers
 // ============================================================
 
-/**
- * Add headers to a Headers instance.
- *
- * Supports both:
- *
- * [
- *   { name: "Content-Type", value: "application/json" }
- * ]
- *
- * and:
- *
- * {
- *   "Content-Type": "application/json"
- * }
- *
- * @param {Headers} target
- * @param {Array|Object} headers
- * @returns {Headers}
- */
-function appendHeaders(target, headers = []) {
+function appendHeaders(target, headers) {
     if (Array.isArray(headers)) {
         headers.forEach((header) => {
             if (!header) {
@@ -134,22 +94,23 @@ function appendHeaders(target, headers = []) {
                 return;
             }
 
-            const value = String(
-                header.value ?? "",
+            target.set(
+                name,
+                String(header.value ?? ""),
             );
-
-            target.set(name, value);
         });
 
-        return target;
+        return;
     }
 
-    if (headers && typeof headers === "object") {
+    if (
+        headers &&
+        typeof headers === "object"
+    ) {
         Object.entries(headers).forEach(
             ([name, value]) => {
-                const normalizedName = String(
-                    name,
-                ).trim();
+                const normalizedName =
+                    String(name).trim();
 
                 if (!normalizedName) {
                     return;
@@ -162,44 +123,16 @@ function appendHeaders(target, headers = []) {
             },
         );
     }
-
-    return target;
-}
-
-/**
- * Convert Headers into a plain array.
- *
- * @param {Headers} headers
- * @returns {Array<{name: string, value: string}>}
- */
-function normalizeHeaders(headers) {
-    return Array.from(
-        headers.entries(),
-    ).map(([name, value]) => ({
-        name,
-        value,
-    }));
 }
 
 // ============================================================
 // Authentication
 // ============================================================
 
-/**
- * Apply authentication configuration to request headers.
- *
- * @param {Headers} headers
- * @param {Object|null} auth
- * @returns {Headers}
- */
 function applyAuthentication(headers, auth) {
     if (!auth || typeof auth !== "object") {
-        return headers;
+        return;
     }
-
-    // --------------------------------------------------------
-    // Bearer Token
-    // --------------------------------------------------------
 
     if (auth.type === "bearer") {
         const token = String(
@@ -213,12 +146,8 @@ function applyAuthentication(headers, auth) {
             );
         }
 
-        return headers;
+        return;
     }
-
-    // --------------------------------------------------------
-    // Basic Authentication
-    // --------------------------------------------------------
 
     if (auth.type === "basic") {
         const username = String(
@@ -229,23 +158,21 @@ function applyAuthentication(headers, auth) {
             auth.fields?.password ?? "",
         );
 
-        if (username || password) {
-            const encoded = btoa(
-                `${username}:${password}`,
-            );
-
-            headers.set(
-                "Authorization",
-                `Basic ${encoded}`,
-            );
+        if (!username && !password) {
+            return;
         }
 
-        return headers;
-    }
+        const encoded = btoa(
+            `${username}:${password}`,
+        );
 
-    // --------------------------------------------------------
-    // API Key
-    // --------------------------------------------------------
+        headers.set(
+            "Authorization",
+            `Basic ${encoded}`,
+        );
+
+        return;
+    }
 
     if (auth.type === "api-key") {
         const key = String(
@@ -267,40 +194,34 @@ function applyAuthentication(headers, auth) {
             headers.set(key, value);
         }
     }
-
-    return headers;
 }
 
 // ============================================================
 // Body
 // ============================================================
 
-/**
- * Check whether a request contains a body.
- *
- * @param {unknown} body
- * @returns {boolean}
- */
 function hasRequestBody(body) {
-    if (
-        body === undefined ||
-        body === null
-    ) {
-        return false;
-    }
-
-    return String(body).trim() !== "";
+    return (
+        body !== undefined &&
+        body !== null &&
+        String(body).trim() !== ""
+    );
 }
 
-/**
- * Prepare a request body for Fetch.
- *
- * @param {unknown} body
- * @returns {string}
- */
-function serializeRequestBody(body) {
+function prepareRequestBody(body, headers) {
+    if (!hasRequestBody(body)) {
+        return undefined;
+    }
+
     if (typeof body === "string") {
         return body;
+    }
+
+    if (!headers.has("Content-Type")) {
+        headers.set(
+            "Content-Type",
+            "application/json",
+        );
     }
 
     return JSON.stringify(body);
@@ -314,181 +235,96 @@ function serializeRequestBody(body) {
  * Build a Fetch RequestInit object.
  *
  * @param {Object} options
- * @param {string} [options.method="GET"]
- * @param {Array|Object} [options.headers=[]]
- * @param {unknown} [options.body=""]
- * @param {Object|null} [options.auth=null]
  * @returns {RequestInit}
  */
-function buildRequestConfig({
+export function buildRequestConfig({
     method = "GET",
     headers = [],
     body = "",
     auth = null,
-}) {
+} = {}) {
     const normalizedMethod =
         String(method)
             .trim()
             .toUpperCase() || "GET";
 
-    const requestHeaders =
-        appendHeaders(
-            new Headers(),
-            headers,
-        );
+    const requestHeaders = new Headers();
+
+    appendHeaders(
+        requestHeaders,
+        headers,
+    );
 
     applyAuthentication(
         requestHeaders,
         auth,
     );
 
-    const requestConfig = {
+    const config = {
         method: normalizedMethod,
         headers: requestHeaders,
     };
 
-    const hasBody =
-        hasRequestBody(body);
-
     if (
-        !hasBody ||
-        BODYLESS_METHODS.has(
+        hasRequestBody(body) &&
+        !HTTP_METHODS_WITHOUT_BODY.includes(
             normalizedMethod,
         )
     ) {
-        return requestConfig;
-    }
-
-    requestConfig.body =
-        serializeRequestBody(body);
-
-    if (
-        typeof body === "object" &&
-        !requestHeaders.has(
-            "Content-Type",
-        )
-    ) {
-        requestHeaders.set(
-            "Content-Type",
-            "application/json",
+        config.body = prepareRequestBody(
+            body,
+            requestHeaders,
         );
     }
 
-    return requestConfig;
+    return config;
 }
 
 // ============================================================
-// Response Parsing
+// Timeout
 // ============================================================
 
-/**
- * Parse a Fetch response body.
- *
- * The raw response text is always read first so the caller
- * can display the original response when needed.
- *
- * @param {Response} response
- * @returns {Promise<{
- *   data: unknown,
- *   raw: string,
- *   contentType: string
- * }>}
- */
-async function parseResponseBody(response) {
-    const contentType =
-        response.headers.get(
-            "content-type",
-        ) || "";
+function createTimeoutController(timeout) {
+    const controller = new AbortController();
 
-    const raw = await response.text();
+    const timeoutValue = Number(timeout);
 
-    if (
-        response.status === 204 ||
-        response.status === 205 ||
-        !raw
-    ) {
-        return {
-            data: null,
-            raw,
-            contentType,
-        };
-    }
-
-    if (
-        contentType
-            .toLowerCase()
-            .includes("application/json")
-    ) {
-        try {
-            return {
-                data: JSON.parse(raw),
-                raw,
-                contentType,
-            };
-        } catch {
-            return {
-                data: raw,
-                raw,
-                contentType,
-            };
-        }
-    }
+    const timeoutId = window.setTimeout(() => {
+        controller.abort("timeout");
+    }, Number.isFinite(timeoutValue) && timeoutValue > 0
+        ? timeoutValue
+        : UI.REQUEST_TIMEOUT);
 
     return {
-        data: raw,
-        raw,
-        contentType,
+        controller,
+        timeoutId,
     };
 }
 
 // ============================================================
-// Response Utilities
+// Error Normalization
 // ============================================================
 
-/**
- * Calculate the response size in bytes.
- *
- * @param {string} raw
- * @returns {number}
- */
-function calculateResponseSize(raw) {
-    if (!raw) {
-        return 0;
-    }
-
-    return new Blob([raw]).size;
-}
-
-/**
- * Convert an unknown request error into an application error.
- *
- * @param {unknown} error
- * @param {AbortSignal} signal
- * @returns {Error}
- */
 function normalizeRequestError(
     error,
     signal,
 ) {
     if (signal?.aborted) {
         const timeoutError = new Error(
-            "The request timed out.",
+            ERROR_MESSAGES.REQUEST_TIMEOUT,
         );
 
-        timeoutError.code =
-            "REQUEST_TIMEOUT";
+        timeoutError.code = "REQUEST_TIMEOUT";
 
         return timeoutError;
     }
 
     if (error instanceof TypeError) {
         const networkError = new Error(
-            "A network error occurred. Check the URL and your connection.",
+            ERROR_MESSAGES.NETWORK_ERROR,
         );
 
-        networkError.code =
-            "NETWORK_ERROR";
-
+        networkError.code = "NETWORK_ERROR";
         networkError.cause = error;
 
         return networkError;
@@ -499,12 +335,10 @@ function normalizeRequestError(
     }
 
     const unknownError = new Error(
-        "The request could not be completed.",
+        ERROR_MESSAGES.REQUEST_FAILED,
     );
 
-    unknownError.code =
-        "REQUEST_ERROR";
-
+    unknownError.code = "REQUEST_ERROR";
     unknownError.cause = error;
 
     return unknownError;
@@ -518,13 +352,6 @@ function normalizeRequestError(
  * Execute an HTTP request.
  *
  * @param {Object} options
- * @param {string} options.url
- * @param {string} [options.method="GET"]
- * @param {Array|Object} [options.headers=[]]
- * @param {unknown} [options.body=""]
- * @param {Object|null} [options.auth=null]
- * @param {number} [options.timeout]
- *
  * @returns {Promise<Object>}
  */
 export async function sendRequest({
@@ -534,77 +361,50 @@ export async function sendRequest({
     body = "",
     auth = null,
     timeout = UI.REQUEST_TIMEOUT,
-}) {
-    const requestUrl =
-        validateRequestUrl(url);
+} = {}) {
+    const parsedUrl = validateRequestUrl(url);
 
-    const requestConfig =
-        buildRequestConfig({
-            method,
-            headers,
-            body,
-            auth,
-        });
+    const requestConfig = buildRequestConfig({
+        method,
+        headers,
+        body,
+        auth,
+    });
 
     const {
         controller,
         timeoutId,
-    } = createTimeoutController(
-        timeout,
-    );
+    } = createTimeoutController(timeout);
 
-    const startedAt =
-        performance.now();
+    const startedAt = performance.now();
 
     try {
-        const response =
-            await fetch(
-                requestUrl,
-                {
-                    ...requestConfig,
-                    signal:
-                        controller.signal,
-                },
-            );
-
-        const duration = Math.round(
-            performance.now() -
-                startedAt,
+        const response = await fetch(
+            parsedUrl.href,
+            {
+                ...requestConfig,
+                signal: controller.signal,
+            },
         );
 
-        const parsed =
-            await parseResponseBody(
-                response,
-            );
+        const raw = await response.text();
 
-        return {
-            ok: response.ok,
-            status: response.status,
-            statusText: response.statusText,
+        const duration = Math.round(
+            performance.now() - startedAt,
+        );
+
+        return normalizeResponse(
+            response,
+            raw,
             duration,
-            size: calculateResponseSize(
-                parsed.raw,
-            ),
-            data: parsed.data,
-            raw: parsed.raw,
-            headers: normalizeHeaders(
-                response.headers,
-            ),
-            contentType:
-                parsed.contentType,
-            url: response.url,
-            redirected:
-                response.redirected,
-        };
+        );
     } catch (error) {
         throw normalizeRequestError(
             error,
             controller.signal,
         );
     } finally {
-        window.clearTimeout(
-            timeoutId,
-        );
+        window.clearTimeout(timeoutId);
     }
 }
 
@@ -613,115 +413,45 @@ export async function sendRequest({
 // ============================================================
 
 /**
- * Abort an active request.
- *
- * @param {AbortController} controller
- */
-export function abortRequest(
-    controller,
-) {
-    if (
-        !(controller instanceof AbortController)
-    ) {
-        return;
-    }
-
-    controller.abort();
-}
-
-/**
- * Check whether a response represents a
- * successful HTTP status.
+ * Check whether a response status is successful.
  *
  * @param {number} status
  * @returns {boolean}
  */
 export function isSuccessStatus(status) {
-    return (
-        status >= 200 &&
-        status < 300
-    );
+    return status >= 200 && status < 300;
 }
 
 /**
- * Check whether a response represents a
- * client error.
+ * Check whether a response status is a client error.
  *
  * @param {number} status
  * @returns {boolean}
  */
 export function isClientError(status) {
-    return (
-        status >= 400 &&
-        status < 500
-    );
+    return status >= 400 && status < 500;
 }
 
 /**
- * Check whether a response represents a
- * server error.
+ * Check whether a response status is a server error.
  *
  * @param {number} status
  * @returns {boolean}
  */
 export function isServerError(status) {
-    return (
-        status >= 500 &&
-        status < 600
-    );
+    return status >= 500 && status < 600;
 }
 
 /**
- * Get a readable HTTP status label.
+ * Abort an active request.
  *
- * @param {number} status
- * @param {string} statusText
- * @returns {string}
+ * @param {AbortController} controller
  */
-export function getStatusLabel(
-    status,
-    statusText = "",
-) {
-    if (!status) {
-        return "";
-    }
-
-    return statusText
-        ? `${status} ${statusText}`
-        : String(status);
-}
-
-/**
- * Format a response size for display.
- *
- * @param {number} bytes
- * @returns {string}
- */
-export function formatResponseSize(
-    bytes,
-) {
+export function abortRequest(controller) {
     if (
-        !Number.isFinite(bytes) ||
-        bytes <= 0
+        typeof AbortController !== "undefined" &&
+        controller instanceof AbortController
     ) {
-        return "0 B";
+        controller.abort();
     }
-
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    if (
-        bytes <
-        1024 * 1024
-    ) {
-        return `${(
-            bytes / 1024
-        ).toFixed(1)} KB`;
-    }
-
-    return `${(
-        bytes /
-        (1024 * 1024)
-    ).toFixed(1)} MB`;
 }

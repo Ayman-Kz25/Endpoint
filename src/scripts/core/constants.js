@@ -1,17 +1,8 @@
-// src/scripts/core/constants.js
-
 /**
- * Application Constants
+ * Application constants.
  *
- * Centralized fixed values used throughout the application.
- *
- * This module does not:
- * - manipulate the DOM
- * - update application state
- * - perform application logic
- * - access browser storage
- *
- * It only defines shared constants and defaults.
+ * Keep fixed application values here so feature modules
+ * do not need to duplicate them.
  */
 
 // ============================================================
@@ -40,6 +31,11 @@ export const HTTP_METHODS = Object.freeze([
 
 export const DEFAULT_HTTP_METHOD = "GET";
 
+export const HTTP_METHODS_WITHOUT_BODY = Object.freeze([
+    "GET",
+    "HEAD",
+]);
+
 // ============================================================
 // Request Tabs
 // ============================================================
@@ -55,8 +51,7 @@ export const REQUEST_TAB_LIST = Object.freeze(
     Object.values(REQUEST_TABS),
 );
 
-export const DEFAULT_REQUEST_TAB =
-    REQUEST_TABS.PARAMS;
+export const DEFAULT_REQUEST_TAB = REQUEST_TABS.PARAMS;
 
 // ============================================================
 // Authentication
@@ -73,11 +68,15 @@ export const AUTH_TYPE_LIST = Object.freeze(
     Object.values(AUTH_TYPES),
 );
 
-export const DEFAULT_AUTH_TYPE =
-    AUTH_TYPES.NONE;
+export const DEFAULT_AUTH_TYPE = AUTH_TYPES.NONE;
+
+export const DEFAULT_AUTH = Object.freeze({
+    type: AUTH_TYPES.NONE,
+    fields: {},
+});
 
 // ============================================================
-// Default Request
+// Request Defaults
 // ============================================================
 
 export const DEFAULT_REQUEST = Object.freeze({
@@ -86,11 +85,12 @@ export const DEFAULT_REQUEST = Object.freeze({
     params: [],
     headers: [],
     body: "",
-    auth: {
-        type: DEFAULT_AUTH_TYPE,
-        fields: {},
-    },
+    auth: DEFAULT_AUTH,
 });
+
+export const DEFAULT_HEADERS = Object.freeze([]);
+export const DEFAULT_PARAMS = Object.freeze([]);
+export const DEFAULT_BODY = "";
 
 // ============================================================
 // Response Tabs
@@ -106,8 +106,7 @@ export const RESPONSE_TAB_LIST = Object.freeze(
     Object.values(RESPONSE_TABS),
 );
 
-export const DEFAULT_RESPONSE_TAB =
-    RESPONSE_TABS.PRETTY;
+export const DEFAULT_RESPONSE_TAB = RESPONSE_TABS.PRETTY;
 
 // ============================================================
 // Themes
@@ -142,21 +141,6 @@ export const HISTORY = Object.freeze({
 });
 
 // ============================================================
-// Request Defaults
-// ============================================================
-
-export const DEFAULT_HEADERS = Object.freeze([]);
-
-export const DEFAULT_PARAMS = Object.freeze([]);
-
-export const DEFAULT_BODY = "";
-
-export const DEFAULT_AUTH = Object.freeze({
-    type: DEFAULT_AUTH_TYPE,
-    fields: {},
-});
-
-// ============================================================
 // UI
 // ============================================================
 
@@ -180,7 +164,7 @@ export const EDITOR = Object.freeze({
 });
 
 // ============================================================
-// HTTP Status Codes
+// HTTP Status
 // ============================================================
 
 export const HTTP_STATUS = Object.freeze({
@@ -212,9 +196,10 @@ export const EVENTS = Object.freeze({
     RESPONSE_RECEIVED: "response:received",
     RESPONSE_ERROR: "response:error",
 
-    TAB_CHANGED: "tab:changed",
-    THEME_CHANGED: "theme:changed",
+    REQUEST_TAB_CHANGED: "request:tab:changed",
+    RESPONSE_TAB_CHANGED: "response:tab:changed",
 
+    THEME_CHANGED: "theme:changed",
     HISTORY_CHANGED: "history:changed",
 
     SIDEBAR_CHANGED: "sidebar:changed",
@@ -249,8 +234,7 @@ export const VALIDATION = Object.freeze({
 export const CONTENT_TYPES = Object.freeze({
     JSON: "application/json",
     TEXT: "text/plain",
-    FORM_URLENCODED:
-        "application/x-www-form-urlencoded",
+    FORM_URLENCODED: "application/x-www-form-urlencoded",
     MULTIPART: "multipart/form-data",
     HTML: "text/html",
     XML: "application/xml",
@@ -261,21 +245,12 @@ export const CONTENT_TYPES = Object.freeze({
 // ============================================================
 
 export const ERROR_MESSAGES = Object.freeze({
-    INVALID_URL:
-        "Please enter a valid URL.",
-
-    INVALID_JSON:
-        "Request body contains invalid JSON.",
-
-    REQUEST_FAILED:
-        "The request could not be completed.",
-
-    REQUEST_TIMEOUT:
-        "The request timed out.",
-
+    INVALID_URL: "Please enter a valid URL.",
+    INVALID_PROTOCOL: "Only HTTP and HTTPS URLs are supported.",
+    INVALID_JSON: "Request body contains invalid JSON.",
+    REQUEST_FAILED: "The request could not be completed.",
+    REQUEST_TIMEOUT: "The request timed out.",
     NETWORK_ERROR:
-        "A network error occurred.",
-
-    UNKNOWN_ERROR:
-        "Something went wrong.",
+        "A network error occurred. Check the URL and your connection.",
+    UNKNOWN_ERROR: "Something went wrong.",
 });
