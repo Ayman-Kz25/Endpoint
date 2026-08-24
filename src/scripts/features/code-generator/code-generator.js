@@ -1,23 +1,26 @@
-// src/scripts/features/code-generator/code-generator.js
-
 /**
- * Code Generator
+ * Code Generator Feature
  *
- * Converts the current request configuration into executable
- * client-side code.
+ * Provides the UI-facing code generation layer for the application.
  *
  * Responsibilities:
- * - Generate code for supported languages
- * - Build request URLs with query parameters
- * - Generate headers, authentication, and request bodies
- * - Expose a small API for the code-generator UI
+ * - Manage supported code-generator languages
+ * - Convert the current request into generated client code
+ * - Delegate Fetch generation to the API Fetch generator
+ * - Provide generators for other supported clients
+ * - Manage the code-generator UI
+ * - Copy generated code to the clipboard
  *
  * This module does not:
- * - execute requests
- * - modify the DOM unless explicitly initialized
- * - update application state
+ * - execute HTTP requests
+ * - modify application state
  * - show notifications
+ * - directly manage request form state
  */
+
+import {
+    generateFetchFromRequest,
+} from "../../api/fetch-generator.js";
 
 // ============================================================
 // Constants
@@ -25,7 +28,7 @@
 
 const DEFAULT_LANGUAGE = "javascript-fetch";
 
-const SUPPORTED_LANGUAGES = [
+const SUPPORTED_LANGUAGES = Object.freeze([
     {
         id: "javascript-fetch",
         label: "JavaScript Fetch",
@@ -46,64 +49,130 @@ const SUPPORTED_LANGUAGES = [
         id: "node-fetch",
         label: "Node.js Fetch",
     },
-];
+]);
+
+const BODY_METHODS = new Set([
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+]);
 
 // ============================================================
-// Helpers
+// Internal UI State
+// ============================================================
+
+const elements = {
+    language: null,
+    output: null,
+    copyButton: null,
+};
+
+let currentRequest = null;
+
+// ============================================================
+// Request Normalization
 // ============================================================
 
 /**
- * Safely clone a request.
+ * Normalize a request object before generation.
  *
  * @param {Object} request
  * @returns {Object}
  */
 function normalizeRequest(request = {}) {
+    const auth = request.auth;
+
     return {
-        method: String(request.method || "GET").toUpperCase(),
-        url: String(request.url || ""),
+        method:
+            String(request.method ?? "GET")
+                .trim()
+                .toUpperCase() || "GET",
+
+        url:
+            String(request.url ?? "").trim(),
+
         params: Array.isArray(request.params)
             ? request.params
             : [],
+
         headers: Array.isArray(request.headers)
             ? request.headers
             : [],
+
         body:
             request.body === undefined ||
             request.body === null
                 ? ""
-                : String(request.body),
-        auth: {
-            type: String(request.auth?.type || "none"),
-            fields: {
-                ...(request.auth?.fields || {}),
-            },
-        },
+                : request.body,
+
+        auth:
+            auth && typeof auth === "object"
+                ? {
+                      type:
+                          String(
+                              auth.type ?? "none",
+                          ).trim() || "none",
+
+                      fields:
+                          auth.fields &&
+                          typeof auth.fields === "object"
+                              ? {
+                                    ...auth.fields,
+                                }
+                              : {},
+                  }
+                : {
+                      type: "none",
+                      fields: {},
+                  },
     };
 }
 
+// ============================================================
+// Generic Helpers
+// ============================================================
+
 /**
- * Escape a string for JavaScript source code.
+ * Check whether a request method supports a body.
+ *
+ * @param {string} method
+ * @returns {boolean}
+ */
+function methodSupportsBody(method) {
+    return BODY_METHODS.has(
+        String(method ?? "")
+            .trim()
+            .toUpperCase(),
+    );
+}
+
+/**
+ * Escape a value for JavaScript source code.
  *
  * @param {unknown} value
  * @returns {string}
  */
 function escapeJavaScript(value) {
-    return JSON.stringify(String(value ?? ""));
+    return JSON.stringify(
+        String(value ?? ""),
+    );
 }
 
 /**
- * Escape a string for Python source code.
+ * Escape a value for Python source code.
  *
  * @param {unknown} value
  * @returns {string}
  */
 function escapePython(value) {
-    return JSON.stringify(String(value ?? ""));
+    return JSON.stringify(
+        String(value ?? ""),
+    );
 }
 
 /**
- * Escape a string for shell source.
+ * Escape a value for shell source.
  *
  * @param {unknown} value
  * @returns {string}
@@ -111,81 +180,287 @@ function escapePython(value) {
 function escapeShell(value) {
     const string = String(value ?? "");
 
-    return `'${string.replace(/'/g, `'\\''`)}'`;
+    return `'${string.replace(
+        /'/g,
+        `'\\''`,
+    )}'`;
 }
 
 /**
- * Check whether a value is a usable HTTP header.
+ * Check whether a value contains usable request body data.
  *
- * @param {Object} header
+ * @param {unknown} body
  * @returns {boolean}
  */
-function isValidHeader(header) {
-    if (!header || typeof header !== "object") {
+function hasBody(body) {
+    if (
+        body === undefined ||
+        body === null
+    ) {
         return false;
     }
 
-    const name = String(header.name ?? "").trim();
-
-    return Boolean(name);
+    return String(body).trim() !== "";
 }
 
 /**
- * Get enabled headers.
+ * Check whether a body contains valid JSON.
  *
- * @param {Array} headers
+ * @param {unknown} body
+ * @returns {boolean}
+ */
+function isJsonBody(body) {
+    if (!hasBody(body)) {
+        return false;
+    }
+
+    if (
+        typeof body === "object" &&
+        body !== null
+    ) {
+        return true;
+    }
+
+    try {
+        JSON.parse(String(body));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Format JSON body for generated source code.
+ *
+ * @param {unknown} body
+ * @returns {string}
+ */
+function formatJsonBody(body) {
+    if (
+        body !== null &&
+        typeof body === "object"
+    ) {
+        return JSON.stringify(
+            body,
+            null,
+            2,
+        );
+    }
+
+    const stringBody = String(
+        body ?? "",
+    );
+
+    try {
+        return JSON.stringify(
+            JSON.parse(stringBody),
+            null,
+            2,
+        );
+    } catch {
+        return stringBody;
+    }
+}
+
+/**
+ * Normalize headers.
+ *
+ * @param {Array|Object} headers
  * @returns {Array<{name: string, value: string}>}
  */
-function getEnabledHeaders(headers = []) {
-    if (!Array.isArray(headers)) {
-        return [];
+function normalizeHeaders(headers = []) {
+    if (Array.isArray(headers)) {
+        return headers
+            .filter(Boolean)
+            .filter(
+                (header) =>
+                    header.enabled !== false,
+            )
+            .map((header) => ({
+                name: String(
+                    header.name ??
+                        header.key ??
+                        "",
+                ).trim(),
+
+                value: String(
+                    header.value ?? "",
+                ),
+            }))
+            .filter(
+                (header) => header.name,
+            );
     }
 
-    return headers
-        .filter(isValidHeader)
-        .filter(
-            (header) =>
-                header.enabled !== false,
-        )
-        .map((header) => ({
-            name: String(header.name).trim(),
-            value: String(header.value ?? ""),
-        }));
+    if (
+        headers &&
+        typeof headers === "object"
+    ) {
+        return Object.entries(headers)
+            .map(([name, value]) => ({
+                name: String(name).trim(),
+                value: String(
+                    value ?? "",
+                ),
+            }))
+            .filter(
+                (header) => header.name,
+            );
+    }
+
+    return [];
 }
 
 /**
- * Get enabled query parameters.
+ * Check whether a header exists.
  *
- * @param {Array} params
- * @returns {Array<{key: string, value: string}>}
+ * Header names are case-insensitive.
+ *
+ * @param {Array} headers
+ * @param {string} name
+ * @returns {boolean}
  */
-function getEnabledParams(params = []) {
-    if (!Array.isArray(params)) {
-        return [];
-    }
+function hasHeader(headers, name) {
+    const target = String(
+        name ?? "",
+    ).toLowerCase();
 
-    return params
-        .filter(
-            (param) =>
-                param &&
-                typeof param === "object" &&
-                param.enabled !== false &&
-                String(param.key ?? "").trim(),
-        )
-        .map((param) => ({
-            key: String(param.key).trim(),
-            value: String(param.value ?? ""),
-        }));
+    return headers.some(
+        (header) =>
+            header.name.toLowerCase() ===
+            target,
+    );
 }
 
 /**
- * Build the final request URL.
+ * Add authentication information to headers.
+ *
+ * @param {Object} request
+ * @param {Array} headers
+ * @returns {Array}
+ */
+function getRequestHeaders(request) {
+    const headers = normalizeHeaders(
+        request.headers,
+    );
+
+    const auth = request.auth || {};
+    const fields = auth.fields || {};
+
+    if (
+        auth.type === "bearer" &&
+        !hasHeader(
+            headers,
+            "Authorization",
+        )
+    ) {
+        const token = String(
+            fields.token ?? "",
+        ).trim();
+
+        if (token) {
+            headers.push({
+                name: "Authorization",
+                value: `Bearer ${token}`,
+            });
+        }
+    }
+
+    if (
+        auth.type === "basic" &&
+        !hasHeader(
+            headers,
+            "Authorization",
+        )
+    ) {
+        const username = String(
+            fields.username ?? "",
+        );
+
+        const password = String(
+            fields.password ?? "",
+        );
+
+        if (
+            username ||
+            password
+        ) {
+            headers.push({
+                name: "Authorization",
+                value: `Basic ${encodeBasicAuth(
+                    username,
+                    password,
+                )}`,
+            });
+        }
+    }
+
+    if (
+        auth.type === "api-key" &&
+        auth.fields?.location ===
+            "header"
+    ) {
+        const key = String(
+            fields.key ?? "",
+        ).trim();
+
+        const value = String(
+            fields.value ?? "",
+        );
+
+        if (
+            key &&
+            value &&
+            !hasHeader(headers, key)
+        ) {
+            headers.push({
+                name: key,
+                value,
+            });
+        }
+    }
+
+    return headers;
+}
+
+/**
+ * Encode Basic Authentication credentials.
+ *
+ * @param {string} username
+ * @param {string} password
+ * @returns {string}
+ */
+function encodeBasicAuth(
+    username,
+    password,
+) {
+    const value =
+        `${username}:${password}`;
+
+    if (
+        typeof btoa === "function"
+    ) {
+        try {
+            return btoa(value);
+        } catch {
+            // Continue to fallback.
+        }
+    }
+
+    return value;
+}
+
+/**
+ * Build a request URL including enabled parameters.
  *
  * @param {Object} request
  * @returns {string}
  */
-export function buildRequestUrl(request = {}) {
-    const normalized = normalizeRequest(request);
+export function buildRequestUrl(
+    request = {},
+) {
+    const normalized =
+        normalizeRequest(request);
 
     if (!normalized.url) {
         return "";
@@ -194,31 +469,54 @@ export function buildRequestUrl(request = {}) {
     let url;
 
     try {
-        url = new URL(normalized.url);
+        url = new URL(
+            normalized.url,
+        );
     } catch {
         return normalized.url;
     }
 
-    for (const param of getEnabledParams(
-        normalized.params,
-    )) {
-        url.searchParams.set(
-            param.key,
-            param.value,
-        );
-    }
+    normalized.params
+        .filter(Boolean)
+        .filter(
+            (param) =>
+                param.enabled !== false,
+        )
+        .forEach((param) => {
+            const key = String(
+                param.name ??
+                    param.key ??
+                    "",
+            ).trim();
+
+            if (!key) {
+                return;
+            }
+
+            const value = String(
+                param.value ?? "",
+            );
+
+            url.searchParams.set(
+                key,
+                value,
+            );
+        });
+
+    const auth =
+        normalized.auth;
 
     if (
-        normalized.auth.type === "api-key" &&
-        normalized.auth.fields?.location ===
+        auth.type === "api-key" &&
+        auth.fields?.location ===
             "query"
     ) {
         const key = String(
-            normalized.auth.fields.key ?? "",
+            auth.fields.key ?? "",
         ).trim();
 
         const value = String(
-            normalized.auth.fields.value ?? "",
+            auth.fields.value ?? "",
         );
 
         if (key && value) {
@@ -232,225 +530,6 @@ export function buildRequestUrl(request = {}) {
     return url.href;
 }
 
-/**
- * Return the body if it is usable.
- *
- * @param {Object} request
- * @returns {string}
- */
-function getRequestBody(request) {
-    const body = request.body;
-
-    if (
-        body === undefined ||
-        body === null
-    ) {
-        return "";
-    }
-
-    return String(body);
-}
-
-/**
- * Add authentication headers.
- *
- * @param {Object} request
- * @param {Array} headers
- * @returns {Array}
- */
-function addAuthenticationHeaders(
-    request,
-    headers,
-) {
-    const auth = request.auth || {};
-    const type = auth.type || "none";
-    const fields = auth.fields || {};
-
-    const result = [...headers];
-
-    if (type === "bearer") {
-        const token =
-            String(fields.token ?? "").trim();
-
-        if (token) {
-            result.push({
-                name: "Authorization",
-                value: `Bearer ${token}`,
-            });
-        }
-    }
-
-    if (type === "basic") {
-        const username =
-            String(fields.username ?? "");
-
-        const password =
-            String(fields.password ?? "");
-
-        if (username || password) {
-            result.push({
-                name: "Authorization",
-                value: `Basic ${encodeBasicAuth(
-                    username,
-                    password,
-                )}`,
-            });
-        }
-    }
-
-    if (type === "api-key") {
-        const key =
-            String(fields.key ?? "").trim();
-
-        const value =
-            String(fields.value ?? "");
-
-        const location =
-            fields.location || "header";
-
-        if (
-            key &&
-            value &&
-            location === "header"
-        ) {
-            result.push({
-                name: key,
-                value,
-            });
-        }
-    }
-
-    return removeDuplicateHeaders(result);
-}
-
-/**
- * Encode Basic authentication credentials.
- *
- * @param {string} username
- * @param {string} password
- * @returns {string}
- */
-function encodeBasicAuth(
-    username,
-    password,
-) {
-    const value =
-        `${username}:${password}`;
-
-    try {
-        if (
-            typeof btoa === "function"
-        ) {
-            return btoa(value);
-        }
-    } catch {
-        // Fall through to plain value.
-    }
-
-    return value;
-}
-
-/**
- * Remove duplicate headers.
- *
- * @param {Array} headers
- * @returns {Array}
- */
-function removeDuplicateHeaders(headers) {
-    const result = [];
-    const names = new Set();
-
-    for (const header of headers) {
-        const normalizedName =
-            header.name.toLowerCase();
-
-        if (names.has(normalizedName)) {
-            continue;
-        }
-
-        names.add(normalizedName);
-        result.push(header);
-    }
-
-    return result;
-}
-
-/**
- * Get all headers including generated auth headers.
- *
- * @param {Object} request
- * @returns {Array}
- */
-function getRequestHeaders(request) {
-    const headers =
-        getEnabledHeaders(request.headers);
-
-    return addAuthenticationHeaders(
-        request,
-        headers,
-    );
-}
-
-/**
- * Detect whether the body looks like JSON.
- *
- * @param {string} body
- * @returns {boolean}
- */
-function isJsonBody(body) {
-    if (!body.trim()) {
-        return false;
-    }
-
-    try {
-        JSON.parse(body);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-/**
- * Format JSON body for generated source code.
- *
- * @param {string} body
- * @returns {string}
- */
-function formatJsonBody(body) {
-    if (!isJsonBody(body)) {
-        return body;
-    }
-
-    try {
-        return JSON.stringify(
-            JSON.parse(body),
-            null,
-            2,
-        );
-    } catch {
-        return body;
-    }
-}
-
-/**
- * Find a header by name.
- *
- * @param {Array} headers
- * @param {string} name
- * @returns {Object|null}
- */
-function findHeader(headers, name) {
-    const target = name.toLowerCase();
-
-    return (
-        headers.find(
-            (header) =>
-                header.name.toLowerCase() ===
-                target,
-        ) || null
-    );
-}
-
 // ============================================================
 // JavaScript Fetch
 // ============================================================
@@ -458,70 +537,18 @@ function findHeader(headers, name) {
 /**
  * Generate JavaScript Fetch code.
  *
+ * The actual Fetch syntax is delegated to
+ * api/fetch-generator.js.
+ *
  * @param {Object} request
  * @returns {string}
  */
 export function generateJavaScriptFetch(
     request = {},
 ) {
-    const normalized =
-        normalizeRequest(request);
-
-    const url =
-        buildRequestUrl(normalized);
-
-    const headers =
-        getRequestHeaders(normalized);
-
-    const body =
-        getRequestBody(normalized);
-
-    const lines = [
-        `const response = await fetch(${escapeJavaScript(
-            url,
-        )}, {`,
-        `  method: ${escapeJavaScript(
-            normalized.method,
-        )},`,
-    ];
-
-    if (headers.length) {
-        lines.push("  headers: {");
-
-        headers.forEach((header) => {
-            lines.push(
-                `    ${escapeJavaScript(
-                    header.name,
-                )}: ${escapeJavaScript(
-                    header.value,
-                )},`,
-            );
-        });
-
-        lines.push("  },");
-    }
-
-    if (
-        body &&
-        !["GET", "HEAD"].includes(
-            normalized.method,
-        )
-    ) {
-        lines.push(
-            `  body: ${escapeJavaScript(
-                body,
-            )},`,
-        );
-    }
-
-    lines.push("});");
-    lines.push("");
-    lines.push(
-        "const data = await response.text();",
+    return generateFetchFromRequest(
+        normalizeRequest(request),
     );
-    lines.push("console.log(data);");
-
-    return lines.join("\n");
 }
 
 // ============================================================
@@ -547,35 +574,41 @@ export function generateJavaScriptAxios(
         getRequestHeaders(normalized);
 
     const body =
-        getRequestBody(normalized);
+        normalized.body;
 
     const lines = [
         `const response = await axios({`,
         `  method: ${escapeJavaScript(
             normalized.method,
         )},`,
-        `  url: ${escapeJavaScript(url)},`,
+        `  url: ${escapeJavaScript(
+            url,
+        )},`,
     ];
 
     if (headers.length) {
-        lines.push("  headers: {");
+        lines.push(
+            "  headers: {",
+        );
 
-        headers.forEach((header) => {
-            lines.push(
-                `    ${escapeJavaScript(
-                    header.name,
-                )}: ${escapeJavaScript(
-                    header.value,
-                )},`,
-            );
-        });
+        headers.forEach(
+            (header) => {
+                lines.push(
+                    `    ${escapeJavaScript(
+                        header.name,
+                    )}: ${escapeJavaScript(
+                        header.value,
+                    )},`,
+                );
+            },
+        );
 
         lines.push("  },");
     }
 
     if (
-        body &&
-        !["GET", "HEAD"].includes(
+        hasBody(body) &&
+        methodSupportsBody(
             normalized.method,
         )
     ) {
@@ -596,7 +629,9 @@ export function generateJavaScriptAxios(
 
     lines.push("});");
     lines.push("");
-    lines.push("console.log(response.data);");
+    lines.push(
+        "console.log(response.data);",
+    );
 
     return lines.join("\n");
 }
@@ -607,6 +642,9 @@ export function generateJavaScriptAxios(
 
 /**
  * Generate Node.js Fetch code.
+ *
+ * Node.js uses the standard Fetch API in modern
+ * Node.js versions.
  *
  * @param {Object} request
  * @returns {string}
@@ -624,7 +662,7 @@ export function generateNodeFetch(
         getRequestHeaders(normalized);
 
     const body =
-        getRequestBody(normalized);
+        normalized.body;
 
     const lines = [
         `const response = await fetch(${escapeJavaScript(
@@ -636,24 +674,28 @@ export function generateNodeFetch(
     ];
 
     if (headers.length) {
-        lines.push("  headers: {");
+        lines.push(
+            "  headers: {",
+        );
 
-        headers.forEach((header) => {
-            lines.push(
-                `    ${escapeJavaScript(
-                    header.name,
-                )}: ${escapeJavaScript(
-                    header.value,
-                )},`,
-            );
-        });
+        headers.forEach(
+            (header) => {
+                lines.push(
+                    `    ${escapeJavaScript(
+                        header.name,
+                    )}: ${escapeJavaScript(
+                        header.value,
+                    )},`,
+                );
+            },
+        );
 
         lines.push("  },");
     }
 
     if (
-        body &&
-        !["GET", "HEAD"].includes(
+        hasBody(body) &&
+        methodSupportsBody(
             normalized.method,
         )
     ) {
@@ -669,7 +711,9 @@ export function generateNodeFetch(
     lines.push(
         "const data = await response.text();",
     );
-    lines.push("console.log(data);");
+    lines.push(
+        "console.log(data);",
+    );
 
     return lines.join("\n");
 }
@@ -697,13 +741,15 @@ export function generateCurl(
         getRequestHeaders(normalized);
 
     const body =
-        getRequestBody(normalized);
+        normalized.body;
 
     const lines = [
         `curl ${escapeShell(url)}`,
     ];
 
-    if (normalized.method !== "GET") {
+    if (
+        normalized.method !== "GET"
+    ) {
         lines.push(
             `  -X ${escapeShell(
                 normalized.method,
@@ -711,17 +757,19 @@ export function generateCurl(
         );
     }
 
-    headers.forEach((header) => {
-        lines.push(
-            `  -H ${escapeShell(
-                `${header.name}: ${header.value}`,
-            )}`,
-        );
-    });
+    headers.forEach(
+        (header) => {
+            lines.push(
+                `  -H ${escapeShell(
+                    `${header.name}: ${header.value}`,
+                )}`,
+            );
+        },
+    );
 
     if (
-        body &&
-        !["GET", "HEAD"].includes(
+        hasBody(body) &&
+        methodSupportsBody(
             normalized.method,
         )
     ) {
@@ -732,7 +780,9 @@ export function generateCurl(
         );
     }
 
-    return lines.join(" \\\n");
+    return lines.join(
+        " \\\n",
+    );
 }
 
 // ============================================================
@@ -758,7 +808,7 @@ export function generatePythonRequests(
         getRequestHeaders(normalized);
 
     const body =
-        getRequestBody(normalized);
+        normalized.body;
 
     const lines = [
         "import requests",
@@ -771,22 +821,24 @@ export function generatePythonRequests(
             "headers = {",
         );
 
-        headers.forEach((header) => {
-            lines.push(
-                `    ${escapePython(
-                    header.name,
-                )}: ${escapePython(
-                    header.value,
-                )},`,
-            );
-        });
+        headers.forEach(
+            (header) => {
+                lines.push(
+                    `    ${escapePython(
+                        header.name,
+                    )}: ${escapePython(
+                        header.value,
+                    )},`,
+                );
+            },
+        );
 
         lines.push("}");
     }
 
     if (
-        body &&
-        !["GET", "HEAD"].includes(
+        hasBody(body) &&
+        methodSupportsBody(
             normalized.method,
         )
     ) {
@@ -808,7 +860,7 @@ export function generatePythonRequests(
     lines.push("");
 
     const argumentsList = [
-        `url`,
+        "url",
     ];
 
     if (headers.length) {
@@ -818,8 +870,8 @@ export function generatePythonRequests(
     }
 
     if (
-        body &&
-        !["GET", "HEAD"].includes(
+        hasBody(body) &&
+        methodSupportsBody(
             normalized.method,
         )
     ) {
@@ -834,18 +886,27 @@ export function generatePythonRequests(
         }
     }
 
+    const method =
+        normalized.method.toLowerCase();
+
     lines.push(
-        `response = requests.${normalized.method.toLowerCase()}(`,
+        `response = requests.${method}(`,
     );
 
     lines.push(
-        `    ${argumentsList.join(",\n    ")}`,
+        `    ${argumentsList.join(
+            ",\n    ",
+        )}`,
     );
 
     lines.push(")");
     lines.push("");
-    lines.push("print(response.status_code)");
-    lines.push("print(response.text)");
+    lines.push(
+        "print(response.status_code)",
+    );
+    lines.push(
+        "print(response.text)",
+    );
 
     return lines.join("\n");
 }
@@ -876,16 +937,18 @@ export function generateCode(
                 request,
             );
 
-        case "node-fetch":
-            return generateNodeFetch(
+        case "curl":
+            return generateCurl(
                 request,
             );
 
-        case "curl":
-            return generateCurl(request);
-
         case "python-requests":
             return generatePythonRequests(
+                request,
+            );
+
+        case "node-fetch":
+            return generateNodeFetch(
                 request,
             );
 
@@ -901,9 +964,9 @@ export function generateCode(
 // ============================================================
 
 /**
- * Get supported languages.
+ * Get all supported languages.
  *
- * @returns {Array}
+ * @returns {Array<Object>}
  */
 export function getSupportedLanguages() {
     return SUPPORTED_LANGUAGES.map(
@@ -919,22 +982,28 @@ export function getSupportedLanguages() {
  * @param {string} language
  * @returns {boolean}
  */
-export function isLanguageSupported(language) {
+export function isLanguageSupported(
+    language,
+) {
     return SUPPORTED_LANGUAGES.some(
-        (item) => item.id === language,
+        (item) =>
+            item.id === language,
     );
 }
 
 /**
- * Get a language label.
+ * Get the display label for a language.
  *
  * @param {string} language
  * @returns {string}
  */
-export function getLanguageLabel(language) {
+export function getLanguageLabel(
+    language,
+) {
     return (
         SUPPORTED_LANGUAGES.find(
-            (item) => item.id === language,
+            (item) =>
+                item.id === language,
         )?.label ||
         "JavaScript Fetch"
     );
@@ -944,14 +1013,8 @@ export function getLanguageLabel(language) {
 // DOM Integration
 // ============================================================
 
-const elements = {
-    language: null,
-    output: null,
-    copyButton: null,
-};
-
 /**
- * Initialize the code generator UI.
+ * Initialize the code-generator UI.
  *
  * Expected elements:
  * - #code-language
@@ -987,20 +1050,14 @@ export function initCodeGenerator({
     if (elements.language) {
         elements.language.addEventListener(
             "change",
-            () => {
-                if (elements._request) {
-                    renderGeneratedCode(
-                        elements._request,
-                    );
-                }
-            },
+            handleLanguageChange,
         );
     }
 
     if (elements.copyButton) {
         elements.copyButton.addEventListener(
             "click",
-            copyGeneratedCode,
+            handleCopyClick,
         );
     }
 
@@ -1012,17 +1069,60 @@ export function initCodeGenerator({
 }
 
 /**
- * Render generated code for a request.
+ * Handle language changes.
+ */
+function handleLanguageChange() {
+    if (!currentRequest) {
+        return;
+    }
+
+    renderGeneratedCode(
+        currentRequest,
+    );
+}
+
+/**
+ * Handle copy button clicks.
+ *
+ * @param {Event} event
+ */
+async function handleCopyClick(
+    event,
+) {
+    const button =
+        event.currentTarget;
+
+    const copied =
+        await copyGeneratedCode();
+
+    if (!copied) {
+        return;
+    }
+
+    button.setAttribute(
+        "data-copied",
+        "true",
+    );
+
+    window.setTimeout(() => {
+        button.removeAttribute(
+            "data-copied",
+        );
+    }, 1200);
+}
+
+/**
+ * Render generated code.
  *
  * @param {Object} request
- * @param {string} [language]
+ * @param {string|null} language
  * @returns {string}
  */
 export function renderGeneratedCode(
     request = {},
     language = null,
 ) {
-    elements._request =
+    currentRequest =
         normalizeRequest(request);
 
     const selectedLanguage =
@@ -1031,26 +1131,43 @@ export function renderGeneratedCode(
         DEFAULT_LANGUAGE;
 
     const code = generateCode(
-        elements._request,
+        currentRequest,
         selectedLanguage,
     );
 
     if (elements.output) {
-        if (
-            elements.output instanceof
-            HTMLTextAreaElement
-        ) {
-            elements.output.value = code;
-        } else {
-            elements.output.textContent = code;
-        }
+        setOutputValue(
+            elements.output,
+            code,
+        );
     }
 
     return code;
 }
 
 /**
- * Get the currently generated code.
+ * Set generated code into the output element.
+ *
+ * @param {HTMLElement} output
+ * @param {string} code
+ */
+function setOutputValue(
+    output,
+    code,
+) {
+    if (
+        output instanceof
+        HTMLTextAreaElement
+    ) {
+        output.value = code;
+        return;
+    }
+
+    output.textContent = code;
+}
+
+/**
+ * Get the currently displayed generated code.
  *
  * @returns {string}
  */
@@ -1066,8 +1183,15 @@ export function getGeneratedCode() {
         return elements.output.value;
     }
 
-    return elements.output.textContent || "";
+    return (
+        elements.output.textContent ||
+        ""
+    );
 }
+
+// ============================================================
+// Clipboard
+// ============================================================
 
 /**
  * Copy generated code to the clipboard.
@@ -1082,36 +1206,39 @@ export async function copyGeneratedCode() {
         return false;
     }
 
-    try {
-        if (
-            navigator.clipboard &&
-            typeof navigator.clipboard.writeText ===
-                "function"
-        ) {
+    if (
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText ===
+            "function"
+    ) {
+        try {
             await navigator.clipboard.writeText(
                 code,
             );
 
             return true;
+        } catch {
+            // Fall through to legacy copy.
         }
-    } catch {
-        // Fall through to the legacy copy method.
     }
 
     return copyUsingFallback(code);
 }
 
 /**
- * Copy text using a temporary textarea.
+ * Copy text using the legacy document.execCommand API.
  *
  * @param {string} text
  * @returns {boolean}
  */
 function copyUsingFallback(text) {
     const textarea =
-        document.createElement("textarea");
+        document.createElement(
+            "textarea",
+        );
 
     textarea.value = text;
+
     textarea.setAttribute(
         "readonly",
         "",
@@ -1119,10 +1246,8 @@ function copyUsingFallback(text) {
 
     textarea.style.position =
         "fixed";
-    textarea.style.opacity =
-        "0";
-    textarea.style.pointerEvents =
-        "none";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
 
     document.body.appendChild(
         textarea,
@@ -1147,11 +1272,11 @@ function copyUsingFallback(text) {
 }
 
 // ============================================================
-// Utility Exports
+// Generation Utilities
 // ============================================================
 
 /**
- * Create a plain request object suitable for generation.
+ * Prepare a request for code generation.
  *
  * @param {Object} request
  * @returns {Object}
@@ -1164,9 +1289,11 @@ export function prepareRequestForGeneration(
 
     return {
         ...normalized,
+
         url: buildRequestUrl(
             normalized,
         ),
+
         headers:
             getRequestHeaders(
                 normalized,
@@ -1175,7 +1302,7 @@ export function prepareRequestForGeneration(
 }
 
 /**
- * Get the generated request body representation.
+ * Get information about how a request will be generated.
  *
  * @param {Object} request
  * @returns {Object}
@@ -1186,24 +1313,34 @@ export function getGenerationDetails(
     const normalized =
         normalizeRequest(request);
 
-    const headers =
-        getRequestHeaders(normalized);
-
     const body =
-        getRequestBody(normalized);
+        normalized.body;
 
     return {
-        method: normalized.method,
-        url: buildRequestUrl(normalized),
-        headers,
+        method:
+            normalized.method,
+
+        url:
+            buildRequestUrl(
+                normalized,
+            ),
+
+        headers:
+            getRequestHeaders(
+                normalized,
+            ),
+
         body,
+
         hasBody:
-            Boolean(body) &&
-            !["GET", "HEAD"].includes(
+            hasBody(body) &&
+            methodSupportsBody(
                 normalized.method,
             ),
+
         isJsonBody:
             isJsonBody(body),
+
         languageOptions:
             getSupportedLanguages(),
     };
