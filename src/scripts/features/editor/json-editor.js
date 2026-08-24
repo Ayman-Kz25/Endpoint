@@ -10,8 +10,10 @@
  * - Configure JSON syntax highlighting
  * - Read and update editor content
  * - Validate JSON
- * - Format JSON
- * - Expose a small API for the request-builder/editor layer
+ * - Format and minify JSON
+ * - Manage selections
+ * - Manage read-only state
+ * - Expose a small API to the editor/request-builder layer
  *
  * This module does not:
  * - execute HTTP requests
@@ -20,17 +22,36 @@
  * - show notifications
  */
 
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
+
 import {
     EditorView,
+    highlightActiveLine,
     keymap,
     lineNumbers,
-    highlightActiveLine,
 } from "@codemirror/view";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+
+import {
+    defaultKeymap,
+    indentWithTab,
+    redo,
+    undo,
+} from "@codemirror/commands";
+
 import { json } from "@codemirror/lang-json";
-import { indentUnit, syntaxHighlighting } from "@codemirror/language";
+
+import {
+    indentUnit,
+} from "@codemirror/language";
+
 import { oneDark } from "@codemirror/theme-one-dark";
+
+import {
+    EDITOR_DEFAULTS,
+    EDITOR_MODES,
+    REQUEST_EDITOR_CONFIG,
+    normalizeEditorMode,
+} from "./editor-config.js";
 
 // ============================================================
 // Constants
@@ -38,12 +59,25 @@ import { oneDark } from "@codemirror/theme-one-dark";
 
 const DEFAULT_VALUE = "";
 
+const READ_ONLY_COMPARTMENT = new Compartment();
+
+const DISPLAY_COMPARTMENT = new Compartment();
+
 const DEFAULT_OPTIONS = Object.freeze({
-    tabSize: 2,
-    lineNumbers: true,
-    lineWrapping: true,
+    ...REQUEST_EDITOR_CONFIG,
+
+    mode: EDITOR_MODES.JSON,
+
+    tabSize: EDITOR_DEFAULTS.tabSize,
+
+    lineNumbers: EDITOR_DEFAULTS.lineNumbers,
+
+    lineWrapping: EDITOR_DEFAULTS.lineWrapping,
+
     readOnly: false,
+
     autofocus: false,
+
     placeholder: "Enter JSON...",
 });
 
@@ -53,9 +87,12 @@ const DEFAULT_OPTIONS = Object.freeze({
 
 let editorView = null;
 let editorParent = null;
+let editorOptions = {
+    ...DEFAULT_OPTIONS,
+};
 
 // ============================================================
-// Helpers
+// Option Helpers
 // ============================================================
 
 /**
@@ -65,34 +102,54 @@ let editorParent = null;
  * @returns {Object}
  */
 function normalizeOptions(options = {}) {
+    const tabSize =
+        Number.isInteger(options.tabSize) &&
+        options.tabSize > 0
+            ? options.tabSize
+            : DEFAULT_OPTIONS.tabSize;
+
+    const lineNumbers =
+        options.lineNumbers !== undefined
+            ? Boolean(options.lineNumbers)
+            : DEFAULT_OPTIONS.lineNumbers;
+
+    const lineWrapping =
+        options.lineWrapping !== undefined
+            ? Boolean(options.lineWrapping)
+            : DEFAULT_OPTIONS.lineWrapping;
+
+    const readOnly =
+        options.readOnly !== undefined
+            ? Boolean(options.readOnly)
+            : DEFAULT_OPTIONS.readOnly;
+
+    const autofocus =
+        options.autofocus !== undefined
+            ? Boolean(options.autofocus)
+            : DEFAULT_OPTIONS.autofocus;
+
+    const placeholder =
+        options.placeholder !== undefined
+            ? String(options.placeholder ?? "")
+            : DEFAULT_OPTIONS.placeholder;
+
     return {
         ...DEFAULT_OPTIONS,
         ...options,
-        tabSize:
-            Number.isInteger(options.tabSize) && options.tabSize > 0
-                ? options.tabSize
-                : DEFAULT_OPTIONS.tabSize,
-        lineNumbers:
-            options.lineNumbers !== undefined
-                ? Boolean(options.lineNumbers)
-                : DEFAULT_OPTIONS.lineNumbers,
-        lineWrapping:
-            options.lineWrapping !== undefined
-                ? Boolean(options.lineWrapping)
-                : DEFAULT_OPTIONS.lineWrapping,
-        readOnly:
-            options.readOnly !== undefined
-                ? Boolean(options.readOnly)
-                : DEFAULT_OPTIONS.readOnly,
-        autofocus:
-            options.autofocus !== undefined
-                ? Boolean(options.autofocus)
-                : DEFAULT_OPTIONS.autofocus,
+
+        mode: EDITOR_MODES.JSON,
+
+        tabSize,
+        lineNumbers,
+        lineWrapping,
+        readOnly,
+        autofocus,
+        placeholder,
     };
 }
 
 /**
- * Resolve a DOM element from either an element or selector.
+ * Resolve a DOM element from an element or selector.
  *
  * @param {HTMLElement|string} target
  * @returns {HTMLElement|null}
@@ -106,73 +163,106 @@ function resolveParent(target) {
         return document.querySelector(target);
     }
 
-    if (target instanceof HTMLElement) {
+    if (
+        typeof HTMLElement !== "undefined" &&
+        target instanceof HTMLElement
+    ) {
         return target;
     }
 
     return null;
 }
 
+// ============================================================
+// CodeMirror Extensions
+// ============================================================
+
 /**
- * Create the editor extensions.
+ * Create the base editor theme.
+ *
+ * @returns {Extension}
+ */
+function createEditorTheme() {
+    return EditorView.theme({
+        "&": {
+            height: "100%",
+            fontSize: "13px",
+        },
+
+        ".cm-scroller": {
+            overflow: "auto",
+            fontFamily:
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        },
+
+        ".cm-content": {
+            minHeight: "100%",
+            padding: "12px 0",
+        },
+
+        ".cm-line": {
+            padding: "0 12px",
+        },
+
+        ".cm-gutters": {
+            minHeight: "100%",
+        },
+
+        ".cm-focused": {
+            outline: "none",
+        },
+    });
+}
+
+/**
+ * Create the placeholder extension.
+ *
+ * @param {string} placeholder
+ * @returns {Extension}
+ */
+function createPlaceholderExtension(placeholder) {
+    if (!placeholder) {
+        return [];
+    }
+
+    return [
+        EditorView.contentAttributes.of({
+            "data-placeholder": placeholder,
+        }),
+
+        EditorView.theme({
+            ".cm-content:empty:before": {
+                content: "attr(data-placeholder)",
+                opacity: "0.45",
+                pointerEvents: "none",
+            },
+        }),
+    ];
+}
+
+/**
+ * Create display-related extensions.
+ *
+ * These extensions are placed inside a compartment so settings
+ * such as line numbers and wrapping can be changed after
+ * initialization.
  *
  * @param {Object} options
- * @returns {Array}
+ * @returns {Extension[]}
  */
-function createExtensions(options) {
+function createDisplayExtensions(options) {
     const extensions = [
-        json(),
-
-        oneDark,
-
-        keymap.of([
-            ...defaultKeymap,
-            indentWithTab,
-        ]),
-
-        indentUnit.of(" ".repeat(options.tabSize)),
+        createEditorTheme(),
 
         highlightActiveLine,
 
-        EditorView.theme({
-            "&": {
-                height: "100%",
-                fontSize: "13px",
-            },
+        indentUnit.of(
+            " ".repeat(options.tabSize),
+        ),
 
-            ".cm-scroller": {
-                overflow: "auto",
-                fontFamily:
-                    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-            },
-
-            ".cm-content": {
-                minHeight: "100%",
-                padding: "12px 0",
-            },
-
-            ".cm-line": {
-                padding: "0 12px",
-            },
-
-            ".cm-gutters": {
-                minHeight: "100%",
-            },
-
-            ".cm-focused": {
-                outline: "none",
-            },
-        }),
-
-        EditorView.updateListener.of((update) => {
-            if (!update.docChanged) {
-                return;
-            }
-
-            dispatchEditorEvent("change", {
-                value: update.state.doc.toString(),
-            });
-        }),
+        ...createPlaceholderExtension(
+            options.placeholder,
+        ),
     ];
 
     if (options.lineNumbers) {
@@ -183,33 +273,56 @@ function createExtensions(options) {
         extensions.push(EditorView.lineWrapping);
     }
 
-    if (options.readOnly) {
-        extensions.push(EditorState.readOnly.of(true));
-    }
-
-    if (options.placeholder) {
-        extensions.push(
-            EditorView.contentAttributes.of({
-                "data-placeholder": options.placeholder,
-            }),
-        );
-
-        extensions.push(
-            EditorView.theme({
-                ".cm-content:empty:before": {
-                    content: `attr(data-placeholder)`,
-                    opacity: "0.45",
-                    pointerEvents: "none",
-                },
-            }),
-        );
-    }
-
     return extensions;
 }
 
 /**
- * Dispatch a custom event from the editor host.
+ * Create all editor extensions.
+ *
+ * @param {Object} options
+ * @returns {Extension[]}
+ */
+function createExtensions(options) {
+    return [
+        json(),
+
+        oneDark,
+
+        keymap.of([
+            ...defaultKeymap,
+            indentWithTab,
+        ]),
+
+        READ_ONLY_COMPARTMENT.of(
+            EditorState.readOnly.of(
+                options.readOnly,
+            ),
+        ),
+
+        DISPLAY_COMPARTMENT.of(
+            createDisplayExtensions(options),
+        ),
+
+        EditorView.updateListener.of(
+            (update) => {
+                if (!update.docChanged) {
+                    return;
+                }
+
+                dispatchEditorEvent("change", {
+                    value: update.state.doc.toString(),
+                });
+            },
+        ),
+    ];
+}
+
+// ============================================================
+// Events
+// ============================================================
+
+/**
+ * Dispatch an editor-specific custom event.
  *
  * @param {string} type
  * @param {Object} detail
@@ -220,10 +333,13 @@ function dispatchEditorEvent(type, detail = {}) {
     }
 
     editorParent.dispatchEvent(
-        new CustomEvent(`json-editor:${type}`, {
-            bubbles: true,
-            detail,
-        }),
+        new CustomEvent(
+            `json-editor:${type}`,
+            {
+                bubbles: true,
+                detail,
+            },
+        ),
     );
 }
 
@@ -233,6 +349,9 @@ function dispatchEditorEvent(type, detail = {}) {
 
 /**
  * Initialize a CodeMirror JSON editor.
+ *
+ * Existing editor instances are destroyed before creating
+ * a new instance.
  *
  * @param {HTMLElement|string} target
  * @param {Object} options
@@ -250,24 +369,32 @@ export function initJsonEditor(
         return null;
     }
 
-    const normalizedOptions = normalizeOptions(options);
+    const normalizedOptions =
+        normalizeOptions(options);
 
     const initialValue =
-        typeof options.value === "string"
-            ? options.value
-            : DEFAULT_VALUE;
+        options.value === null ||
+        options.value === undefined
+            ? DEFAULT_VALUE
+            : String(options.value);
 
     editorParent = parent;
+    editorOptions = normalizedOptions;
 
     const state = EditorState.create({
         doc: initialValue,
-        extensions: createExtensions(normalizedOptions),
+        extensions:
+            createExtensions(
+                normalizedOptions,
+            ),
     });
 
     editorView = new EditorView({
         state,
         parent,
     });
+
+    setEditorDataAttributes();
 
     if (normalizedOptions.autofocus) {
         focusJsonEditor();
@@ -278,6 +405,21 @@ export function initJsonEditor(
     });
 
     return editorView;
+}
+
+/**
+ * Update editor data attributes.
+ */
+function setEditorDataAttributes() {
+    if (!editorParent) {
+        return;
+    }
+
+    editorParent.dataset.editorMode =
+        EDITOR_MODES.JSON;
+
+    editorParent.dataset.editorType =
+        "request-body";
 }
 
 // ============================================================
@@ -294,7 +436,7 @@ export function getJsonEditor() {
 }
 
 /**
- * Check whether the editor has been initialized.
+ * Check whether the JSON editor exists.
  *
  * @returns {boolean}
  */
@@ -307,7 +449,7 @@ export function hasJsonEditor() {
 // ============================================================
 
 /**
- * Get the current editor value.
+ * Get the current JSON editor value.
  *
  * @returns {string}
  */
@@ -320,9 +462,9 @@ export function getJsonValue() {
 }
 
 /**
- * Set the editor value.
+ * Set the JSON editor value.
  *
- * @param {string} value
+ * @param {unknown} value
  * @returns {boolean}
  */
 export function setJsonValue(value = "") {
@@ -331,11 +473,13 @@ export function setJsonValue(value = "") {
     }
 
     const nextValue =
-        value === null || value === undefined
+        value === null ||
+        value === undefined
             ? ""
             : String(value);
 
-    const currentValue = getJsonValue();
+    const currentValue =
+        getJsonValue();
 
     if (currentValue === nextValue) {
         return true;
@@ -353,7 +497,7 @@ export function setJsonValue(value = "") {
 }
 
 /**
- * Clear the editor.
+ * Clear the JSON editor.
  *
  * @returns {boolean}
  */
@@ -366,7 +510,7 @@ export function clearJsonEditor() {
 // ============================================================
 
 /**
- * Focus the editor.
+ * Focus the JSON editor.
  *
  * @returns {boolean}
  */
@@ -376,20 +520,19 @@ export function focusJsonEditor() {
     }
 
     editorView.focus();
+
     return true;
 }
 
 /**
- * Check whether the editor currently has focus.
+ * Check whether the JSON editor currently has focus.
  *
  * @returns {boolean}
  */
 export function isJsonEditorFocused() {
-    if (!editorView) {
-        return false;
-    }
-
-    return editorView.hasFocus;
+    return Boolean(
+        editorView?.hasFocus,
+    );
 }
 
 // ============================================================
@@ -397,18 +540,24 @@ export function isJsonEditorFocused() {
 // ============================================================
 
 /**
- * Validate the current editor content as JSON.
+ * Validate JSON.
  *
- * @param {string} [value]
+ * Empty input is considered valid because an empty request body
+ * does not represent malformed JSON.
+ *
+ * @param {unknown} [value]
  * @returns {{
  *     valid: boolean,
  *     value: unknown,
  *     error: Error|null
  * }}
  */
-export function validateJson(value = getJsonValue()) {
+export function validateJson(
+    value = getJsonValue(),
+) {
     const source =
-        value === null || value === undefined
+        value === null ||
+        value === undefined
             ? ""
             : String(value);
 
@@ -433,13 +582,15 @@ export function validateJson(value = getJsonValue()) {
             error:
                 error instanceof Error
                     ? error
-                    : new Error("Invalid JSON."),
+                    : new Error(
+                          "Invalid JSON.",
+                      ),
         };
     }
 }
 
 /**
- * Check whether the current editor value contains valid JSON.
+ * Check whether the current editor contains valid JSON.
  *
  * @returns {boolean}
  */
@@ -452,9 +603,22 @@ export function isValidJson() {
 // ============================================================
 
 /**
+ * Normalize an indentation value.
+ *
+ * @param {number} indent
+ * @returns {number}
+ */
+function normalizeIndent(indent) {
+    return Number.isInteger(indent) &&
+        indent >= 0
+        ? indent
+        : DEFAULT_OPTIONS.tabSize;
+}
+
+/**
  * Format a JSON string.
  *
- * @param {string} value
+ * @param {unknown} value
  * @param {number} [indent=2]
  * @returns {{
  *     valid: boolean,
@@ -462,9 +626,13 @@ export function isValidJson() {
  *     error: Error|null
  * }}
  */
-export function formatJson(value, indent = 2) {
+export function formatJson(
+    value,
+    indent = DEFAULT_OPTIONS.tabSize,
+) {
     const source =
-        value === null || value === undefined
+        value === null ||
+        value === undefined
             ? ""
             : String(value);
 
@@ -478,10 +646,16 @@ export function formatJson(value, indent = 2) {
 
     try {
         const parsed = JSON.parse(source);
+        const normalizedIndent =
+            normalizeIndent(indent);
 
         return {
             valid: true,
-            value: JSON.stringify(parsed, null, indent),
+            value: JSON.stringify(
+                parsed,
+                null,
+                normalizedIndent,
+            ),
             error: null,
         };
     } catch (error) {
@@ -491,13 +665,15 @@ export function formatJson(value, indent = 2) {
             error:
                 error instanceof Error
                     ? error
-                    : new Error("Invalid JSON."),
+                    : new Error(
+                          "Invalid JSON.",
+                      ),
         };
     }
 }
 
 /**
- * Format the current editor content.
+ * Format the current JSON editor content.
  *
  * @param {number} [indent=2]
  * @returns {{
@@ -506,7 +682,9 @@ export function formatJson(value, indent = 2) {
  *     error: Error|null
  * }}
  */
-export function formatCurrentJson(indent = 2) {
+export function formatCurrentJson(
+    indent = DEFAULT_OPTIONS.tabSize,
+) {
     const result = formatJson(
         getJsonValue(),
         indent,
@@ -522,7 +700,7 @@ export function formatCurrentJson(indent = 2) {
 /**
  * Minify a JSON string.
  *
- * @param {string} value
+ * @param {unknown} value
  * @returns {{
  *     valid: boolean,
  *     value: string,
@@ -531,7 +709,8 @@ export function formatCurrentJson(indent = 2) {
  */
 export function minifyJson(value) {
     const source =
-        value === null || value === undefined
+        value === null ||
+        value === undefined
             ? ""
             : String(value);
 
@@ -546,7 +725,9 @@ export function minifyJson(value) {
     try {
         return {
             valid: true,
-            value: JSON.stringify(JSON.parse(source)),
+            value: JSON.stringify(
+                JSON.parse(source),
+            ),
             error: null,
         };
     } catch (error) {
@@ -556,13 +737,15 @@ export function minifyJson(value) {
             error:
                 error instanceof Error
                     ? error
-                    : new Error("Invalid JSON."),
+                    : new Error(
+                          "Invalid JSON.",
+                      ),
         };
     }
 }
 
 /**
- * Minify the current editor content.
+ * Minify the current JSON editor content.
  *
  * @returns {{
  *     valid: boolean,
@@ -571,7 +754,8 @@ export function minifyJson(value) {
  * }}
  */
 export function minifyCurrentJson() {
-    const result = minifyJson(getJsonValue());
+    const result =
+        minifyJson(getJsonValue());
 
     if (result.valid) {
         setJsonValue(result.value);
@@ -585,7 +769,7 @@ export function minifyCurrentJson() {
 // ============================================================
 
 /**
- * Get the current editor selection.
+ * Get the main editor selection.
  *
  * @returns {{
  *     from: number,
@@ -614,26 +798,37 @@ export function getJsonSelection() {
 /**
  * Replace the current selection.
  *
- * @param {string} value
+ * @param {unknown} value
  * @returns {boolean}
  */
-export function replaceJsonSelection(value = "") {
+export function replaceJsonSelection(
+    value = "",
+) {
     if (!editorView) {
         return false;
     }
 
+    const replacement =
+        value === null ||
+        value === undefined
+            ? ""
+            : String(value);
+
     const selection =
         editorView.state.selection.main;
+
+    const cursor =
+        selection.from + replacement.length;
 
     editorView.dispatch({
         changes: {
             from: selection.from,
             to: selection.to,
-            insert: String(value),
+            insert: replacement,
         },
+
         selection: {
-            anchor:
-                selection.from + String(value).length,
+            anchor: cursor,
         },
     });
 
@@ -641,20 +836,18 @@ export function replaceJsonSelection(value = "") {
 }
 
 // ============================================================
-// Editor Commands
+// Undo / Redo
 // ============================================================
 
 /**
  * Undo the last editor change.
  *
- * @returns {Promise<boolean>}
+ * @returns {boolean}
  */
-export async function undoJsonChange() {
+export function undoJsonChange() {
     if (!editorView) {
         return false;
     }
-
-    const { undo } = await import("@codemirror/commands");
 
     return undo(editorView);
 }
@@ -662,14 +855,12 @@ export async function undoJsonChange() {
 /**
  * Redo the last editor change.
  *
- * @returns {Promise<boolean>}
+ * @returns {boolean}
  */
-export async function redoJsonChange() {
+export function redoJsonChange() {
     if (!editorView) {
         return false;
     }
-
-    const { redo } = await import("@codemirror/commands");
 
     return redo(editorView);
 }
@@ -679,18 +870,103 @@ export async function redoJsonChange() {
 // ============================================================
 
 /**
- * Set editor read-only state.
+ * Set the editor read-only state.
  *
  * @param {boolean} readOnly
  * @returns {boolean}
  */
-export function setJsonReadOnly(readOnly = true) {
+export function setJsonReadOnly(
+    readOnly = true,
+) {
     if (!editorView) {
         return false;
     }
 
+    const nextReadOnly =
+        Boolean(readOnly);
+
+    editorOptions = {
+        ...editorOptions,
+        readOnly: nextReadOnly,
+    };
+
     editorView.dispatch({
-        effects: EditorState.readOnly.of(Boolean(readOnly)),
+        effects:
+            READ_ONLY_COMPARTMENT.reconfigure(
+                EditorState.readOnly.of(
+                    nextReadOnly,
+                ),
+            ),
+    });
+
+    return true;
+}
+
+/**
+ * Check whether the editor is read-only.
+ *
+ * @returns {boolean}
+ */
+export function isJsonReadOnly() {
+    if (!editorView) {
+        return false;
+    }
+
+    return editorView.state.facet(
+        EditorState.readOnly,
+    );
+}
+
+// ============================================================
+// Editor Options
+// ============================================================
+
+/**
+ * Get the current editor options.
+ *
+ * @returns {Object}
+ */
+export function getJsonEditorOptions() {
+    return {
+        ...editorOptions,
+    };
+}
+
+/**
+ * Update supported display options.
+ *
+ * @param {Object} options
+ * @returns {boolean}
+ */
+export function updateJsonEditorOptions(
+    options = {},
+) {
+    if (!editorView) {
+        return false;
+    }
+
+    const nextOptions =
+        normalizeOptions({
+            ...editorOptions,
+            ...options,
+        });
+
+    editorOptions = nextOptions;
+
+    editorView.dispatch({
+        effects: [
+            READ_ONLY_COMPARTMENT.reconfigure(
+                EditorState.readOnly.of(
+                    nextOptions.readOnly,
+                ),
+            ),
+
+            DISPLAY_COMPARTMENT.reconfigure(
+                createDisplayExtensions(
+                    nextOptions,
+                ),
+            ),
+        ],
     });
 
     return true;
@@ -701,10 +977,10 @@ export function setJsonReadOnly(readOnly = true) {
 // ============================================================
 
 /**
- * Request a layout refresh.
+ * Request a CodeMirror layout measurement.
  *
- * Useful when the editor is initialized inside a hidden
- * tab or a container whose dimensions changed.
+ * Useful when the editor is placed inside a hidden tab,
+ * modal, panel, or dynamically resized container.
  *
  * @returns {boolean}
  */
@@ -714,6 +990,7 @@ export function refreshJsonEditor() {
     }
 
     editorView.requestMeasure();
+
     return true;
 }
 
@@ -722,7 +999,7 @@ export function refreshJsonEditor() {
 // ============================================================
 
 /**
- * Destroy the current editor instance.
+ * Destroy the current JSON editor instance.
  */
 export function destroyJsonEditor() {
     if (editorView) {
@@ -731,6 +1008,9 @@ export function destroyJsonEditor() {
 
     editorView = null;
     editorParent = null;
+    editorOptions = {
+        ...DEFAULT_OPTIONS,
+    };
 }
 
 // ============================================================
@@ -739,6 +1019,7 @@ export function destroyJsonEditor() {
 
 export default {
     initJsonEditor,
+
     getJsonEditor,
     hasJsonEditor,
 
@@ -765,6 +1046,11 @@ export default {
     redoJsonChange,
 
     setJsonReadOnly,
+    isJsonReadOnly,
+
+    getJsonEditorOptions,
+    updateJsonEditorOptions,
+
     refreshJsonEditor,
     destroyJsonEditor,
 };
