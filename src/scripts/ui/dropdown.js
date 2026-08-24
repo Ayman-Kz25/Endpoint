@@ -18,6 +18,8 @@
  * - execute application actions
  */
 
+import { getDOM, on, queryAll } from "./dom";
+
 const DEFAULT_ROOT_SELECTOR = "#dropdown-root";
 const DEFAULT_PLACEMENT = "bottom-start";
 const DEFAULT_OFFSET = 6;
@@ -27,6 +29,7 @@ const state = {
     root: null,
     active: null,
     cleanup: null,
+    triggerCleanups: [],
 };
 
 // ============================================================
@@ -36,7 +39,7 @@ const state = {
 export function initDropdown(
     root = DEFAULT_ROOT_SELECTOR,
 ) {
-    const nextRoot = resolveElement(root);
+    const nextRoot = resolveElement(root) || getDOM("dropdownRoot");
 
     if (
         state.active &&
@@ -47,6 +50,8 @@ export function initDropdown(
 
     state.root = nextRoot;
 
+    bindDropdownTriggers();
+
     return {
         open: openDropdown,
         close: closeDropdown,
@@ -55,6 +60,98 @@ export function initDropdown(
         getActive: getActiveDropdown,
         destroy: destroyDropdown,
     };
+}
+
+// ============================================================
+// HTML Trigger Binding
+// ============================================================
+
+function bindDropdownTriggers() {
+    cleanupDropdownTriggers();
+
+    const root = document;
+
+    const triggers = queryAll(
+        "[data-dropdown-trigger]",
+        root,
+    );
+
+    triggers.forEach((trigger) => {
+        const cleanup = on(
+            trigger,
+            "click",
+            (event) => {
+                event.preventDefault();
+
+                const contentSelector =
+                    trigger.getAttribute(
+                        "data-dropdown-content",
+                    );
+
+                const content =
+                    getDropdownContent(
+                        contentSelector,
+                    );
+
+                if (!content) {
+                    return;
+                }
+
+                toggleDropdown({
+                    trigger,
+                    content,
+                    placement:
+                        trigger.getAttribute(
+                            "data-dropdown-placement",
+                        ) || DEFAULT_PLACEMENT,
+                    offset:
+                        Number(
+                            trigger.getAttribute(
+                                "data-dropdown-offset",
+                            ),
+                        ) || DEFAULT_OFFSET,
+                    focusFirst:
+                        trigger.getAttribute(
+                            "data-dropdown-focus-first",
+                        ) === "true",
+                });
+            },
+        );
+
+        if (cleanup) {
+            state.triggerCleanups.push(cleanup);
+        }
+    });
+}
+
+function cleanupDropdownTriggers() {
+    state.triggerCleanups.forEach(
+        (cleanup) => cleanup?.(),
+    );
+
+    state.triggerCleanups = [];
+}
+
+function getDropdownContent(selector) {
+    if (!selector) {
+        return null;
+    }
+
+    const template = document.querySelector(
+        selector,
+    );
+
+    if (!template) {
+        return null;
+    }
+
+    if (
+        template instanceof HTMLTemplateElement
+    ) {
+        return template.content.cloneNode(true);
+    }
+
+    return template.cloneNode(true);
 }
 
 // ============================================================
@@ -844,6 +941,8 @@ export function getDropdownRoot() {
 
 export function destroyDropdown() {
     closeDropdown();
+
+    cleanupDropdownTriggers();
 
     if (state.root) {
         state.root.replaceChildren();

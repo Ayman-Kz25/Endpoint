@@ -1,4 +1,6 @@
 /**
+ * //src/scripts/ui/dom.js
+ * 
  * DOM Utilities
  *
  * Centralizes access to application DOM elements.
