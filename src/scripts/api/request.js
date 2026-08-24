@@ -1,20 +1,4 @@
-/**
- * HTTP Request Service.
- *
- * Responsible for:
- * - validating request URLs
- * - building Fetch request configuration
- * - applying authentication
- * - executing HTTP requests
- * - normalizing the resulting response
- *
- * This module does not:
- * - manipulate the DOM
- * - update application state
- * - render responses
- * - show notifications
- * - emit application events
- */
+// src/scripts/api/request.js
 
 import {
     UI,
@@ -130,7 +114,10 @@ function appendHeaders(target, headers) {
 // ============================================================
 
 function applyAuthentication(headers, auth) {
-    if (!auth || typeof auth !== "object") {
+    if (
+        !auth ||
+        typeof auth !== "object"
+    ) {
         return;
     }
 
@@ -162,9 +149,10 @@ function applyAuthentication(headers, auth) {
             return;
         }
 
-        const encoded = btoa(
-            `${username}:${password}`,
-        );
+        const credentials =
+            `${username}:${password}`;
+
+        const encoded = btoa(credentials);
 
         headers.set(
             "Authorization",
@@ -231,12 +219,6 @@ function prepareRequestBody(body, headers) {
 // Request Builder
 // ============================================================
 
-/**
- * Build a Fetch RequestInit object.
- *
- * @param {Object} options
- * @returns {RequestInit}
- */
 export function buildRequestConfig({
     method = "GET",
     headers = [],
@@ -285,15 +267,23 @@ export function buildRequestConfig({
 // ============================================================
 
 function createTimeoutController(timeout) {
-    const controller = new AbortController();
+    const controller =
+        new AbortController();
 
     const timeoutValue = Number(timeout);
 
-    const timeoutId = window.setTimeout(() => {
-        controller.abort("timeout");
-    }, Number.isFinite(timeoutValue) && timeoutValue > 0
-        ? timeoutValue
-        : UI.REQUEST_TIMEOUT);
+    const delay =
+        Number.isFinite(timeoutValue) &&
+        timeoutValue > 0
+            ? timeoutValue
+            : UI.REQUEST_TIMEOUT;
+
+    const timeoutId =
+        setTimeout(() => {
+            controller.abort(
+                "timeout",
+            );
+        }, delay);
 
     return {
         controller,
@@ -310,21 +300,42 @@ function normalizeRequestError(
     signal,
 ) {
     if (signal?.aborted) {
-        const timeoutError = new Error(
-            ERROR_MESSAGES.REQUEST_TIMEOUT,
-        );
+        if (
+            signal.reason === "timeout"
+        ) {
+            const timeoutError =
+                new Error(
+                    ERROR_MESSAGES.REQUEST_TIMEOUT,
+                );
 
-        timeoutError.code = "REQUEST_TIMEOUT";
+            timeoutError.code =
+                "REQUEST_TIMEOUT";
 
-        return timeoutError;
+            return timeoutError;
+        }
+
+        const abortError =
+            new Error(
+                ERROR_MESSAGES.REQUEST_FAILED,
+            );
+
+        abortError.code =
+            "REQUEST_ABORTED";
+
+        abortError.cause = error;
+
+        return abortError;
     }
 
     if (error instanceof TypeError) {
-        const networkError = new Error(
-            ERROR_MESSAGES.NETWORK_ERROR,
-        );
+        const networkError =
+            new Error(
+                ERROR_MESSAGES.NETWORK_ERROR,
+            );
 
-        networkError.code = "NETWORK_ERROR";
+        networkError.code =
+            "NETWORK_ERROR";
+
         networkError.cause = error;
 
         return networkError;
@@ -334,11 +345,14 @@ function normalizeRequestError(
         return error;
     }
 
-    const unknownError = new Error(
-        ERROR_MESSAGES.REQUEST_FAILED,
-    );
+    const unknownError =
+        new Error(
+            ERROR_MESSAGES.REQUEST_FAILED,
+        );
 
-    unknownError.code = "REQUEST_ERROR";
+    unknownError.code =
+        "REQUEST_ERROR";
+
     unknownError.cause = error;
 
     return unknownError;
@@ -348,12 +362,6 @@ function normalizeRequestError(
 // Main Request Function
 // ============================================================
 
-/**
- * Execute an HTTP request.
- *
- * @param {Object} options
- * @returns {Promise<Object>}
- */
 export async function sendRequest({
     url,
     method = "GET",
@@ -362,36 +370,46 @@ export async function sendRequest({
     auth = null,
     timeout = UI.REQUEST_TIMEOUT,
 } = {}) {
-    const parsedUrl = validateRequestUrl(url);
+    const parsedUrl =
+        validateRequestUrl(url);
 
-    const requestConfig = buildRequestConfig({
-        method,
-        headers,
-        body,
-        auth,
-    });
+    const requestConfig =
+        buildRequestConfig({
+            method,
+            headers,
+            body,
+            auth,
+        });
 
     const {
         controller,
         timeoutId,
-    } = createTimeoutController(timeout);
+    } = createTimeoutController(
+        timeout,
+    );
 
-    const startedAt = performance.now();
+    const startedAt =
+        performance.now();
 
     try {
-        const response = await fetch(
-            parsedUrl.href,
-            {
-                ...requestConfig,
-                signal: controller.signal,
-            },
-        );
+        const response =
+            await fetch(
+                parsedUrl.href,
+                {
+                    ...requestConfig,
+                    signal:
+                        controller.signal,
+                },
+            );
 
-        const raw = await response.text();
+        const raw =
+            await response.text();
 
-        const duration = Math.round(
-            performance.now() - startedAt,
-        );
+        const duration =
+            Math.round(
+                performance.now() -
+                startedAt,
+            );
 
         return normalizeResponse(
             response,
@@ -404,54 +422,47 @@ export async function sendRequest({
             controller.signal,
         );
     } finally {
-        window.clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
     }
 }
 
 // ============================================================
-// Request Helpers
+// Status Helpers
 // ============================================================
 
-/**
- * Check whether a response status is successful.
- *
- * @param {number} status
- * @returns {boolean}
- */
 export function isSuccessStatus(status) {
-    return status >= 200 && status < 300;
+    return (
+        status >= 200 &&
+        status < 300
+    );
 }
 
-/**
- * Check whether a response status is a client error.
- *
- * @param {number} status
- * @returns {boolean}
- */
 export function isClientError(status) {
-    return status >= 400 && status < 500;
+    return (
+        status >= 400 &&
+        status < 500
+    );
 }
 
-/**
- * Check whether a response status is a server error.
- *
- * @param {number} status
- * @returns {boolean}
- */
 export function isServerError(status) {
-    return status >= 500 && status < 600;
+    return (
+        status >= 500 &&
+        status < 600
+    );
 }
 
-/**
- * Abort an active request.
- *
- * @param {AbortController} controller
- */
+// ============================================================
+// Abort
+// ============================================================
+
 export function abortRequest(controller) {
     if (
-        typeof AbortController !== "undefined" &&
-        controller instanceof AbortController
+        typeof AbortController !==
+            "undefined" &&
+        controller instanceof
+            AbortController
     ) {
         controller.abort();
     }
 }
+

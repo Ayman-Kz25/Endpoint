@@ -1,4 +1,6 @@
 /**
+ * // src/scripts/api/response.js
+ *
  * Response utilities.
  *
  * Responsible for:
@@ -26,32 +28,25 @@
  * @returns {Array<{name: string, value: string}>}
  */
 export function normalizeHeaders(headers) {
-    if (!headers) {
-        return [];
-    }
-
-    if (headers instanceof Headers) {
-        return Array.from(headers.entries()).map(
-            ([name, value]) => ({
-                name,
-                value,
-            }),
-        );
-    }
-
-    if (
-        typeof headers === "object" &&
-        !Array.isArray(headers)
-    ) {
-        return Object.entries(headers).map(
-            ([name, value]) => ({
-                name: String(name),
-                value: String(value ?? ""),
-            }),
-        );
-    }
-
+  if (!headers) {
     return [];
+  }
+
+  if (headers instanceof Headers) {
+    return Array.from(headers.entries()).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }
+
+  if (typeof headers === "object" && !Array.isArray(headers)) {
+    return Object.entries(headers).map(([name, value]) => ({
+      name: String(name),
+      value: String(value ?? ""),
+    }));
+  }
+
+  return [];
 }
 
 // ============================================================
@@ -67,17 +62,17 @@ export function normalizeHeaders(headers) {
  * @returns {number}
  */
 export function calculateResponseSize(text = "") {
-    const value = String(text ?? "");
+  const value = String(text ?? "");
 
-    if (!value) {
-        return 0;
-    }
+  if (!value) {
+    return 0;
+  }
 
-    if (typeof TextEncoder !== "undefined") {
-        return new TextEncoder().encode(value).length;
-    }
+  if (typeof TextEncoder !== "undefined") {
+    return new TextEncoder().encode(value).length;
+  }
 
-    return value.length;
+  return value.length;
 }
 
 /**
@@ -87,22 +82,19 @@ export function calculateResponseSize(text = "") {
  * @returns {string}
  */
 export function formatResponseSize(bytes) {
-    if (
-        !Number.isFinite(bytes) ||
-        bytes <= 0
-    ) {
-        return "0 B";
-    }
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 B";
+  }
 
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
 
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
 
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // ============================================================
@@ -118,18 +110,15 @@ export function formatResponseSize(bytes) {
  * @returns {*}
  */
 export function parseResponseData(text) {
-    if (
-        typeof text !== "string" ||
-        !text.trim()
-    ) {
-        return text;
-    }
+  if (typeof text !== "string" || !text.trim()) {
+    return text;
+  }
 
-    try {
-        return JSON.parse(text);
-    } catch {
-        return text;
-    }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 /**
@@ -143,17 +132,15 @@ export function parseResponseData(text) {
  * @returns {boolean}
  */
 export function isJsonResponse(response) {
-    if (!response?.headers) {
-        return false;
-    }
+  if (!response?.headers) {
+    return false;
+  }
 
-    const contentType =
-        response.headers.get("content-type") || "";
+  const contentType = response.headers.get("content-type") || "";
 
-    return (
-        contentType.includes("application/json") ||
-        contentType.includes("+json")
-    );
+  return (
+    contentType.includes("application/json") || contentType.includes("+json")
+  );
 }
 
 // ============================================================
@@ -173,36 +160,42 @@ export function normalizeResponse(
     raw = "",
     duration = 0,
 ) {
-    if (!(response instanceof Response)) {
+    if (!isResponseLike(response)) {
         throw new TypeError(
             "A valid Fetch Response is required.",
         );
     }
 
-    const size = calculateResponseSize(raw);
+    const size =
+        calculateResponseSize(raw);
 
     return {
-        ok: response.ok,
+        ok: Boolean(response.ok),
         status: response.status,
-        statusText: response.statusText || "",
-
-        duration: Number.isFinite(duration)
-            ? duration
-            : 0,
-
+        statusText:
+            response.statusText || "",
+        duration:
+            Number.isFinite(duration)
+                ? duration
+                : 0,
         size,
-        sizeFormatted: formatResponseSize(size),
-
-        data: parseResponseData(raw),
+        sizeFormatted:
+            formatResponseSize(size),
+        data:
+            parseResponseData(raw),
         raw,
-
-        headers: normalizeHeaders(response.headers),
-
-        url: response.url || "",
-        redirected: response.redirected,
-
+        headers:
+            normalizeHeaders(
+                response.headers,
+            ),
+        url:
+            response.url || "",
+        redirected:
+            Boolean(response.redirected),
         contentType:
-            response.headers.get("content-type") || "",
+            response.headers.get(
+                "content-type",
+            ) || "",
     };
 }
 
@@ -216,54 +209,41 @@ export function normalizeResponse(
  * @param {number} duration
  * @returns {Object}
  */
-export function createErrorResponse(
-    error,
-    duration = 0,
-) {
-    const message =
-        error instanceof Error
-            ? error.message
-            : String(
-                error || "Request failed.",
-            );
+export function createErrorResponse(error, duration = 0) {
+  const message =
+    error instanceof Error ? error.message : String(error || "Request failed.");
 
-    const errorData = {
-        error: message,
-    };
+  const errorData = {
+    error: message,
+  };
 
-    const raw = JSON.stringify(
-        errorData,
-        null,
-        2,
-    );
+  const raw = JSON.stringify(errorData, null, 2);
 
-    const size = calculateResponseSize(raw);
+  const size = calculateResponseSize(raw);
 
-    return {
-        ok: false,
+  return {
+    ok: false,
 
-        status: 0,
-        statusText: "Network Error",
+    status: 0,
+    statusText: "Network Error",
 
-        duration: Number.isFinite(duration)
-            ? duration
-            : 0,
+    duration: Number.isFinite(duration) ? duration : 0,
 
-        size,
-        sizeFormatted: formatResponseSize(size),
+    size,
+    sizeFormatted: formatResponseSize(size),
 
-        data: errorData,
-        raw,
+    data: errorData,
+    raw,
 
-        headers: [],
+    headers: [],
 
-        url: "",
-        redirected: false,
+    url: "",
+    redirected: false,
 
-        contentType: "application/json",
+    contentType: "application/json",
 
-        error: message,
-    };
+    error: message,
+  };
 }
 
 // ============================================================
@@ -277,20 +257,12 @@ export function createErrorResponse(
  * @param {string} statusText
  * @returns {string}
  */
-export function getStatusLabel(
-    status,
-    statusText = "",
-) {
-    if (
-        !Number.isFinite(status) ||
-        status <= 0
-    ) {
-        return statusText || "Error";
-    }
+export function getStatusLabel(status, statusText = "") {
+  if (!Number.isFinite(status) || status <= 0) {
+    return statusText || "Error";
+  }
 
-    return statusText
-        ? `${status} ${statusText}`
-        : String(status);
+  return statusText ? `${status} ${statusText}` : String(status);
 }
 
 /**
@@ -307,27 +279,27 @@ export function getStatusLabel(
  * }
  */
 export function getStatusCategory(status) {
-    if (!Number.isFinite(status)) {
-        return "unknown";
-    }
+  if (!Number.isFinite(status)) {
+    return "unknown";
+  }
 
-    if (status >= 200 && status < 300) {
-        return "success";
-    }
+  if (status >= 200 && status < 300) {
+    return "success";
+  }
 
-    if (status >= 300 && status < 400) {
-        return "redirect";
-    }
+  if (status >= 300 && status < 400) {
+    return "redirect";
+  }
 
-    if (status >= 400 && status < 500) {
-        return "client-error";
-    }
+  if (status >= 400 && status < 500) {
+    return "client-error";
+  }
 
-    if (status >= 500 && status < 600) {
-        return "server-error";
-    }
+  if (status >= 500 && status < 600) {
+    return "server-error";
+  }
 
-    return "error";
+  return "error";
 }
 
 /**
@@ -337,7 +309,7 @@ export function getStatusCategory(status) {
  * @returns {boolean}
  */
 export function isSuccessStatus(status) {
-    return status >= 200 && status < 300;
+  return status >= 200 && status < 300;
 }
 
 /**
@@ -347,7 +319,7 @@ export function isSuccessStatus(status) {
  * @returns {boolean}
  */
 export function isClientError(status) {
-    return status >= 400 && status < 500;
+  return status >= 400 && status < 500;
 }
 
 /**
@@ -357,20 +329,21 @@ export function isClientError(status) {
  * @returns {boolean}
  */
 export function isServerError(status) {
-    return status >= 500 && status < 600;
+  return status >= 500 && status < 600;
 }
 
 export default {
-    normalizeHeaders,
-    calculateResponseSize,
-    formatResponseSize,
-    parseResponseData,
-    isJsonResponse,
-    normalizeResponse,
-    createErrorResponse,
-    getStatusLabel,
-    getStatusCategory,
-    isSuccessStatus,
-    isClientError,
-    isServerError,
+  normalizeHeaders,
+  calculateResponseSize,
+  formatResponseSize,
+  parseResponseData,
+  isJsonResponse,
+  normalizeResponse,
+  createErrorResponse,
+  getStatusLabel,
+  getStatusCategory,
+  isSuccessStatus,
+  isClientError,
+  isServerError,
 };
+
