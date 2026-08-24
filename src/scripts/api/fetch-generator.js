@@ -4,7 +4,7 @@
  * Fetch Code Generator
  *
  * Responsible for generating JavaScript Fetch API code
- * from the application's request configuration.
+ * from request configuration.
  *
  * This module does not:
  * - send HTTP requests
@@ -12,31 +12,42 @@
  * - update application state
  * - show notifications
  *
- * It only converts request configuration into
- * executable JavaScript Fetch code.
+ * It only transforms request configuration into
+ * executable JavaScript Fetch API code.
  */
 
 // ============================================================
 // Constants
 // ============================================================
 
-const BODY_METHODS = [
+const BODY_METHODS = new Set([
     "POST",
     "PUT",
     "PATCH",
     "DELETE",
-];
+]);
 
+const DEFAULT_METHOD = "GET";
 const DEFAULT_INDENT = "  ";
 
 // ============================================================
-// Helpers
+// General Helpers
 // ============================================================
 
 /**
- * Escape a value for use inside a JavaScript string.
+ * Safely convert a value to a string.
  *
- * Uses JSON.stringify because it safely handles:
+ * @param {unknown} value
+ * @returns {string}
+ */
+function toStringValue(value) {
+    return String(value ?? "");
+}
+
+/**
+ * Convert a value into a JavaScript string literal.
+ *
+ * JSON.stringify safely handles:
  * - quotes
  * - backslashes
  * - new lines
@@ -47,7 +58,7 @@ const DEFAULT_INDENT = "  ";
  * @returns {string}
  */
 function stringifyValue(value) {
-    return JSON.stringify(String(value ?? ""));
+    return JSON.stringify(toStringValue(value));
 }
 
 /**
@@ -56,33 +67,100 @@ function stringifyValue(value) {
  * @param {string} method
  * @returns {string}
  */
-function normalizeMethod(method = "GET") {
-    return String(method).trim().toUpperCase() || "GET";
+function normalizeMethod(method = DEFAULT_METHOD) {
+    return (
+        toStringValue(method).trim().toUpperCase() ||
+        DEFAULT_METHOD
+    );
 }
 
 /**
- * Check whether an HTTP method normally supports a request body.
+ * Check whether an HTTP method supports a request body.
  *
  * @param {string} method
  * @returns {boolean}
  */
 function methodSupportsBody(method) {
-    return BODY_METHODS.includes(normalizeMethod(method));
+    return BODY_METHODS.has(
+        normalizeMethod(method)
+    );
 }
+
+// ============================================================
+// Parameter Normalization
+// ============================================================
+
+/**
+ * Normalize query parameters into a predictable array.
+ *
+ * Supported formats:
+ *
+ * [
+ *     { name: "page", value: "1" }
+ * ]
+ *
+ * [
+ *     { key: "page", value: "1" }
+ * ]
+ *
+ * {
+ *     page: "1"
+ * }
+ *
+ * @param {Array|Object} params
+ * @returns {Array<{name: string, value: string}>}
+ */
+function normalizeParams(params = []) {
+    if (Array.isArray(params)) {
+        return params
+            .filter(Boolean)
+            .map((param) => ({
+                name: toStringValue(
+                    param.name ??
+                    param.key ??
+                    ""
+                ).trim(),
+
+                value: toStringValue(
+                    param.value
+                ),
+            }))
+            .filter((param) => param.name);
+    }
+
+    if (
+        params &&
+        typeof params === "object"
+    ) {
+        return Object.entries(params)
+            .map(([name, value]) => ({
+                name: toStringValue(name).trim(),
+                value: toStringValue(value),
+            }))
+            .filter((param) => param.name);
+    }
+
+    return [];
+}
+
+// ============================================================
+// Header Normalization
+// ============================================================
 
 /**
  * Normalize headers into a predictable array.
  *
- * Supports both:
+ * Supported formats:
  *
  * [
- *   { name: "Content-Type", value: "application/json" }
+ *     {
+ *         name: "Content-Type",
+ *         value: "application/json"
+ *     }
  * ]
  *
- * and:
- *
  * {
- *   "Content-Type": "application/json"
+ *     "Content-Type": "application/json"
  * }
  *
  * @param {Array|Object} headers
@@ -93,62 +171,34 @@ function normalizeHeaders(headers = []) {
         return headers
             .filter(Boolean)
             .map((header) => ({
-                name: String(header.name ?? "").trim(),
-                value: String(header.value ?? ""),
-            }))
-            .filter((header) => header.name);
-    }
-
-    if (headers && typeof headers === "object") {
-        return Object.entries(headers)
-            .map(([name, value]) => ({
-                name: String(name).trim(),
-                value: String(value ?? ""),
-            }))
-            .filter((header) => header.name);
-    }
-
-    return [];
-}
-
-/**
- * Normalize query parameters.
- *
- * @param {Array|Object} params
- * @returns {Array<{name: string, value: string}>}
- */
-function normalizeParams(params = []) {
-    if (Array.isArray(params)) {
-        return params
-            .filter(Boolean)
-            .map((param) => ({
-                name: String(
-                    param.name ??
-                    param.key ??
-                    ""
+                name: toStringValue(
+                    header.name
                 ).trim(),
 
-                value: String(
-                    param.value ?? ""
+                value: toStringValue(
+                    header.value
                 ),
             }))
-            .filter((param) => param.name);
+            .filter((header) => header.name);
     }
 
-    if (params && typeof params === "object") {
-        return Object.entries(params)
+    if (
+        headers &&
+        typeof headers === "object"
+    ) {
+        return Object.entries(headers)
             .map(([name, value]) => ({
-                name: String(name).trim(),
-                value: String(value ?? ""),
+                name: toStringValue(name).trim(),
+                value: toStringValue(value),
             }))
-            .filter((param) => param.name);
+            .filter((header) => header.name);
     }
 
     return [];
 }
 
 /**
- * Check whether a header already exists.
+ * Check whether a header exists.
  *
  * Header names are case-insensitive.
  *
@@ -157,11 +207,17 @@ function normalizeParams(params = []) {
  * @returns {boolean}
  */
 function hasHeader(headers, targetName) {
-    const normalizedTarget = targetName.toLowerCase();
+    const normalizedTarget = toStringValue(
+        targetName
+    )
+        .trim()
+        .toLowerCase();
 
     return headers.some(
         (header) =>
-            header.name.toLowerCase() === normalizedTarget
+            header.name
+                .trim()
+                .toLowerCase() === normalizedTarget
     );
 }
 
@@ -173,7 +229,11 @@ function hasHeader(headers, targetName) {
  * @param {string} value
  * @returns {Array<{name: string, value: string}>}
  */
-function addHeaderIfMissing(headers, name, value) {
+function addHeaderIfMissing(
+    headers,
+    name,
+    value
+) {
     if (hasHeader(headers, name)) {
         return headers;
     }
@@ -187,23 +247,31 @@ function addHeaderIfMissing(headers, name, value) {
     ];
 }
 
+// ============================================================
+// URL Generation
+// ============================================================
+
 /**
- * Build a URL including query parameters.
+ * Build a request URL with query parameters.
  *
- * Existing query parameters in the URL are preserved.
+ * Existing query parameters are preserved.
  *
  * @param {string} url
  * @param {Array|Object} params
  * @returns {string}
  */
-export function buildFetchUrl(url, params = []) {
-    const rawUrl = String(url ?? "").trim();
+export function buildFetchUrl(
+    url,
+    params = []
+) {
+    const rawUrl = toStringValue(url).trim();
 
     if (!rawUrl) {
         return "";
     }
 
-    const normalizedParams = normalizeParams(params);
+    const normalizedParams =
+        normalizeParams(params);
 
     if (!normalizedParams.length) {
         return rawUrl;
@@ -212,33 +280,51 @@ export function buildFetchUrl(url, params = []) {
     try {
         const parsedUrl = new URL(rawUrl);
 
-        normalizedParams.forEach(({ name, value }) => {
-            parsedUrl.searchParams.set(name, value);
-        });
+        normalizedParams.forEach(
+            ({ name, value }) => {
+                parsedUrl.searchParams.set(
+                    name,
+                    value
+                );
+            }
+        );
 
         return parsedUrl.toString();
     } catch {
         /**
-         * If the URL cannot be parsed, keep it as-is and
-         * append the parameters manually.
+         * Keep the original URL when it cannot
+         * be parsed by the URL constructor.
          *
-         * This lets the generator still produce useful
-         * code while the request itself can later report
-         * the invalid URL.
+         * Parameters are appended manually so
+         * the generator can still produce code.
          */
-
-        const separator = rawUrl.includes("?")
-            ? rawUrl.endsWith("?") || rawUrl.endsWith("&")
-                ? ""
-                : "&"
-            : "?";
 
         const query = normalizedParams
             .map(
                 ({ name, value }) =>
-                    `${encodeURIComponent(name)}=${encodeURIComponent(value)}`
+                    `${encodeURIComponent(
+                        name
+                    )}=${encodeURIComponent(
+                        value
+                    )}`
             )
             .join("&");
+
+        if (!query) {
+            return rawUrl;
+        }
+
+        if (rawUrl.endsWith("?")) {
+            return `${rawUrl}${query}`;
+        }
+
+        if (rawUrl.endsWith("&")) {
+            return `${rawUrl}${query}`;
+        }
+
+        const separator = rawUrl.includes("?")
+            ? "&"
+            : "?";
 
         return `${rawUrl}${separator}${query}`;
     }
@@ -249,14 +335,26 @@ export function buildFetchUrl(url, params = []) {
 // ============================================================
 
 /**
- * Apply authentication configuration to generated headers.
+ * Apply authentication configuration to headers.
+ *
+ * Supported authentication types:
+ * - none
+ * - bearer
+ * - basic
+ * - api-key
  *
  * @param {Array<{name: string, value: string}>} headers
  * @param {Object|null} auth
  * @returns {Array<{name: string, value: string}>}
  */
-function applyAuthToHeaders(headers, auth) {
-    if (!auth || typeof auth !== "object") {
+function applyAuthToHeaders(
+    headers,
+    auth
+) {
+    if (
+        !auth ||
+        typeof auth !== "object"
+    ) {
         return headers;
     }
 
@@ -267,11 +365,17 @@ function applyAuthToHeaders(headers, auth) {
     // --------------------------------------------------------
 
     if (auth.type === "bearer") {
-        const token = String(
-            auth.fields?.token ?? ""
+        const token = toStringValue(
+            auth.fields?.token
         ).trim();
 
-        if (token && !hasHeader(result, "Authorization")) {
+        if (
+            token &&
+            !hasHeader(
+                result,
+                "Authorization"
+            )
+        ) {
             result.push({
                 name: "Authorization",
                 value: `Bearer ${token}`,
@@ -284,28 +388,34 @@ function applyAuthToHeaders(headers, auth) {
     // --------------------------------------------------------
 
     if (auth.type === "basic") {
-        const username = String(
-            auth.fields?.username ?? ""
+        const username = toStringValue(
+            auth.fields?.username
         );
 
-        const password = String(
-            auth.fields?.password ?? ""
+        const password = toStringValue(
+            auth.fields?.password
         );
 
         if (
             (username || password) &&
-            !hasHeader(result, "Authorization")
+            !hasHeader(
+                result,
+                "Authorization"
+            )
         ) {
             /**
-             * We intentionally generate btoa() instead of
-             * calculating the Base64 value here.
-             *
-             * This makes the generated code easier to edit.
+             * Keep the generated credentials inside
+             * the generated code rather than encoding
+             * them inside this module.
              */
 
             result.push({
                 name: "Authorization",
-                value: `__BASIC_AUTH__:${username}:${password}`,
+                value: {
+                    type: "basic",
+                    username,
+                    password,
+                },
             });
         }
     }
@@ -315,16 +425,17 @@ function applyAuthToHeaders(headers, auth) {
     // --------------------------------------------------------
 
     if (auth.type === "api-key") {
-        const key = String(
-            auth.fields?.key ?? ""
+        const key = toStringValue(
+            auth.fields?.key
         ).trim();
 
-        const value = String(
-            auth.fields?.value ?? ""
+        const value = toStringValue(
+            auth.fields?.value
         );
 
         const location =
-            auth.fields?.location || "header";
+            auth.fields?.location ||
+            "header";
 
         if (
             key &&
@@ -342,90 +453,135 @@ function applyAuthToHeaders(headers, auth) {
     return result;
 }
 
+/**
+ * Generate a JavaScript expression for a header value.
+ *
+ * @param {string|Object} value
+ * @returns {string}
+ */
+function generateHeaderValue(value) {
+    if (
+        value &&
+        typeof value === "object" &&
+        value.type === "basic"
+    ) {
+        const credentials =
+            `${value.username}:${value.password}`;
+
+        return `\`Basic \${btoa(${stringifyValue(
+            credentials
+        )})}\``;
+    }
+
+    return stringifyValue(value);
+}
+
 // ============================================================
 // Body Generation
 // ============================================================
 
 /**
- * Convert a request body into a JavaScript expression.
+ * Check whether a body contains meaningful content.
  *
- * JSON objects are generated using JSON.stringify.
- * Plain text is generated as a normal JavaScript string.
+ * @param {unknown} body
+ * @returns {boolean}
+ */
+function hasBody(body) {
+    if (
+        body === undefined ||
+        body === null
+    ) {
+        return false;
+    }
+
+    if (
+        typeof body === "string"
+    ) {
+        return body.trim() !== "";
+    }
+
+    return true;
+}
+
+/**
+ * Generate a JavaScript expression for a request body.
+ *
+ * JSON strings become JSON.stringify(object).
+ * Objects become JSON.stringify(object).
+ * Plain text remains a normal JavaScript string.
  *
  * @param {unknown} body
  * @returns {string|null}
  */
-export function generateBodyExpression(body) {
-    if (
-        body === undefined ||
-        body === null ||
-        String(body).trim() === ""
-    ) {
+export function generateBodyExpression(
+    body
+) {
+    if (!hasBody(body)) {
         return null;
     }
 
-    if (typeof body === "object") {
-        return JSON.stringify(body, null, 2);
+    if (
+        typeof body === "object"
+    ) {
+        return `JSON.stringify(${JSON.stringify(
+            body,
+            null,
+            2
+        )})`;
     }
 
-    const stringBody = String(body);
-
-    /**
-     * Try to recognize JSON entered as a string.
-     *
-     * Example:
-     *
-     * {
-     *   "name": "John"
-     * }
-     *
-     * becomes:
-     *
-     * JSON.stringify({
-     *   "name": "John"
-     * })
-     */
+    const stringBody =
+        toStringValue(body);
 
     try {
-        const parsed = JSON.parse(stringBody);
+        const parsedBody =
+            JSON.parse(stringBody);
 
         return `JSON.stringify(${JSON.stringify(
-            parsed,
+            parsedBody,
             null,
             2
         )})`;
     } catch {
-        return stringifyValue(stringBody);
+        return stringifyValue(
+            stringBody
+        );
     }
 }
 
 /**
- * Determine whether a Content-Type header should be
- * automatically generated for the request body.
+ * Determine whether JSON Content-Type should
+ * be added automatically.
  *
  * @param {unknown} body
  * @param {Array} headers
  * @returns {boolean}
  */
-function shouldAddJsonContentType(body, headers) {
+function shouldAddJsonContentType(
+    body,
+    headers
+) {
     if (
-        body === undefined ||
-        body === null ||
-        String(body).trim() === ""
+        !hasBody(body) ||
+        hasHeader(
+            headers,
+            "Content-Type"
+        )
     ) {
         return false;
     }
 
-    if (hasHeader(headers, "Content-Type")) {
-        return false;
-    }
-
-    if (typeof body === "object") {
+    if (
+        typeof body === "object"
+    ) {
         return true;
     }
 
     try {
-        JSON.parse(String(body));
+        JSON.parse(
+            toStringValue(body)
+        );
+
         return true;
     } catch {
         return false;
@@ -433,16 +589,18 @@ function shouldAddJsonContentType(body, headers) {
 }
 
 // ============================================================
-// Header Generation
+// Fetch Configuration Generation
 // ============================================================
 
 /**
- * Generate the headers section of a fetch configuration.
+ * Generate the headers section.
  *
  * @param {Array<{name: string, value: string}>} headers
  * @returns {string}
  */
-function generateHeaders(headers) {
+function generateHeaders(
+    headers
+) {
     if (!headers.length) {
         return "";
     }
@@ -451,7 +609,9 @@ function generateHeaders(headers) {
         ({ name, value }) =>
             `${DEFAULT_INDENT}${DEFAULT_INDENT}${stringifyValue(
                 name
-            )}: ${stringifyValue(value)}`
+            )}: ${generateHeaderValue(
+                value
+            )}`
     );
 
     return [
@@ -461,12 +621,8 @@ function generateHeaders(headers) {
     ].join("\n");
 }
 
-// ============================================================
-// Fetch Configuration
-// ============================================================
-
 /**
- * Generate the fetch options object.
+ * Generate the Fetch options object.
  *
  * @param {Object} options
  * @returns {string}
@@ -476,74 +632,107 @@ function generateFetchOptions({
     headers,
     body,
 }) {
-    const configLines = [];
+    const lines = [];
 
-    configLines.push(
-        `${DEFAULT_INDENT}method: ${stringifyValue(method)},`
+    lines.push(
+        `${DEFAULT_INDENT}method: ${stringifyValue(
+            method
+        )},`
     );
 
-    const headerBlock = generateHeaders(headers);
+    const headerBlock =
+        generateHeaders(headers);
 
     if (headerBlock) {
-        configLines.push(headerBlock);
+        lines.push(headerBlock);
     }
 
-    const bodyExpression = generateBodyExpression(body);
+    const bodyExpression =
+        generateBodyExpression(body);
 
     if (
         bodyExpression &&
         methodSupportsBody(method)
     ) {
-        configLines.push(
+        lines.push(
             `${DEFAULT_INDENT}body: ${bodyExpression},`
         );
     }
 
     return [
         "{",
-        configLines.join("\n"),
+        lines.join("\n"),
         "}",
     ].join("\n");
 }
 
 // ============================================================
-// Basic Auth Special Handling
+// Request Normalization
 // ============================================================
 
 /**
- * Replace the internal Basic Auth marker with a generated
- * btoa() expression.
+ * Normalize request data for the Fetch generator.
  *
- * @param {string} code
- * @param {Object|null} auth
- * @returns {string}
+ * @param {Object} request
+ * @returns {{
+ *     url: string,
+ *     method: string,
+ *     headers: Array,
+ *     body: unknown,
+ *     auth: Object|null
+ * }}
  */
-function replaceBasicAuthMarker(code, auth) {
-    if (auth?.type !== "basic") {
-        return code;
+export function normalizeFetchRequest(
+    request = {}
+) {
+    const method =
+        normalizeMethod(
+            request.method
+        );
+
+    const body =
+        request.body ?? "";
+
+    let headers =
+        normalizeHeaders(
+            request.headers
+        );
+
+    headers =
+        applyAuthToHeaders(
+            headers,
+            request.auth
+        );
+
+    if (
+        shouldAddJsonContentType(
+            body,
+            headers
+        )
+    ) {
+        headers =
+            addHeaderIfMissing(
+                headers,
+                "Content-Type",
+                "application/json"
+            );
     }
 
-    const username = String(
-        auth.fields?.username ?? ""
-    );
+    return {
+        url: buildFetchUrl(
+            request.url ?? "",
+            request.params ?? []
+        ),
 
-    const password = String(
-        auth.fields?.password ?? ""
-    );
+        method,
 
-    if (!username && !password) {
-        return code;
-    }
+        headers,
 
-    const encodedExpression =
-        `\`Basic \${btoa(${stringifyValue(
-            `${username}:${password}`
-        )})}\``;
+        body,
 
-    return code.replace(
-        `"__BASIC_AUTH__:${username}:${password}"`,
-        encodedExpression
-    );
+        auth:
+            request.auth ?? null,
+    };
 }
 
 // ============================================================
@@ -565,63 +754,57 @@ function replaceBasicAuthMarker(code, auth) {
  */
 export function generateFetchCode({
     url = "",
-    method = "GET",
+    method = DEFAULT_METHOD,
     params = [],
     headers = [],
     body = "",
     auth = null,
-}) {
-    const normalizedMethod = normalizeMethod(method);
-
-    const fetchUrl = buildFetchUrl(
-        url,
-        params
-    );
-
-    let normalizedHeaders = normalizeHeaders(
-        headers
-    );
-
-    normalizedHeaders = applyAuthToHeaders(
-        normalizedHeaders,
-        auth
-    );
-
-    if (
-        shouldAddJsonContentType(
+} = {}) {
+    const normalizedRequest =
+        normalizeFetchRequest({
+            url,
+            method,
+            params,
+            headers,
             body,
-            normalizedHeaders
-        )
-    ) {
-        normalizedHeaders = addHeaderIfMissing(
-            normalizedHeaders,
-            "Content-Type",
-            "application/json"
-        );
-    }
+            auth,
+        });
 
-    const fetchOptions = generateFetchOptions({
+    const {
+        url: fetchUrl,
         method: normalizedMethod,
         headers: normalizedHeaders,
-        body,
-    });
+    } = normalizedRequest;
 
-    let code;
+    const bodyExpression =
+        generateBodyExpression(body);
+
+    /**
+     * Keep simple GET requests compact.
+     */
 
     if (
+        normalizedMethod === "GET" &&
         !normalizedHeaders.length &&
-        !generateBodyExpression(body) &&
-        normalizedMethod === "GET"
+        !bodyExpression
     ) {
-        code = `const response = await fetch(${stringifyValue(
+        return `const response = await fetch(${stringifyValue(
             fetchUrl
         )});
 
 const data = await response.json();
 
 console.log(data);`;
-    } else {
-        code = `const response = await fetch(
+    }
+
+    const fetchOptions =
+        generateFetchOptions({
+            method: normalizedMethod,
+            headers: normalizedHeaders,
+            body,
+        });
+
+    return `const response = await fetch(
     ${stringifyValue(fetchUrl)},
     ${fetchOptions}
 );
@@ -629,33 +812,25 @@ console.log(data);`;
 const data = await response.json();
 
 console.log(data);`;
-    }
-
-    return replaceBasicAuthMarker(
-        code,
-        auth
-    );
 }
 
 // ============================================================
-// Request Object Adapter
+// Request Adapter
 // ============================================================
 
 /**
- * Generate Fetch code directly from your application's
- * request state object.
- *
- * This allows code-generator.js to simply pass:
- *
- * state.request
+ * Generate Fetch code directly from application
+ * request state.
  *
  * @param {Object} request
  * @returns {string}
  */
-export function generateFetchFromRequest(request = {}) {
+export function generateFetchFromRequest(
+    request = {}
+) {
     return generateFetchCode({
         url: request.url ?? "",
-        method: request.method ?? "GET",
+        method: request.method ?? DEFAULT_METHOD,
         params: request.params ?? [],
         headers: request.headers ?? [],
         body: request.body ?? "",
@@ -668,83 +843,59 @@ export function generateFetchFromRequest(request = {}) {
 // ============================================================
 
 /**
- * Generate a compact one-line Fetch expression.
- *
- * Useful for simple GET requests.
+ * Generate a simple Fetch expression.
  *
  * @param {string} url
  * @returns {string}
  */
-export function generateSimpleFetch(url) {
-    return `fetch(${stringifyValue(url)})`;
+export function generateSimpleFetch(
+    url
+) {
+    return `fetch(${stringifyValue(
+        url
+    )})`;
 }
 
 /**
- * Check whether generated code contains a request body.
+ * Check whether a request contains a body
+ * that can be sent by its HTTP method.
  *
  * @param {Object} request
  * @returns {boolean}
  */
-export function requestHasBody(request = {}) {
-    if (!methodSupportsBody(request.method)) {
+export function requestHasBody(
+    request = {}
+) {
+    if (
+        !methodSupportsBody(
+            request.method
+        )
+    ) {
         return false;
     }
 
-    return (
-        request.body !== undefined &&
-        request.body !== null &&
-        String(request.body).trim() !== ""
+    return hasBody(
+        request.body
     );
 }
 
 /**
- * Return the normalized request data used by the generator.
+ * Check whether an HTTP method supports
+ * a request body.
  *
- * This can be useful when you later add other code generators,
- * such as Axios, cURL, Python Requests, or Node.js.
- *
- * @param {Object} request
- * @returns {Object}
+ * @param {string} method
+ * @returns {boolean}
  */
-export function normalizeFetchRequest(request = {}) {
-    const method = normalizeMethod(
-        request.method
+export function supportsRequestBody(
+    method
+) {
+    return methodSupportsBody(
+        method
     );
-
-    let headers = normalizeHeaders(
-        request.headers
-    );
-
-    headers = applyAuthToHeaders(
-        headers,
-        request.auth
-    );
-
-    const body = request.body ?? "";
-
-    if (
-        shouldAddJsonContentType(
-            body,
-            headers
-        )
-    ) {
-        headers = addHeaderIfMissing(
-            headers,
-            "Content-Type",
-            "application/json"
-        );
-    }
-
-    return {
-        url: buildFetchUrl(
-            request.url ?? "",
-            request.params ?? []
-        ),
-        method,
-        headers,
-        body,
-        auth: request.auth ?? null,
-    };
 }
+
+// ============================================================
+// Default Export
+// ============================================================
 
 export default generateFetchCode;
