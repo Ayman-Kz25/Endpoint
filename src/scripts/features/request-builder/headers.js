@@ -1,85 +1,33 @@
 // src/scripts/features/request-builder/headers.js
 
-/**
- * Request Headers Manager
- *
- * Responsible for managing the request header rows in the UI.
- *
- * This module does not:
- * - execute HTTP requests
- * - manage authentication
- * - render responses
- * - update application state directly
- */
-
-// ============================================================
-// DOM References
-// ============================================================
-
 const elements = {
-    container: null,
+    list: null,
     addButton: null,
+    empty: null,
 };
 
-// ============================================================
-// Internal State
-// ============================================================
-
 let headers = [];
+let initialized = false;
 
-// ============================================================
-// Initialization
-// ============================================================
-
-/**
- * Initialize the headers manager.
- *
- * @returns {Object} Headers API
- */
-export function initHeaders() {
-    cacheElements();
-    bindEvents();
-    renderHeaders();
-
-    return {
-        getHeaders,
-        setHeaders,
-        addHeader,
-        updateHeader,
-        removeHeader,
-        clearHeaders,
-    };
-}
-
-/**
- * Cache header-related DOM elements.
- */
 function cacheElements() {
-    elements.container =
-        document.getElementById("request-headers");
-
-    elements.addButton =
-        document.getElementById("add-header");
+    elements.list = document.getElementById("headers-list");
+    elements.addButton = document.getElementById("add-header-button");
+    elements.empty = document.getElementById("headers-empty");
 }
 
-// ============================================================
-// Events
-// ============================================================
-
-/**
- * Bind header UI events.
- */
 function bindEvents() {
-    elements.addButton?.addEventListener("click", () => {
-        addHeader();
-    });
+    elements.addButton?.addEventListener("click", handleAdd);
+
+    elements.list?.addEventListener("input", handleInput);
+    elements.list?.addEventListener("change", handleInput);
+    elements.list?.addEventListener("click", handleClick);
 }
 
-/**
- * Handle input changes inside the headers container.
- *
- * @param {Event} event
- */
+function handleAdd(event) {
+    event.preventDefault();
+    addHeader();
+}
+
 function handleInput(event) {
     const input = event.target;
 
@@ -100,18 +48,19 @@ function handleInput(event) {
         return;
     }
 
-    if (!["name", "value"].includes(field)) {
-        return;
+    if (field === "name") {
+        headers[index].name = input.value;
     }
 
-    headers[index][field] = input.value;
+    if (field === "value") {
+        headers[index].value = input.value;
+    }
+
+    if (field === "enabled") {
+        headers[index].enabled = input.checked;
+    }
 }
 
-/**
- * Handle header row actions.
- *
- * @param {Event} event
- */
 function handleClick(event) {
     const button = event.target.closest("[data-header-action]");
 
@@ -126,47 +75,17 @@ function handleClick(event) {
     }
 
     const index = Number(row.dataset.headerIndex);
-    const action = button.dataset.headerAction;
 
     if (!Number.isInteger(index)) {
         return;
     }
 
-    if (action === "remove") {
+    if (button.dataset.headerAction === "remove") {
         removeHeader(index);
     }
 }
 
-/**
- * Ensure delegated events are attached when the container exists.
- */
-function bindContainerEvents() {
-    if (!elements.container) {
-        return;
-    }
-
-    if (elements.container.dataset.headersEventsBound === "true") {
-        return;
-    }
-
-    elements.container.addEventListener("input", handleInput);
-    elements.container.addEventListener("change", handleInput);
-    elements.container.addEventListener("click", handleClick);
-
-    elements.container.dataset.headersEventsBound = "true";
-}
-
-// ============================================================
-// Header Normalization
-// ============================================================
-
-/**
- * Normalize a single header object.
- *
- * @param {unknown} header
- * @returns {{name: string, value: string, enabled: boolean}}
- */
-function normalizeHeader(header) {
+function normalizeHeader(header = {}) {
     if (!header || typeof header !== "object") {
         return {
             name: "",
@@ -182,12 +101,6 @@ function normalizeHeader(header) {
     };
 }
 
-/**
- * Normalize an array of headers.
- *
- * @param {unknown} value
- * @returns {Array<{name: string, value: string, enabled: boolean}>}
- */
 function normalizeHeaders(value) {
     if (!Array.isArray(value)) {
         return [];
@@ -196,63 +109,37 @@ function normalizeHeaders(value) {
     return value.map(normalizeHeader);
 }
 
-// ============================================================
-// Rendering
-// ============================================================
-
-/**
- * Render all header rows.
- */
 function renderHeaders() {
-    if (!elements.container) {
+    if (!elements.list) {
         cacheElements();
     }
 
-    if (!elements.container) {
+    if (!elements.list) {
         return;
     }
 
-    bindContainerEvents();
-
-    elements.container.innerHTML = "";
-
-    if (headers.length === 0) {
-        renderEmptyState();
-        return;
-    }
+    elements.list.innerHTML = "";
 
     headers.forEach((header, index) => {
-        elements.container.appendChild(
-            createHeaderRow(header, index),
+        elements.list.appendChild(
+            createHeaderRow(header, index)
         );
     });
+
+    updateEmptyState();
 }
 
-/**
- * Render an empty header state.
- */
-function renderEmptyState() {
-    if (!elements.container) {
+function updateEmptyState() {
+    if (!elements.empty) {
         return;
     }
 
-    const empty = document.createElement("div");
-
-    empty.className =
-        "rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground";
-
-    empty.textContent = "No headers added.";
-
-    elements.container.appendChild(empty);
+    elements.empty.classList.toggle(
+        "hidden",
+        headers.length > 0
+    );
 }
 
-/**
- * Create a header row.
- *
- * @param {{name: string, value: string, enabled: boolean}} header
- * @param {number} index
- * @returns {HTMLElement}
- */
 function createHeaderRow(header, index) {
     const row = document.createElement("div");
 
@@ -264,16 +151,10 @@ function createHeaderRow(header, index) {
     const enabled = document.createElement("input");
 
     enabled.type = "checkbox";
-    enabled.checked = header.enabled !== false;
-    enabled.title = "Enable header";
-    enabled.setAttribute("aria-label", "Enable header");
+    enabled.checked = header.enabled;
     enabled.dataset.headerField = "enabled";
-
     enabled.className = "h-4 w-4";
-
-    enabled.addEventListener("change", () => {
-        headers[index].enabled = enabled.checked;
-    });
+    enabled.setAttribute("aria-label", "Enable header");
 
     const nameInput = document.createElement("input");
 
@@ -282,7 +163,6 @@ function createHeaderRow(header, index) {
     nameInput.placeholder = "Header name";
     nameInput.autocomplete = "off";
     nameInput.dataset.headerField = "name";
-
     nameInput.className =
         "h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
@@ -293,7 +173,6 @@ function createHeaderRow(header, index) {
     valueInput.placeholder = "Header value";
     valueInput.autocomplete = "off";
     valueInput.dataset.headerField = "value";
-
     valueInput.className =
         "h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
@@ -303,7 +182,6 @@ function createHeaderRow(header, index) {
     removeButton.dataset.headerAction = "remove";
     removeButton.className =
         "inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-sm transition hover:bg-muted";
-
     removeButton.setAttribute("aria-label", "Remove header");
     removeButton.title = "Remove header";
     removeButton.textContent = "×";
@@ -312,88 +190,84 @@ function createHeaderRow(header, index) {
         enabled,
         nameInput,
         valueInput,
-        removeButton,
+        removeButton
     );
 
     return row;
 }
 
-// ============================================================
-// Header Access
-// ============================================================
+export function initHeaders() {
+    cacheElements();
 
-/**
- * Get the current headers.
- *
- * Empty header rows are preserved so the UI can restore them.
- *
- * @returns {Array<{name: string, value: string, enabled: boolean}>}
- */
+    if (!initialized) {
+        bindEvents();
+        initialized = true;
+    }
+
+    renderHeaders();
+
+    return {
+        getHeaders,
+        setHeaders,
+        addHeader,
+        updateHeader,
+        removeHeader,
+        clearHeaders,
+        getEnabledHeaders,
+        findHeader,
+        hasHeader,
+        setHeader,
+        removeHeaderByName,
+        removeEmptyHeaders,
+        focusHeaders,
+    };
+}
+
 export function getHeaders() {
     return headers.map((header) => ({
         ...header,
     }));
 }
 
-/**
- * Replace all headers.
- *
- * @param {Array} value
- * @returns {Array}
- */
 export function setHeaders(value = []) {
     headers = normalizeHeaders(value);
-
     renderHeaders();
 
     return getHeaders();
 }
 
-/**
- * Add a new empty header.
- *
- * @param {Object} [header]
- * @returns {Object}
- */
 export function addHeader(header = {}) {
-    headers.push(normalizeHeader(header));
+    const normalized = normalizeHeader(header);
 
+    headers.push(normalized);
     renderHeaders();
 
-    const index = headers.length - 1;
-
-    focusHeader(index);
+    focusHeader(headers.length - 1);
 
     return {
-        ...headers[index],
+        ...normalized,
     };
 }
 
-/**
- * Update a header.
- *
- * @param {number} index
- * @param {Object} updates
- * @returns {Object|null}
- */
 export function updateHeader(index, updates = {}) {
     if (!Number.isInteger(index) || !headers[index]) {
         return null;
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, "name")) {
-        headers[index].name =
-            String(updates.name ?? "").trim();
+    if ("name" in updates) {
+        headers[index].name = String(
+            updates.name ?? ""
+        ).trim();
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, "value")) {
-        headers[index].value =
-            String(updates.value ?? "");
+    if ("value" in updates) {
+        headers[index].value = String(
+            updates.value ?? ""
+        );
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, "enabled")) {
-        headers[index].enabled =
-            updates.enabled !== false;
+    if ("enabled" in updates) {
+        headers[index].enabled = updates.enabled !== false;
     }
 
     renderHeaders();
@@ -403,18 +277,12 @@ export function updateHeader(index, updates = {}) {
     };
 }
 
-/**
- * Remove a header.
- *
- * @param {number} index
- * @returns {Object|null}
- */
 export function removeHeader(index) {
     if (!Number.isInteger(index) || !headers[index]) {
         return null;
     }
 
-    const removed = headers.splice(index, 1)[0];
+    const [removed] = headers.splice(index, 1);
 
     renderHeaders();
 
@@ -423,31 +291,17 @@ export function removeHeader(index) {
     };
 }
 
-/**
- * Remove all headers.
- */
 export function clearHeaders() {
     headers = [];
     renderHeaders();
 }
 
-// ============================================================
-// Header Utilities
-// ============================================================
-
-/**
- * Return only enabled and valid headers.
- *
- * This is useful immediately before constructing a Fetch request.
- *
- * @returns {Array<{name: string, value: string}>}
- */
 export function getEnabledHeaders() {
     return headers
         .filter(
             (header) =>
                 header.enabled !== false &&
-                header.name.trim() !== "",
+                header.name.trim() !== ""
         )
         .map((header) => ({
             name: header.name.trim(),
@@ -455,14 +309,6 @@ export function getEnabledHeaders() {
         }));
 }
 
-/**
- * Find a header by name.
- *
- * Header names are compared case-insensitively.
- *
- * @param {string} name
- * @returns {Object|null}
- */
 export function findHeader(name) {
     const target = String(name ?? "")
         .trim()
@@ -474,34 +320,20 @@ export function findHeader(name) {
 
     const header = headers.find(
         (item) =>
-            item.name.trim().toLowerCase() === target,
+            item.name.trim().toLowerCase() === target
     );
 
     return header ? { ...header } : null;
 }
 
-/**
- * Check whether a header exists.
- *
- * @param {string} name
- * @returns {boolean}
- */
 export function hasHeader(name) {
     return Boolean(findHeader(name));
 }
 
-/**
- * Set or replace a header by name.
- *
- * @param {string} name
- * @param {string} value
- * @param {boolean} [enabled=true]
- * @returns {Object}
- */
 export function setHeader(
     name,
     value = "",
-    enabled = true,
+    enabled = true
 ) {
     const normalizedName = String(name ?? "").trim();
 
@@ -509,10 +341,10 @@ export function setHeader(
         return null;
     }
 
-    const existingIndex = headers.findIndex(
+    const index = headers.findIndex(
         (header) =>
             header.name.trim().toLowerCase() ===
-            normalizedName.toLowerCase(),
+            normalizedName.toLowerCase()
     );
 
     const header = {
@@ -521,8 +353,8 @@ export function setHeader(
         enabled: enabled !== false,
     };
 
-    if (existingIndex >= 0) {
-        headers[existingIndex] = header;
+    if (index >= 0) {
+        headers[index] = header;
     } else {
         headers.push(header);
     }
@@ -534,12 +366,6 @@ export function setHeader(
     };
 }
 
-/**
- * Remove a header by name.
- *
- * @param {string} name
- * @returns {Object|null}
- */
 export function removeHeaderByName(name) {
     const target = String(name ?? "")
         .trim()
@@ -551,7 +377,7 @@ export function removeHeaderByName(name) {
 
     const index = headers.findIndex(
         (header) =>
-            header.name.trim().toLowerCase() === target,
+            header.name.trim().toLowerCase() === target
     );
 
     if (index < 0) {
@@ -561,16 +387,11 @@ export function removeHeaderByName(name) {
     return removeHeader(index);
 }
 
-/**
- * Remove empty header rows.
- *
- * @returns {Array}
- */
 export function removeEmptyHeaders() {
     headers = headers.filter(
         (header) =>
             header.name.trim() !== "" ||
-            header.value.trim() !== "",
+            header.value.trim() !== ""
     );
 
     renderHeaders();
@@ -578,51 +399,31 @@ export function removeEmptyHeaders() {
     return getHeaders();
 }
 
-// ============================================================
-// Focus Helpers
-// ============================================================
-
-/**
- * Focus the name field of a header row.
- *
- * @param {number} index
- */
 function focusHeader(index) {
-    if (!elements.container) {
+    if (!elements.list) {
         return;
     }
 
     requestAnimationFrame(() => {
-        const row = elements.container.querySelector(
-            `[data-header-index="${index}"]`,
+        const row = elements.list.querySelector(
+            `[data-header-index="${index}"]`
         );
 
-        const input = row?.querySelector(
-            '[data-header-field="name"]',
-        );
-
-        input?.focus();
+        row?.querySelector(
+            '[data-header-field="name"]'
+        )?.focus();
     });
 }
 
-/**
- * Focus the headers section.
- */
 export function focusHeaders() {
-    if (!elements.container) {
+    if (!elements.list) {
         cacheElements();
     }
 
-    const firstInput = elements.container?.querySelector(
-        '[data-header-field="name"]',
-    );
-
-    firstInput?.focus();
+    elements.list?.querySelector(
+        '[data-header-field="name"]'
+    )?.focus();
 }
-
-// ============================================================
-// Default Export
-// ============================================================
 
 export default {
     initHeaders,

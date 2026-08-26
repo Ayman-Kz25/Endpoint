@@ -1,7 +1,7 @@
 // src/scripts/api/request.js
 
-import { DEFAULT_HTTP_METHOD, REQUEST_TIMEOUT } from "../core/constants";
-import { normalizeResponse } from "./response";
+import { DEFAULT_HTTP_METHOD, REQUEST_TIMEOUT } from "../core/constants.js";
+import { normalizeResponse } from "./response.js";
 
 const METHODS_WITHOUT_BODY = ["GET", "HEAD"];
 

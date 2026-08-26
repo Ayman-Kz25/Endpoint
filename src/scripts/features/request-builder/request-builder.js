@@ -1,23 +1,5 @@
 // src/scripts/features/request-builder/request-builder.js
 
-/**
- * Request Builder
- *
- * Coordinates the request-building UI and keeps the request state
- * synchronized with the form controls.
- *
- * Responsibilities:
- * - Initialize request-builder controls
- * - Read/write request values
- * - Coordinate method, URL, params, headers, body, and auth
- * - Provide a clean request object for the API layer
- *
- * This module does not:
- * - Execute HTTP requests
- * - Render responses
- * - Show toast notifications
- */
-
 import state from "../../core/state.js";
 import { DEFAULT_HTTP_METHOD } from "../../core/constants.js";
 
@@ -47,30 +29,48 @@ import {
     setRequestBody,
 } from "./body.js";
 
-// ============================================================
-// DOM References
-// ============================================================
-
 const elements = {
-    method: null,
     url: null,
     authType: null,
     authFields: null,
 };
 
-// ============================================================
-// Initialization
-// ============================================================
+let initialized = false;
 
-/**
- * Initialize the request builder.
- *
- * @returns {Object} Request builder API
- */
+function cacheElements() {
+    elements.url = document.getElementById("request-url");
+    elements.authType = document.getElementById("auth-type");
+    elements.authFields = document.getElementById("auth-fields");
+}
+
+function bindEvents() {
+    elements.url?.addEventListener("input", handleUrlChange);
+    elements.authType?.addEventListener("change", handleAuthChange);
+}
+
+function handleUrlChange(event) {
+    const url = event.target.value.trim();
+
+    setRequestUrl(url);
+    state.request.url = url;
+}
+
+function handleAuthChange(event) {
+    state.request.auth.type = event.target.value || "none";
+    state.request.auth.fields = {};
+
+    renderAuthFields();
+}
+
 export function initRequestBuilder() {
     cacheElements();
-    bindEvents();
-    initMethodSelector();
+
+    if (!initialized) {
+        bindEvents();
+        initMethodSelector();
+        initialized = true;
+    }
+
     syncStateToUI();
 
     return {
@@ -82,84 +82,14 @@ export function initRequestBuilder() {
     };
 }
 
-/**
- * Cache request-builder DOM elements.
- */
-function cacheElements() {
-    elements.method = document.getElementById("request-method");
-    elements.url = document.getElementById("request-url");
-    elements.authType = document.getElementById("auth-type");
-    elements.authFields = document.getElementById("auth-fields");
-}
-
-// ============================================================
-// Event Binding
-// ============================================================
-
-/**
- * Bind request-builder input events.
- */
-function bindEvents() {
-    if (elements.url) {
-        elements.url.addEventListener("input", handleUrlInput);
-        elements.url.addEventListener("change", handleUrlInput);
-    }
-
-    if (elements.authType) {
-        elements.authType.addEventListener("change", handleAuthTypeChange);
-    }
-}
-
-/**
- * Handle URL changes.
- *
- * @param {Event} event
- */
-function handleUrlInput(event) {
-    const url = event.target.value.trim();
-
-    setRequestUrl(url);
-    state.request.url = url;
-}
-
-/**
- * Handle authentication type changes.
- *
- * @param {Event} event
- */
-function handleAuthTypeChange(event) {
-    const type = event.target.value;
-
-    state.request.auth.type = type;
-    state.request.auth.fields = {};
-
-    renderAuthFields();
-}
-
-// ============================================================
-// State Synchronization
-// ============================================================
-
-/**
- * Synchronize all request state from the UI.
- *
- * Useful immediately before sending a request.
- */
 export function syncFromUI() {
     state.request.method =
         getRequestMethod() || DEFAULT_HTTP_METHOD;
 
-    state.request.url =
-        getRequestUrl();
-
-    state.request.params =
-        getQueryParams();
-
-    state.request.headers =
-        getHeaders();
-
-    state.request.body =
-        getRequestBody();
+    state.request.url = getRequestUrl();
+    state.request.params = getQueryParams();
+    state.request.headers = getHeaders();
+    state.request.body = getRequestBody();
 
     if (elements.authType) {
         state.request.auth.type =
@@ -169,17 +99,12 @@ export function syncFromUI() {
     return state.request;
 }
 
-/**
- * Synchronize request state into the UI.
- */
 export function syncStateToUI() {
     setRequestMethod(
         state.request.method || DEFAULT_HTTP_METHOD
     );
 
-    setRequestUrl(
-        state.request.url || ""
-    );
+    setRequestUrl(state.request.url || "");
 
     setQueryParams(
         Array.isArray(state.request.params)
@@ -193,9 +118,7 @@ export function syncStateToUI() {
             : []
     );
 
-    setRequestBody(
-        state.request.body || ""
-    );
+    setRequestBody(state.request.body || "");
 
     if (elements.authType) {
         elements.authType.value =
@@ -205,17 +128,6 @@ export function syncStateToUI() {
     renderAuthFields();
 }
 
-// ============================================================
-// Request Access
-// ============================================================
-
-/**
- * Get the complete request configuration.
- *
- * The UI is synchronized into state before returning.
- *
- * @returns {Object}
- */
 export function getRequest() {
     syncFromUI();
 
@@ -234,42 +146,20 @@ export function getRequest() {
     };
 }
 
-/**
- * Replace the current request with supplied values.
- *
- * @param {Object} request
- */
 export function setRequest(request = {}) {
     state.request = {
         ...state.request,
-
-        method:
-            request.method ||
-            DEFAULT_HTTP_METHOD,
-
-        url:
-            request.url ||
-            "",
-
-        params:
-            Array.isArray(request.params)
-                ? request.params
-                : [],
-
-        headers:
-            Array.isArray(request.headers)
-                ? request.headers
-                : [],
-
-        body:
-            request.body ||
-            "",
-
+        method: request.method || DEFAULT_HTTP_METHOD,
+        url: request.url || "",
+        params: Array.isArray(request.params)
+            ? request.params
+            : [],
+        headers: Array.isArray(request.headers)
+            ? request.headers
+            : [],
+        body: request.body || "",
         auth: {
-            type:
-                request.auth?.type ||
-                "none",
-
+            type: request.auth?.type || "none",
             fields: {
                 ...(request.auth?.fields || {}),
             },
@@ -281,9 +171,6 @@ export function setRequest(request = {}) {
     return state.request;
 }
 
-/**
- * Reset the request builder to its initial state.
- */
 export function resetRequest() {
     state.request = {
         method: DEFAULT_HTTP_METHOD,
@@ -302,68 +189,46 @@ export function resetRequest() {
     return state.request;
 }
 
-// ============================================================
-// Authentication
-// ============================================================
-
-/**
- * Render authentication fields.
- *
- * Authentication-specific input handling can be expanded here
- * when the auth feature is implemented.
- */
 function renderAuthFields() {
-    if (!elements.authFields) {
+    const container = elements.authFields;
+
+    if (!container) {
         return;
     }
 
-    const authType =
-        state.request.auth?.type || "none";
+    const type = state.request.auth?.type || "none";
+    const fields = state.request.auth?.fields || {};
 
-    elements.authFields.innerHTML = "";
+    container.replaceChildren();
 
-    if (authType === "none") {
+    if (type === "none") {
         return;
     }
 
-    if (authType === "bearer") {
-        elements.authFields.innerHTML = `
-            <div>
-                <label
-                    for="auth-token"
-                    class="mb-1.5 block text-xs font-medium"
-                >
-                    Bearer token
-                </label>
+    if (type === "bearer") {
+        container.innerHTML = `
+            <label
+                for="auth-token"
+                class="mb-1.5 block text-xs font-medium"
+            >
+                Bearer token
+            </label>
 
-                <input
-                    id="auth-token"
-                    type="password"
-                    autocomplete="off"
-                    class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    placeholder="Enter bearer token"
-                />
-            </div>
+            <input
+                id="auth-token"
+                type="password"
+                autocomplete="off"
+                class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="Enter bearer token"
+            />
         `;
 
-        const tokenInput =
-            document.getElementById("auth-token");
-
-        tokenInput?.addEventListener("input", (event) => {
-            state.request.auth.fields.token =
-                event.target.value;
-        });
-
-        if (tokenInput) {
-            tokenInput.value =
-                state.request.auth.fields.token || "";
-        }
-
+        bindAuthInput("auth-token", "token", fields.token);
         return;
     }
 
-    if (authType === "basic") {
-        elements.authFields.innerHTML = `
+    if (type === "basic") {
+        container.innerHTML = `
             <div class="space-y-3">
                 <div>
                     <label
@@ -401,37 +266,23 @@ function renderAuthFields() {
             </div>
         `;
 
-        const usernameInput =
-            document.getElementById("auth-username");
+        bindAuthInput(
+            "auth-username",
+            "username",
+            fields.username
+        );
 
-        const passwordInput =
-            document.getElementById("auth-password");
-
-        usernameInput?.addEventListener("input", (event) => {
-            state.request.auth.fields.username =
-                event.target.value;
-        });
-
-        passwordInput?.addEventListener("input", (event) => {
-            state.request.auth.fields.password =
-                event.target.value;
-        });
-
-        if (usernameInput) {
-            usernameInput.value =
-                state.request.auth.fields.username || "";
-        }
-
-        if (passwordInput) {
-            passwordInput.value =
-                state.request.auth.fields.password || "";
-        }
+        bindAuthInput(
+            "auth-password",
+            "password",
+            fields.password
+        );
 
         return;
     }
 
-    if (authType === "api-key") {
-        elements.authFields.innerHTML = `
+    if (type === "api-key") {
+        container.innerHTML = `
             <div class="space-y-3">
                 <div>
                     <label
@@ -486,59 +337,48 @@ function renderAuthFields() {
             </div>
         `;
 
-        const keyInput =
-            document.getElementById("auth-key");
+        bindAuthInput(
+            "auth-key",
+            "key",
+            fields.key
+        );
 
-        const valueInput =
-            document.getElementById("auth-value");
+        bindAuthInput(
+            "auth-value",
+            "value",
+            fields.value
+        );
 
-        const locationInput =
-            document.getElementById("auth-location");
+        const location = document.getElementById(
+            "auth-location"
+        );
 
-        keyInput?.addEventListener("input", (event) => {
-            state.request.auth.fields.key =
-                event.target.value;
-        });
+        if (location) {
+            location.value = fields.location || "header";
 
-        valueInput?.addEventListener("input", (event) => {
-            state.request.auth.fields.value =
-                event.target.value;
-        });
-
-        locationInput?.addEventListener("change", (event) => {
-            state.request.auth.fields.location =
-                event.target.value;
-        });
-
-        if (keyInput) {
-            keyInput.value =
-                state.request.auth.fields.key || "";
-        }
-
-        if (valueInput) {
-            valueInput.value =
-                state.request.auth.fields.value || "";
-        }
-
-        if (locationInput) {
-            locationInput.value =
-                state.request.auth.fields.location ||
-                "header";
+            location.addEventListener("change", (event) => {
+                state.request.auth.fields.location =
+                    event.target.value;
+            });
         }
     }
 }
 
-// ============================================================
-// Request URL Helpers
-// ============================================================
+function bindAuthInput(id, field, value = "") {
+    const input = document.getElementById(id);
 
-/**
- * Build a URL containing the current query parameters.
- *
- * This does not modify the URL input.
- *
- * @returns {string}
- */
+    if (!input) {
+        return;
+    }
+
+    input.value = value || "";
+
+    input.addEventListener("input", (event) => {
+        state.request.auth.fields[field] =
+            event.target.value;
+    });
+}
+
 export function getFinalRequestUrl() {
     const request = getRequest();
 
@@ -555,30 +395,28 @@ export function getFinalRequestUrl() {
             }
 
             const key = String(param.key ?? "").trim();
-            const value = String(param.value ?? "");
 
             if (!key) {
                 return;
             }
 
-            url.searchParams.set(key, value);
+            url.searchParams.set(
+                key,
+                String(param.value ?? "")
+            );
         });
 
-        // API-key authentication can optionally be added
-        // to the query string.
         if (
             request.auth?.type === "api-key" &&
             request.auth.fields?.location === "query"
         ) {
-            const key =
-                String(
-                    request.auth.fields.key ?? ""
-                ).trim();
+            const key = String(
+                request.auth.fields.key ?? ""
+            ).trim();
 
-            const value =
-                String(
-                    request.auth.fields.value ?? ""
-                );
+            const value = String(
+                request.auth.fields.value ?? ""
+            );
 
             if (key && value) {
                 url.searchParams.set(key, value);
@@ -591,15 +429,6 @@ export function getFinalRequestUrl() {
     }
 }
 
-// ============================================================
-// Request Validation
-// ============================================================
-
-/**
- * Validate the current request before sending.
- *
- * @returns {{ valid: boolean, errors: string[] }}
- */
 export function validateRequest() {
     const request = getRequest();
     const errors = [];
@@ -610,11 +439,7 @@ export function validateRequest() {
         try {
             const url = new URL(request.url);
 
-            if (
-                !["http:", "https:"].includes(
-                    url.protocol
-                )
-            ) {
+            if (!["http:", "https:"].includes(url.protocol)) {
                 errors.push(
                     "Only HTTP and HTTPS URLs are supported."
                 );
@@ -628,25 +453,11 @@ export function validateRequest() {
         errors.push("HTTP method is required.");
     }
 
-    if (
-        request.method !== "GET" &&
-        request.method !== "HEAD" &&
-        request.body
-    ) {
-        // Body is allowed for these methods, so no action
-        // is needed here. This check exists as a clear place
-        // for future method-specific validation.
-    }
-
     return {
         valid: errors.length === 0,
         errors,
     };
 }
-
-// ============================================================
-// Exports
-// ============================================================
 
 export default {
     initRequestBuilder,

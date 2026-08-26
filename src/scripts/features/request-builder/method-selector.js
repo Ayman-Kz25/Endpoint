@@ -1,27 +1,7 @@
 // src/scripts/features/request-builder/method-selector.js
 
-/**
- * HTTP Method Selector
- *
- * Responsible for managing the HTTP method selector in the
- * request builder.
- *
- * This module does not:
- * - execute requests
- * - manipulate other request fields
- * - render responses
- * - show notifications
- */
-
 import state from "../../core/state.js";
-import {
-    DEFAULT_HTTP_METHOD,
-    HTTP_METHODS,
-} from "../../core/constants.js";
-
-// ============================================================
-// DOM
-// ============================================================
+import { DEFAULT_HTTP_METHOD, HTTP_METHODS } from "../../core/constants.js";
 
 const SELECTOR_ID = "request-method";
 
@@ -29,77 +9,28 @@ function getElement() {
     return document.getElementById(SELECTOR_ID);
 }
 
-// ============================================================
-// Validation
-// ============================================================
+function normalizeMethod(method) {
+    return String(method || DEFAULT_HTTP_METHOD).toUpperCase();
+}
 
-/**
- * Check whether a value is a supported HTTP method.
- *
- * @param {string} method
- * @returns {boolean}
- */
 export function isValidMethod(method) {
-    if (!method || typeof method !== "string") {
+    if (typeof method !== "string" || !method.trim()) {
         return false;
     }
 
-    const normalizedMethod = method.toUpperCase();
-
-    if (Array.isArray(HTTP_METHODS)) {
-        return HTTP_METHODS.includes(normalizedMethod);
-    }
-
-    if (
-        HTTP_METHODS &&
-        typeof HTTP_METHODS === "object"
-    ) {
-        return Object.values(HTTP_METHODS).includes(
-            normalizedMethod
-        );
-    }
-
-    return false;
+    return HTTP_METHODS.includes(normalizeMethod(method));
 }
 
-// ============================================================
-// Getter
-// ============================================================
-
-/**
- * Get the currently selected HTTP method.
- *
- * @returns {string}
- */
 export function getRequestMethod() {
     const element = getElement();
 
-    if (element?.value) {
-        return element.value.toUpperCase();
-    }
-
-    return (
-        state.request.method ||
-        DEFAULT_HTTP_METHOD
-    ).toUpperCase();
+    return normalizeMethod(
+        element?.value || state.request.method
+    );
 }
 
-// ============================================================
-// Setter
-// ============================================================
-
-/**
- * Set the HTTP method selector.
- *
- * @param {string} method
- * @returns {string}
- */
 export function setRequestMethod(method) {
-    const normalizedMethod = (
-        method ||
-        DEFAULT_HTTP_METHOD
-    ).toUpperCase();
-
+    const normalizedMethod = normalizeMethod(method);
     const finalMethod = isValidMethod(normalizedMethod)
         ? normalizedMethod
         : DEFAULT_HTTP_METHOD;
@@ -115,15 +46,6 @@ export function setRequestMethod(method) {
     return finalMethod;
 }
 
-// ============================================================
-// Initialization
-// ============================================================
-
-/**
- * Initialize the HTTP method selector.
- *
- * Sets the initial value and binds change events.
- */
 export function initMethodSelector() {
     const element = getElement();
 
@@ -132,65 +54,30 @@ export function initMethodSelector() {
     }
 
     setRequestMethod(
-        state.request.method ||
-            DEFAULT_HTTP_METHOD
+        state.request.method || DEFAULT_HTTP_METHOD
     );
 
-    element.addEventListener(
-        "change",
-        handleMethodChange
-    );
+    element.addEventListener("change", handleMethodChange);
 }
 
-// ============================================================
-// Events
-// ============================================================
-
-/**
- * Handle method selector changes.
- *
- * @param {Event} event
- */
 function handleMethodChange(event) {
     const method = event.target?.value;
 
-    if (!isValidMethod(method)) {
-        setRequestMethod(DEFAULT_HTTP_METHOD);
-        return;
-    }
-
-    state.request.method =
-        method.toUpperCase();
-}
-
-// ============================================================
-// Method Helpers
-// ============================================================
-
-/**
- * Check whether the current method can contain a request body.
- *
- * @param {string} [method]
- * @returns {boolean}
- */
-export function methodAllowsBody(
-    method = getRequestMethod()
-) {
-    const normalizedMethod =
-        method.toUpperCase();
-
-    return !["GET", "HEAD"].includes(
-        normalizedMethod
+    setRequestMethod(
+        isValidMethod(method)
+            ? method
+            : DEFAULT_HTTP_METHOD
     );
 }
 
-/**
- * Check whether the current method is considered
- * idempotent.
- *
- * @param {string} [method]
- * @returns {boolean}
- */
+export function methodAllowsBody(
+    method = getRequestMethod()
+) {
+    return !["GET", "HEAD"].includes(
+        normalizeMethod(method)
+    );
+}
+
 export function isIdempotentMethod(
     method = getRequestMethod()
 ) {
@@ -201,15 +88,9 @@ export function isIdempotentMethod(
         "DELETE",
         "OPTIONS",
         "TRACE",
-    ].includes(method.toUpperCase());
+    ].includes(normalizeMethod(method));
 }
 
-/**
- * Check whether the current method is safe.
- *
- * @param {string} [method]
- * @returns {boolean}
- */
 export function isSafeMethod(
     method = getRequestMethod()
 ) {
@@ -218,12 +99,8 @@ export function isSafeMethod(
         "HEAD",
         "OPTIONS",
         "TRACE",
-    ].includes(method.toUpperCase());
+    ].includes(normalizeMethod(method));
 }
-
-// ============================================================
-// Export
-// ============================================================
 
 export default {
     initMethodSelector,

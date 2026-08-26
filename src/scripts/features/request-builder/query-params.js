@@ -1,95 +1,19 @@
 // src/scripts/features/request-builder/query-params.js
 
-/**
- * Query Parameters
- *
- * Manages the dynamic query-parameter editor used by the request builder.
- *
- * Responsibilities:
- * - Read query parameters from the UI
- * - Write query parameters to the UI
- * - Add and remove parameter rows
- * - Track enabled/disabled parameters
- * - Keep the request state synchronized through the request-builder
- *
- * This module does not:
- * - Execute HTTP requests
- * - Build the final request URL
- * - Render responses
- * - Show notifications
- */
-
-// ============================================================
-// DOM References
-// ============================================================
-
 const elements = {
     container: null,
     addButton: null,
+    emptyState: null,
 };
-
-// ============================================================
-// Internal State
-// ============================================================
 
 let initialized = false;
 
-// ============================================================
-// Initialization
-// ============================================================
-
-/**
- * Initialize the query-parameter editor.
- *
- * @returns {Object} Query parameter API
- */
-export function initQueryParams() {
-    cacheElements();
-
-    if (initialized) {
-        return {
-            getQueryParams,
-            setQueryParams,
-            addQueryParam,
-            removeQueryParam,
-            clearQueryParams,
-        };
-    }
-
-    bindEvents();
-    initialized = true;
-
-    return {
-        getQueryParams,
-        setQueryParams,
-        addQueryParam,
-        removeQueryParam,
-        clearQueryParams,
-    };
-}
-
-// ============================================================
-// DOM Helpers
-// ============================================================
-
-/**
- * Cache query-parameter DOM elements.
- */
 function cacheElements() {
-    elements.container =
-        document.getElementById("query-params") ||
-        document.getElementById("query-params-list");
-
-    elements.addButton =
-        document.getElementById("add-query-param") ||
-        document.querySelector('[data-action="add-query-param"]');
+    elements.container = document.getElementById("query-params-list");
+    elements.addButton = document.getElementById("add-query-param-button");
+    elements.emptyState = document.getElementById("query-params-empty");
 }
 
-/**
- * Find the query parameter container.
- *
- * @returns {HTMLElement|null}
- */
 function getContainer() {
     if (!elements.container) {
         cacheElements();
@@ -98,11 +22,6 @@ function getContainer() {
     return elements.container;
 }
 
-/**
- * Find all query parameter rows.
- *
- * @returns {HTMLElement[]}
- */
 function getRows() {
     const container = getContainer();
 
@@ -111,95 +30,59 @@ function getRows() {
     }
 
     return Array.from(
-        container.querySelectorAll(
-            "[data-query-param], .query-param-row"
-        )
+        container.querySelectorAll("[data-query-param]")
     );
 }
 
-/**
- * Create a unique identifier for a parameter row.
- *
- * @returns {string}
- */
 function createId() {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    if (crypto?.randomUUID) {
         return crypto.randomUUID();
     }
 
     return `query-param-${Date.now()}-${Math.random()
         .toString(36)
-        .slice(2, 9)}`;
+        .slice(2, 8)}`;
 }
 
-// ============================================================
-// Event Binding
-// ============================================================
-
-/**
- * Bind query-parameter events.
- */
-function bindEvents() {
-    const container = getContainer();
-
-    if (elements.addButton) {
-        elements.addButton.addEventListener("click", (event) => {
-            event.preventDefault();
-            addQueryParam();
-        });
-    }
-
-    if (container) {
-        container.addEventListener("click", handleContainerClick);
-    }
-}
-
-/**
- * Handle delegated actions inside the parameter container.
- *
- * @param {Event} event
- */
-function handleContainerClick(event) {
-    const target = event.target.closest(
-        '[data-action="remove-query-param"], [data-remove-query-param]'
-    );
-
-    if (!target) {
+function updateEmptyState() {
+    if (!elements.emptyState) {
         return;
     }
 
-    event.preventDefault();
-
-    const row = target.closest(
-        "[data-query-param], .query-param-row"
+    elements.emptyState.classList.toggle(
+        "hidden",
+        getRows().length > 0
     );
-
-    if (row) {
-        removeQueryParam(row);
-    }
 }
 
-// ============================================================
-// Row Creation
-// ============================================================
+function bindEvents() {
+    elements.addButton?.addEventListener("click", (event) => {
+        event.preventDefault();
+        addQueryParam();
+    });
 
-/**
- * Create a query parameter row.
- *
- * @param {Object} param
- * @returns {HTMLElement|null}
- */
+    elements.container?.addEventListener("click", (event) => {
+        const button = event.target.closest(
+            '[data-action="remove-query-param"]'
+        );
+
+        if (!button) {
+            return;
+        }
+
+        const row = button.closest("[data-query-param]");
+
+        if (row) {
+            removeQueryParam(row);
+        }
+    });
+}
+
 function createRow(param = {}) {
-    const container = getContainer();
-
-    if (!container) {
-        return null;
-    }
-
     const row = document.createElement("div");
 
     row.className =
-        "query-param-row grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center";
+        "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2";
 
     row.dataset.queryParam = "true";
     row.dataset.id = param.id || createId();
@@ -235,38 +118,39 @@ function createRow(param = {}) {
         <button
             type="button"
             data-action="remove-query-param"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
             aria-label="Remove query parameter"
             title="Remove parameter"
         >
-            <span aria-hidden="true">&times;</span>
+            ×
         </button>
     `;
 
-    const keyInput = row.querySelector(".query-param-key");
-    const valueInput = row.querySelector(".query-param-value");
-
-    if (keyInput) {
-        keyInput.value = key;
-    }
-
-    if (valueInput) {
-        valueInput.value = value;
-    }
+    row.querySelector(".query-param-key").value = key;
+    row.querySelector(".query-param-value").value = value;
 
     return row;
 }
 
-// ============================================================
-// Public UI API
-// ============================================================
+export function initQueryParams() {
+    cacheElements();
 
-/**
- * Add a query parameter row.
- *
- * @param {Object} param
- * @returns {HTMLElement|null}
- */
+    if (!initialized) {
+        bindEvents();
+        initialized = true;
+    }
+
+    updateEmptyState();
+
+    return {
+        getQueryParams,
+        setQueryParams,
+        addQueryParam,
+        removeQueryParam,
+        clearQueryParams,
+    };
+}
+
 export function addQueryParam(param = {}) {
     const container = getContainer();
 
@@ -276,25 +160,15 @@ export function addQueryParam(param = {}) {
 
     const row = createRow(param);
 
-    if (!row) {
-        return null;
-    }
-
     container.appendChild(row);
 
-    const keyInput = row.querySelector(".query-param-key");
+    updateEmptyState();
 
-    keyInput?.focus();
+    row.querySelector(".query-param-key")?.focus();
 
     return row;
 }
 
-/**
- * Remove a query parameter row.
- *
- * @param {HTMLElement|string} rowOrId
- * @returns {boolean}
- */
 export function removeQueryParam(rowOrId) {
     const container = getContainer();
 
@@ -307,9 +181,9 @@ export function removeQueryParam(rowOrId) {
     if (rowOrId instanceof HTMLElement) {
         row = rowOrId;
     } else if (typeof rowOrId === "string") {
-        row = container.querySelector(
-            `[data-id="${CSS.escape(rowOrId)}"]`
-        );
+        row = Array.from(
+            container.querySelectorAll("[data-query-param]")
+        ).find((item) => item.dataset.id === rowOrId);
     }
 
     if (!row) {
@@ -318,12 +192,11 @@ export function removeQueryParam(rowOrId) {
 
     row.remove();
 
+    updateEmptyState();
+
     return true;
 }
 
-/**
- * Remove all query parameters.
- */
 export function clearQueryParams() {
     const container = getContainer();
 
@@ -331,46 +204,21 @@ export function clearQueryParams() {
         return;
     }
 
-    getRows().forEach((row) => row.remove());
+    container.replaceChildren();
+
+    updateEmptyState();
 }
 
-/**
- * Read query parameters from the UI.
- *
- * @returns {Array<{id: string, key: string, value: string, enabled: boolean}>}
- */
 export function getQueryParams() {
-    const rows = getRows();
-
-    return rows.map((row) => {
-        const enabledInput = row.querySelector(
-            ".query-param-enabled"
-        );
-
-        const keyInput = row.querySelector(
-            ".query-param-key"
-        );
-
-        const valueInput = row.querySelector(
-            ".query-param-value"
-        );
-
-        return {
-            id: row.dataset.id || createId(),
-            key: keyInput?.value ?? "",
-            value: valueInput?.value ?? "",
-            enabled: enabledInput
-                ? enabledInput.checked
-                : true,
-        };
-    });
+    return getRows().map((row) => ({
+        id: row.dataset.id || createId(),
+        key: row.querySelector(".query-param-key")?.value ?? "",
+        value: row.querySelector(".query-param-value")?.value ?? "",
+        enabled:
+            row.querySelector(".query-param-enabled")?.checked ?? true,
+    }));
 }
 
-/**
- * Replace all query parameters in the UI.
- *
- * @param {Array} params
- */
 export function setQueryParams(params = []) {
     const container = getContainer();
 
@@ -398,117 +246,70 @@ export function setQueryParams(params = []) {
     });
 }
 
-// ============================================================
-// Query Parameter Utilities
-// ============================================================
-
-/**
- * Return only enabled parameters with a non-empty key.
- *
- * @param {Array} params
- * @returns {Array}
- */
 export function getEnabledQueryParams(params = getQueryParams()) {
     if (!Array.isArray(params)) {
         return [];
     }
 
-    return params.filter((param) => {
-        return (
+    return params.filter(
+        (param) =>
             param &&
             param.enabled !== false &&
             String(param.key ?? "").trim() !== ""
-        );
-    });
+    );
 }
 
-/**
- * Convert query parameters into a URLSearchParams instance.
- *
- * @param {Array} params
- * @returns {URLSearchParams}
- */
 export function toURLSearchParams(params = getQueryParams()) {
     const searchParams = new URLSearchParams();
 
     getEnabledQueryParams(params).forEach((param) => {
-        const key = String(param.key ?? "").trim();
-        const value = String(param.value ?? "");
-
-        searchParams.append(key, value);
+        searchParams.append(
+            String(param.key).trim(),
+            String(param.value ?? "")
+        );
     });
 
     return searchParams;
 }
 
-/**
- * Convert query parameters into an encoded query string.
- *
- * @param {Array} params
- * @returns {string}
- */
 export function serializeQueryParams(params = getQueryParams()) {
     return toURLSearchParams(params).toString();
 }
 
-/**
- * Parse a URL into query parameter objects.
- *
- * Existing parameters are preserved in their original order.
- *
- * @param {string} url
- * @returns {Array}
- */
 export function parseQueryParamsFromUrl(url = "") {
-    if (!url || typeof url !== "string") {
+    if (typeof url !== "string" || !url) {
         return [];
     }
 
     try {
         const parsedUrl = new URL(url);
 
-        const params = [];
-
-        parsedUrl.searchParams.forEach((value, key) => {
-            params.push({
+        return Array.from(parsedUrl.searchParams.entries()).map(
+            ([key, value]) => ({
                 id: createId(),
                 key,
                 value,
                 enabled: true,
-            });
-        });
-
-        return params;
+            })
+        );
     } catch {
         return [];
     }
 }
 
-/**
- * Remove the query string from a URL.
- *
- * @param {string} url
- * @returns {string}
- */
 export function removeQueryString(url = "") {
-    if (!url || typeof url !== "string") {
+    if (typeof url !== "string" || !url) {
         return "";
     }
 
     try {
         const parsedUrl = new URL(url);
-
         parsedUrl.search = "";
-
         return parsedUrl.href;
     } catch {
         return url;
     }
 }
-
-// ============================================================
-// Default Export
-// ============================================================
 
 export default {
     initQueryParams,
