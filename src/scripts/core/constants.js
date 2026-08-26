@@ -74,3 +74,5 @@ export const EVENTS = Object.freeze({
   LOADING_STARTED: "loading:started",
   LOADING_FINISHED: "loading:finished",
 });
+
+export const REQUEST_TIMEOUT = 30000;

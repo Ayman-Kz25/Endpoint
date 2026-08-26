@@ -1,468 +1,152 @@
 // src/scripts/api/request.js
 
-import {
-    UI,
-    HTTP_METHODS_WITHOUT_BODY,
-    ERROR_MESSAGES,
-} from "../core/constants.js";
+import { DEFAULT_HTTP_METHOD, REQUEST_TIMEOUT } from "../core/constants";
+import { normalizeResponse } from "./response";
 
-import {
-    normalizeResponse,
-} from "./response.js";
+const METHODS_WITHOUT_BODY = ["GET", "HEAD"];
 
-// ============================================================
-// URL Validation
-// ============================================================
+function validateUrl(url) {
+  if (!url?.trim()) {
+    throw new Error("Please enter a valid URL.");
+  }
 
-function validateRequestUrl(url) {
-    if (
-        typeof url !== "string" ||
-        !url.trim()
-    ) {
-        const error = new Error(
-            ERROR_MESSAGES.INVALID_URL,
-        );
+  let parsedUrl;
 
-        error.code = "INVALID_URL";
+  try {
+    parsedUrl = new URL(url.trim());
+  } catch (error) {
+    throw new Error("Please enter a valid URL.");
+  }
 
-        throw error;
-    }
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error("Only HTTP and HTTPS URLS are Supported.");
+  }
 
-    let parsedUrl;
-
-    try {
-        parsedUrl = new URL(url.trim());
-    } catch {
-        const error = new Error(
-            ERROR_MESSAGES.INVALID_URL,
-        );
-
-        error.code = "INVALID_URL";
-
-        throw error;
-    }
-
-    if (
-        !["http:", "https:"].includes(
-            parsedUrl.protocol,
-        )
-    ) {
-        const error = new Error(
-            ERROR_MESSAGES.INVALID_PROTOCOL,
-        );
-
-        error.code = "INVALID_PROTOCOL";
-
-        throw error;
-    }
-
-    return parsedUrl;
+  return parsedUrl;
 }
 
-// ============================================================
-// Headers
-// ============================================================
+function addHeaders(headers, requestHeaders = []) {
+  if (!Array.isArray(requestHeaders)) {
+    return;
+  }
 
-function appendHeaders(target, headers) {
-    if (Array.isArray(headers)) {
-        headers.forEach((header) => {
-            if (!header) {
-                return;
-            }
-
-            const name = String(
-                header.name ?? "",
-            ).trim();
-
-            if (!name) {
-                return;
-            }
-
-            target.set(
-                name,
-                String(header.value ?? ""),
-            );
-        });
-
-        return;
+  requestHeaders.forEach((header) => {
+    if (!header?.name?.trim()) {
+      return;
     }
 
-    if (
-        headers &&
-        typeof headers === "object"
-    ) {
-        Object.entries(headers).forEach(
-            ([name, value]) => {
-                const normalizedName =
-                    String(name).trim();
-
-                if (!normalizedName) {
-                    return;
-                }
-
-                target.set(
-                    normalizedName,
-                    String(value ?? ""),
-                );
-            },
-        );
-    }
+    headers.set(header.name.trim(), String(header.value ?? ""));
+  });
 }
 
-// ============================================================
-// Authentication
-// ============================================================
+function addAuth(headers, auth) {
+  if (!auth) {
+    return;
+  }
 
-function applyAuthentication(headers, auth) {
-    if (
-        !auth ||
-        typeof auth !== "object"
-    ) {
-        return;
+  const fields = auth.fields || {};
+
+  if (auth.type === "bearer" && fields.token) {
+    headers.set("Authorization", `Bearer ${fields.token}`);
+  }
+
+  if (auth.type === "basic") {
+    const username = fields.username || "";
+    const password = fields.password || "";
+
+    if (username || password) {
+      const encoded = btoa(`${username}:${password}`);
+
+      headers.set("Authorization", `Basic ${encoded}`);
     }
+  }
 
-    if (auth.type === "bearer") {
-        const token = String(
-            auth.fields?.token ?? "",
-        ).trim();
-
-        if (token) {
-            headers.set(
-                "Authorization",
-                `Bearer ${token}`,
-            );
-        }
-
-        return;
-    }
-
-    if (auth.type === "basic") {
-        const username = String(
-            auth.fields?.username ?? "",
-        );
-
-        const password = String(
-            auth.fields?.password ?? "",
-        );
-
-        if (!username && !password) {
-            return;
-        }
-
-        const credentials =
-            `${username}:${password}`;
-
-        const encoded = btoa(credentials);
-
-        headers.set(
-            "Authorization",
-            `Basic ${encoded}`,
-        );
-
-        return;
-    }
-
-    if (auth.type === "api-key") {
-        const key = String(
-            auth.fields?.key ?? "",
-        ).trim();
-
-        const value = String(
-            auth.fields?.value ?? "",
-        );
-
-        const location =
-            auth.fields?.location || "header";
-
-        if (
-            key &&
-            value &&
-            location === "header"
-        ) {
-            headers.set(key, value);
-        }
-    }
+  if (
+    auth.type === "api-key" &&
+    fields.key &&
+    fields.value &&
+    fields.location === "header"
+  ) {
+    headers.set(fields.key, fields.value);
+  }
 }
 
-// ============================================================
-// Body
-// ============================================================
-
-function hasRequestBody(body) {
-    return (
-        body !== undefined &&
-        body !== null &&
-        String(body).trim() !== ""
-    );
-}
-
-function prepareRequestBody(body, headers) {
-    if (!hasRequestBody(body)) {
-        return undefined;
-    }
-
-    if (typeof body === "string") {
-        return body;
-    }
-
-    if (!headers.has("Content-Type")) {
-        headers.set(
-            "Content-Type",
-            "application/json",
-        );
-    }
-
-    return JSON.stringify(body);
-}
-
-// ============================================================
-// Request Builder
-// ============================================================
-
-export function buildRequestConfig({
-    method = "GET",
-    headers = [],
-    body = "",
-    auth = null,
+function buildRequestConfig({
+  method = DEFAULT_HTTP_METHOD,
+  headers = [],
+  body = "",
+  auth = null,
 } = {}) {
-    const normalizedMethod =
-        String(method)
-            .trim()
-            .toUpperCase() || "GET";
+  const normalizedMethod =
+    String(method).trim().toUpperCase() || DEFAULT_HTTP_METHOD;
 
-    const requestHeaders = new Headers();
+  const requestHeaders = new Headers();
 
-    appendHeaders(
-        requestHeaders,
-        headers,
-    );
+  addHeaders(requestHeaders, headers);
+  addAuth(requestHeaders, auth);
 
-    applyAuthentication(
-        requestHeaders,
-        auth,
-    );
+  const config = {
+    method: normalizedMethod,
+    headers: requestHeaders,
+  };
 
-    const config = {
-        method: normalizedMethod,
-        headers: requestHeaders,
-    };
+  if (body && !METHODS_WITHOUT_BODY.includes(normalizedMethod)) {
+    config.body = typeof body === "string" ? body : JSON.stringify(body);
 
-    if (
-        hasRequestBody(body) &&
-        !HTTP_METHODS_WITHOUT_BODY.includes(
-            normalizedMethod,
-        )
-    ) {
-        config.body = prepareRequestBody(
-            body,
-            requestHeaders,
-        );
+    if (!requestHeaders.has("Content-Type")) {
+      requestHeaders.set("Content-Type", "application/json");
     }
-
-    return config;
+  }
+  return config;
 }
-
-// ============================================================
-// Timeout
-// ============================================================
-
-function createTimeoutController(timeout) {
-    const controller =
-        new AbortController();
-
-    const timeoutValue = Number(timeout);
-
-    const delay =
-        Number.isFinite(timeoutValue) &&
-        timeoutValue > 0
-            ? timeoutValue
-            : UI.REQUEST_TIMEOUT;
-
-    const timeoutId =
-        setTimeout(() => {
-            controller.abort(
-                "timeout",
-            );
-        }, delay);
-
-    return {
-        controller,
-        timeoutId,
-    };
-}
-
-// ============================================================
-// Error Normalization
-// ============================================================
-
-function normalizeRequestError(
-    error,
-    signal,
-) {
-    if (signal?.aborted) {
-        if (
-            signal.reason === "timeout"
-        ) {
-            const timeoutError =
-                new Error(
-                    ERROR_MESSAGES.REQUEST_TIMEOUT,
-                );
-
-            timeoutError.code =
-                "REQUEST_TIMEOUT";
-
-            return timeoutError;
-        }
-
-        const abortError =
-            new Error(
-                ERROR_MESSAGES.REQUEST_FAILED,
-            );
-
-        abortError.code =
-            "REQUEST_ABORTED";
-
-        abortError.cause = error;
-
-        return abortError;
-    }
-
-    if (error instanceof TypeError) {
-        const networkError =
-            new Error(
-                ERROR_MESSAGES.NETWORK_ERROR,
-            );
-
-        networkError.code =
-            "NETWORK_ERROR";
-
-        networkError.cause = error;
-
-        return networkError;
-    }
-
-    if (error instanceof Error) {
-        return error;
-    }
-
-    const unknownError =
-        new Error(
-            ERROR_MESSAGES.REQUEST_FAILED,
-        );
-
-    unknownError.code =
-        "REQUEST_ERROR";
-
-    unknownError.cause = error;
-
-    return unknownError;
-}
-
-// ============================================================
-// Main Request Function
-// ============================================================
 
 export async function sendRequest({
-    url,
-    method = "GET",
-    headers = [],
-    body = "",
-    auth = null,
-    timeout = UI.REQUEST_TIMEOUT,
+  url,
+  method = DEFAULT_HTTP_METHOD,
+  headers = [],
+  body = "",
+  auth = null,
+  timeout = REQUEST_TIMEOUT,
 } = {}) {
-    const parsedUrl =
-        validateRequestUrl(url);
+  const parsedUrl = validateUrl(url);
 
-    const requestConfig =
-        buildRequestConfig({
-            method,
-            headers,
-            body,
-            auth,
-        });
+  const config = buildRequestConfig({
+    method,
+    headers,
+    body,
+    auth,
+  });
 
-    const {
-        controller,
-        timeoutId,
-    } = createTimeoutController(
-        timeout,
-    );
+  const controller = new AbortController();
 
-    const startedAt =
-        performance.now();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeout);
 
-    try {
-        const response =
-            await fetch(
-                parsedUrl.href,
-                {
-                    ...requestConfig,
-                    signal:
-                        controller.signal,
-                },
-            );
+  const startedAt = performance.now();
 
-        const raw =
-            await response.text();
+  try {
+    const response = await fetch(parsedUrl.href, {
+      ...config,
+      signal: controller.signal,
+    });
 
-        const duration =
-            Math.round(
-                performance.now() -
-                startedAt,
-            );
+    const raw = await response.text();
 
-        return normalizeResponse(
-            response,
-            raw,
-            duration,
-        );
-    } catch (error) {
-        throw normalizeRequestError(
-            error,
-            controller.signal,
-        );
-    } finally {
-        clearTimeout(timeoutId);
+    const duration = Math.round(performance.now() - startedAt);
+
+    return normalizeResponse(response, raw, duration);
+  } catch (error) {
+    if(error.name === "AbortError"){
+        throw new Error("The request timed out.");
     }
-}
 
-// ============================================================
-// Status Helpers
-// ============================================================
-
-export function isSuccessStatus(status) {
-    return (
-        status >= 200 &&
-        status < 300
-    );
-}
-
-export function isClientError(status) {
-    return (
-        status >= 400 &&
-        status < 500
-    );
-}
-
-export function isServerError(status) {
-    return (
-        status >= 500 &&
-        status < 600
-    );
-}
-
-// ============================================================
-// Abort
-// ============================================================
-
-export function abortRequest(controller) {
-    if (
-        typeof AbortController !==
-            "undefined" &&
-        controller instanceof
-            AbortController
-    ) {
-        controller.abort();
+    if(error instanceof TypeError){
+        throw new Error("A network error occured. Check the URL and your connection.");
     }
-}
 
+    throw error;
+  } finally{
+    clearTimeout(timeoutId);
+  }
+}
