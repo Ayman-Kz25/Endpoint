@@ -1,118 +1,33 @@
 // src/scripts/features/code-generator/fetch-template.js
 
-/**
- * Fetch Code Template
- *
- * Generates JavaScript Fetch API examples from a request configuration.
- *
- * Responsibilities:
- * - Generate Fetch API source code
- * - Build request URLs with enabled query parameters
- * - Generate request headers
- * - Generate authentication
- * - Generate request bodies
- *
- * This module does not:
- * - execute requests
- * - manipulate the DOM
- * - update application state
- * - show notifications
- */
+import { AUTH_TYPES } from "../../core/constants.js";
 
-import {
-    AUTH_TYPES,
-} from "../../core/constants.js";
-
-// ============================================================
-// Helpers
-// ============================================================
-
-/**
- * Normalize a request object for Fetch code generation.
- *
- * @param {Object} request
- * @returns {Object}
- */
 function normalizeRequest(request = {}) {
     return {
-        method: String(
-            request.method || "GET",
-        ).toUpperCase(),
-
-        url: String(
-            request.url || "",
-        ).trim(),
-
-        params: Array.isArray(request.params)
-            ? request.params
-            : [],
-
-        headers: Array.isArray(request.headers)
-            ? request.headers
-            : [],
-
-        body:
-            request.body === undefined ||
-            request.body === null
-                ? ""
-                : request.body,
-
+        method: String(request.method || "GET").toUpperCase(),
+        url: String(request.url || "").trim(),
+        params: Array.isArray(request.params) ? request.params : [],
+        headers: Array.isArray(request.headers) ? request.headers : [],
+        body: request.body ?? "",
         auth: {
-            type:
-                request.auth?.type ||
-                AUTH_TYPES.NONE,
-
-            fields: {
-                ...(request.auth?.fields || {}),
-            },
+            type: request.auth?.type || AUTH_TYPES.NONE,
+            fields: { ...(request.auth?.fields || {}) },
         },
     };
 }
 
-/**
- * Escape a value for generated JavaScript source.
- *
- * JSON string literals are used instead of template literals because
- * JSON.stringify safely handles quotes, backslashes, newlines, and
- * interpolation characters.
- *
- * @param {unknown} value
- * @returns {string}
- */
-function stringifyJavaScript(value) {
-    return JSON.stringify(
-        String(value ?? ""),
-    );
+function stringify(value) {
+    return JSON.stringify(String(value ?? ""));
 }
 
-/**
- * Check whether a value is a plain object.
- *
- * @param {unknown} value
- * @returns {boolean}
- */
-function isPlainObject(value) {
-    return (
-        value !== null &&
+function isObject(value) {
+    return value !== null &&
         typeof value === "object" &&
-        !Array.isArray(value)
-    );
+        !Array.isArray(value);
 }
 
-/**
- * Format a JavaScript value for generated source.
- *
- * @param {unknown} value
- * @param {number} indent
- * @returns {string}
- */
-function formatJavaScriptValue(
-    value,
-    indent = 0,
-) {
-    if (value === null) {
-        return "null";
-    }
+function formatValue(value, indent = 0) {
+    if (value === null) return "null";
 
     if (typeof value === "string") {
         return JSON.stringify(value);
@@ -126,114 +41,78 @@ function formatJavaScriptValue(
     }
 
     if (Array.isArray(value)) {
-        if (value.length === 0) {
-            return "[]";
-        }
+        if (!value.length) return "[]";
 
         const padding = " ".repeat(indent);
-        const childPadding =
-            " ".repeat(indent + 4);
+        const childPadding = " ".repeat(indent + 4);
 
-        return `[\n${value
-            .map(
-                (item) =>
-                    `${childPadding}${formatJavaScriptValue(
-                        item,
-                        indent + 4,
-                    )}`,
-            )
-            .join(",\n")}\n${padding}]`;
+        return `[
+${value
+    .map(
+        item =>
+            `${childPadding}${formatValue(item, indent + 4)}`
+    )
+    .join(",\n")}
+${padding}]`;
     }
 
-    if (isPlainObject(value)) {
+    if (isObject(value)) {
         const entries = Object.entries(value);
 
-        if (entries.length === 0) {
-            return "{}";
-        }
+        if (!entries.length) return "{}";
 
         const padding = " ".repeat(indent);
-        const childPadding =
-            " ".repeat(indent + 4);
+        const childPadding = " ".repeat(indent + 4);
 
-        return `{\n${entries
-            .map(([key, item]) => {
-                const propertyName =
-                    /^[A-Za-z_$][\w$]*$/.test(key)
-                        ? key
-                        : JSON.stringify(key);
+        return `{
+${entries
+    .map(([key, value]) => {
+        const property = /^[A-Za-z_$][\w$]*$/.test(key)
+            ? key
+            : JSON.stringify(key);
 
-                return `${childPadding}${propertyName}: ${formatJavaScriptValue(
-                    item,
-                    indent + 4,
-                )}`;
-            })
-            .join(",\n")}\n${padding}}`;
+        return `${childPadding}${property}: ${formatValue(
+            value,
+            indent + 4
+        )}`;
+    })
+    .join(",\n")}
+${padding}}`;
     }
 
-    return JSON.stringify(
-        String(value),
-    );
+    return JSON.stringify(String(value));
 }
 
-/**
- * Get enabled query parameters.
- *
- * @param {Array} params
- * @returns {Array<{key: string, value: string}>}
- */
 function getEnabledParams(params = []) {
-    if (!Array.isArray(params)) {
-        return [];
-    }
+    if (!Array.isArray(params)) return [];
 
     return params
         .filter(
-            (param) =>
+            param =>
                 param &&
                 typeof param === "object" &&
-                param.enabled !== false,
+                param.enabled !== false
         )
-        .map((param) => ({
-            key: String(
-                param.key ?? "",
-            ).trim(),
-
-            value: String(
-                param.value ?? "",
-            ),
+        .map(param => ({
+            key: String(param.key ?? "").trim(),
+            value: String(param.value ?? ""),
         }))
-        .filter((param) => Boolean(param.key));
+        .filter(param => param.key);
 }
 
-/**
- * Build the final request URL.
- *
- * @param {Object} request
- * @returns {string}
- */
 function buildRequestUrl(request) {
-    if (!request.url) {
-        return "";
-    }
+    if (!request.url) return "";
 
     let url;
 
     try {
-        url = new URL(
-            request.url,
-        );
+        url = new URL(request.url);
     } catch {
         return request.url;
     }
 
-    getEnabledParams(
-        request.params,
-    ).forEach((param) => {
-        url.searchParams.set(
-            param.key,
-            param.value,
-        );
+    getEnabledParams(request.params).forEach(({ key, value }) => {
+        url.searchParams.set(key, value);
     });
 
     const auth = request.auth;
@@ -242,296 +121,120 @@ function buildRequestUrl(request) {
         auth?.type === AUTH_TYPES.API_KEY &&
         auth.fields?.location === "query"
     ) {
-        const key = String(
-            auth.fields?.key ?? "",
-        ).trim();
-
-        const value = String(
-            auth.fields?.value ?? "",
-        );
+        const key = String(auth.fields?.key ?? "").trim();
+        const value = String(auth.fields?.value ?? "");
 
         if (key && value) {
-            url.searchParams.set(
-                key,
-                value,
-            );
+            url.searchParams.set(key, value);
         }
     }
 
     return url.href;
 }
 
-/**
- * Get enabled request headers.
- *
- * @param {Array} headers
- * @returns {Array<{name: string, value: string}>}
- */
 function getEnabledHeaders(headers = []) {
-    if (!Array.isArray(headers)) {
-        return [];
-    }
+    if (!Array.isArray(headers)) return [];
 
     return headers
         .filter(
-            (header) =>
+            header =>
                 header &&
                 typeof header === "object" &&
-                header.enabled !== false,
+                header.enabled !== false
         )
-        .map((header) => ({
-            name: String(
-                header.name ?? "",
-            ).trim(),
-
-            value: String(
-                header.value ?? "",
-            ),
+        .map(header => ({
+            name: String(header.name ?? "").trim(),
+            value: String(header.value ?? ""),
         }))
-        .filter((header) => Boolean(header.name));
+        .filter(header => header.name);
 }
 
-/**
- * Add a header while treating header names as case-insensitive.
- *
- * @param {Map<string, Object>} headers
- * @param {string} name
- * @param {string} value
- */
-function setHeader(
-    headers,
-    name,
-    value,
-) {
+function setHeader(headers, name, value) {
     const target = name.toLowerCase();
 
     for (const existingName of headers.keys()) {
-        if (
-            existingName.toLowerCase() ===
-            target
-        ) {
-            headers.delete(
-                existingName,
-            );
-
+        if (existingName.toLowerCase() === target) {
+            headers.delete(existingName);
             break;
         }
     }
 
-    headers.set(name, {
-        name,
-        value,
-    });
+    headers.set(name, { name, value });
 }
 
-/**
- * Build request headers including authentication.
- *
- * @param {Object} request
- * @returns {Array<{name: string, value: string}>}
- */
-function buildHeaders(request) {
-    const headers = new Map();
-
-    getEnabledHeaders(
-        request.headers,
-    ).forEach((header) => {
-        setHeader(
-            headers,
-            header.name,
-            header.value,
-        );
-    });
-
-    applyAuthentication(
-        request,
-        headers,
-    );
-
-    return Array.from(
-        headers.values(),
-    );
-}
-
-/**
- * Add authentication headers.
- *
- * @param {Object} request
- * @param {Map<string, Object>} headers
- */
-function applyAuthentication(
-    request,
-    headers,
-) {
+function applyAuthentication(request, headers) {
     const auth = request.auth;
 
-    if (
-        !auth ||
-        auth.type === AUTH_TYPES.NONE
-    ) {
-        return;
-    }
+    if (!auth || auth.type === AUTH_TYPES.NONE) return;
 
-    const fields =
-        auth.fields || {};
+    const fields = auth.fields || {};
 
-    if (
-        auth.type === AUTH_TYPES.BEARER
-    ) {
-        const token = String(
-            fields.token ?? "",
-        ).trim();
+    if (auth.type === AUTH_TYPES.BEARER) {
+        const token = String(fields.token ?? "").trim();
 
         if (token) {
-            setHeader(
-                headers,
-                "Authorization",
-                `Bearer ${token}`,
-            );
+            setHeader(headers, "Authorization", `Bearer ${token}`);
         }
 
         return;
     }
 
-    if (
-        auth.type === AUTH_TYPES.BASIC
-    ) {
-        const username = String(
-            fields.username ?? "",
-        );
+    if (auth.type === AUTH_TYPES.BASIC) {
+        const username = String(fields.username ?? "");
+        const password = String(fields.password ?? "");
 
-        const password = String(
-            fields.password ?? "",
-        );
+        if (username || password) {
+            const credentials = `${username}:${password}`;
+            const encoded = encodeBase64(credentials);
 
-        if (
-            username ||
-            password
-        ) {
-            const credentials =
-                `${username}:${password}`;
-
-            const encoded =
-                encodeBase64(
-                    credentials,
-                );
-
-            setHeader(
-                headers,
-                "Authorization",
-                `Basic ${encoded}`,
-            );
+            setHeader(headers, "Authorization", `Basic ${encoded}`);
         }
 
         return;
     }
 
-    if (
-        auth.type === AUTH_TYPES.API_KEY
-    ) {
-        const key = String(
-            fields.key ?? "",
-        ).trim();
+    if (auth.type === AUTH_TYPES.API_KEY) {
+        const key = String(fields.key ?? "").trim();
+        const value = String(fields.value ?? "");
+        const location = fields.location || "header";
 
-        const value = String(
-            fields.value ?? "",
-        );
-
-        const location =
-            fields.location ||
-            "header";
-
-        if (
-            key &&
-            value &&
-            location === "header"
-        ) {
-            setHeader(
-                headers,
-                key,
-                value,
-            );
+        if (key && value && location === "header") {
+            setHeader(headers, key, value);
         }
     }
 }
 
-/**
- * Encode Basic Auth credentials.
- *
- * The generated source should perform the encoding at runtime.
- * This function only exists for compatibility when this module
- * is used to inspect or prepare request data directly.
- *
- * @param {string} value
- * @returns {string}
- */
 function encodeBase64(value) {
     try {
-        if (
-            typeof btoa === "function"
-        ) {
+        if (typeof btoa === "function") {
             return btoa(value);
         }
-    } catch {
-        // Fall through.
-    }
+    } catch {}
 
     return value;
 }
 
-/**
- * Determine whether the request can contain a body.
- *
- * @param {Object} request
- * @returns {boolean}
- */
 function hasRequestBody(request) {
-    if (
-        ["GET", "HEAD"].includes(
-            request.method,
-        )
-    ) {
+    if (["GET", "HEAD"].includes(request.method)) {
         return false;
     }
 
-    if (
-        request.body === null ||
-        request.body === undefined
-    ) {
+    if (request.body === null || request.body === undefined) {
         return false;
     }
 
-    if (
-        typeof request.body === "string" &&
-        !request.body.trim()
-    ) {
-        return false;
-    }
-
-    return true;
+    return typeof request.body !== "string" || Boolean(request.body.trim());
 }
 
-/**
- * Parse a request body as JSON when possible.
- *
- * @param {unknown} body
- * @returns {{parsed: boolean, value: unknown}}
- */
 function parseJsonBody(body) {
-    if (
-        typeof body !== "string"
-    ) {
+    if (typeof body !== "string") {
         return {
-            parsed:
-                isPlainObject(body) ||
-                Array.isArray(body),
-
+            parsed: isObject(body) || Array.isArray(body),
             value: body,
         };
     }
 
-    const text =
-        body.trim();
+    const text = body.trim();
 
     if (!text) {
         return {
@@ -553,147 +256,69 @@ function parseJsonBody(body) {
     }
 }
 
-/**
- * Generate the request body.
- *
- * @param {Object} request
- * @returns {string}
- */
 function generateBody(request) {
-    if (
-        !hasRequestBody(request)
-    ) {
-        return "";
-    }
+    if (!hasRequestBody(request)) return "";
 
-    const parsed =
-        parseJsonBody(
-            request.body,
-        );
+    const body = parseJsonBody(request.body);
 
-    if (parsed.parsed) {
-        return `    body: JSON.stringify(${formatJavaScriptValue(
-            parsed.value,
-            4,
+    if (body.parsed) {
+        return `    body: JSON.stringify(${formatValue(
+            body.value,
+            4
         )}),`;
     }
 
-    return `    body: ${stringifyJavaScript(
-        request.body,
-    )},`;
+    return `    body: ${stringify(request.body)},`;
 }
 
-/**
- * Convert headers into a JavaScript object.
- *
- * @param {Array} headers
- * @returns {string}
- */
 function generateHeaders(headers) {
-    if (!headers.length) {
-        return "";
-    }
+    if (!headers.length) return "";
 
-    const headerObject = {};
+    const values = {};
 
-    headers.forEach(
-        (header) => {
-            headerObject[
-                header.name
-            ] = header.value;
-        },
-    );
+    headers.forEach(header => {
+        values[header.name] = header.value;
+    });
 
-    return `    headers: ${formatJavaScriptValue(
-        headerObject,
-        4,
-    )},`;
+    return `    headers: ${formatValue(values, 4)},`;
 }
 
-/**
- * Generate Fetch request options.
- *
- * @param {Object} request
- * @returns {string}
- */
-function generateRequestOptions(
-    request,
-) {
-    const headers =
-        buildHeaders(request);
+function buildHeaders(request) {
+    const headers = new Map();
+
+    getEnabledHeaders(request.headers).forEach(header => {
+        setHeader(headers, header.name, header.value);
+    });
+
+    applyAuthentication(request, headers);
+
+    return Array.from(headers.values());
+}
+
+function generateRequestOptions(request) {
+    const headers = buildHeaders(request);
 
     const lines = [
-        `    method: ${JSON.stringify(
-            request.method,
-        )},`,
+        `    method: ${JSON.stringify(request.method)},`,
     ];
 
-    const generatedHeaders =
-        generateHeaders(
-            headers,
-        );
+    const headerCode = generateHeaders(headers);
+    const bodyCode = generateBody(request);
 
-    if (generatedHeaders) {
-        lines.push(
-            generatedHeaders,
-        );
-    }
+    if (headerCode) lines.push(headerCode);
+    if (bodyCode) lines.push(bodyCode);
 
-    const generatedBody =
-        generateBody(request);
-
-    if (generatedBody) {
-        lines.push(
-            generatedBody,
-        );
-    }
-
-    return `{\n${lines.join(
-        "\n",
-    )}\n}`;
+    return `{\n${lines.join("\n")}\n}`;
 }
 
-/**
- * Generate the URL expression used by Fetch.
- *
- * @param {string} url
- * @returns {string}
- */
-function generateUrlExpression(
-    url,
-) {
-    return url
-        ? stringifyJavaScript(url)
-        : '""';
+function generateUrlExpression(url) {
+    return url ? stringify(url) : '""';
 }
 
-// ============================================================
-// Public Generators
-// ============================================================
-
-/**
- * Generate a basic Fetch API example.
- *
- * @param {Object} request
- * @returns {string}
- */
-export function generateFetchTemplate(
-    request = {},
-) {
-    const normalized =
-        normalizeRequest(
-            request,
-        );
-
-    const url =
-        buildRequestUrl(
-            normalized,
-        );
-
-    const options =
-        generateRequestOptions(
-            normalized,
-        );
+export function generateFetchTemplate(request = {}) {
+    const normalized = normalizeRequest(request);
+    const url = buildRequestUrl(normalized);
+    const options = generateRequestOptions(normalized);
 
     return `const response = await fetch(
     ${generateUrlExpression(url)},
@@ -705,29 +330,10 @@ const data = await response.text();
 console.log(data);`;
 }
 
-/**
- * Generate a Fetch example that supports JSON and text responses.
- *
- * @param {Object} request
- * @returns {string}
- */
-export function generateFetchTemplateWithResponseHandling(
-    request = {},
-) {
-    const normalized =
-        normalizeRequest(
-            request,
-        );
-
-    const url =
-        buildRequestUrl(
-            normalized,
-        );
-
-    const options =
-        generateRequestOptions(
-            normalized,
-        );
+export function generateFetchTemplateWithResponseHandling(request = {}) {
+    const normalized = normalizeRequest(request);
+    const url = buildRequestUrl(normalized);
+    const options = generateRequestOptions(normalized);
 
     return `const response = await fetch(
     ${generateUrlExpression(url)},
@@ -751,29 +357,10 @@ if (!response.ok) {
 console.log(data);`;
 }
 
-/**
- * Generate a reusable Fetch request function.
- *
- * @param {Object} request
- * @returns {string}
- */
-export function generateFetchFunction(
-    request = {},
-) {
-    const normalized =
-        normalizeRequest(
-            request,
-        );
-
-    const url =
-        buildRequestUrl(
-            normalized,
-        );
-
-    const options =
-        generateRequestOptions(
-            normalized,
-        );
+export function generateFetchFunction(request = {}) {
+    const normalized = normalizeRequest(request);
+    const url = buildRequestUrl(normalized);
+    const options = generateRequestOptions(normalized);
 
     return `async function sendRequest() {
     const response = await fetch(
@@ -799,86 +386,33 @@ export function generateFetchFunction(
 }
 
 sendRequest()
-    .then((data) => {
+    .then(data => {
         console.log(data);
     })
-    .catch((error) => {
+    .catch(error => {
         console.error(error);
     });`;
 }
 
-// ============================================================
-// Request Helpers
-// ============================================================
-
-/**
- * Build a normalized Fetch request.
- *
- * @param {Object} request
- * @returns {Object}
- */
-export function normalizeFetchRequest(
-    request = {},
-) {
-    const normalized =
-        normalizeRequest(
-            request,
-        );
+export function normalizeFetchRequest(request = {}) {
+    const normalized = normalizeRequest(request);
 
     return {
         ...normalized,
-
-        url: buildRequestUrl(
-            normalized,
-        ),
-
-        headers: buildHeaders(
-            normalized,
-        ),
+        url: buildRequestUrl(normalized),
+        headers: buildHeaders(normalized),
     };
 }
 
-/**
- * Get the final Fetch URL.
- *
- * @param {Object} request
- * @returns {string}
- */
-export function getFetchRequestUrl(
-    request = {},
-) {
-    const normalized =
-        normalizeRequest(
-            request,
-        );
-
-    return buildRequestUrl(
-        normalized,
-    );
+export function getFetchRequestUrl(request = {}) {
+    const normalized = normalizeRequest(request);
+    return buildRequestUrl(normalized);
 }
 
-/**
- * Get the final Fetch headers.
- *
- * @param {Object} request
- * @returns {Array<{name: string, value: string}>}
- */
-export function getFetchRequestHeaders(
-    request = {},
-) {
-    const normalized =
-        normalizeRequest(
-            request,
-        );
-
-    return buildHeaders(
-        normalized,
-    );
+export function getFetchRequestHeaders(request = {}) {
+    const normalized = normalizeRequest(request);
+    return buildHeaders(normalized);
 }
-
-// ============================================================
-// Default Export
-// ============================================================
 
 export default {
     generateFetchTemplate,
