@@ -76,3 +76,11 @@ export const EVENTS = Object.freeze({
 });
 
 export const REQUEST_TIMEOUT = 30000;
+
+export const RESPONSE_FORMAT = Object.freeze({
+    JSON: "json",
+    XML: "xml",
+    HTML: "html",
+    TEXT: "text",
+    UNKNOWN: "unknown",
+});

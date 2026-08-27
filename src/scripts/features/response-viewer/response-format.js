@@ -1,35 +1,6 @@
 // src/scripts/features/response-viewer/response-format.js
 
-/**
- * Response Format Utilities
- *
- * Provides formatting, parsing, and display helpers for HTTP responses.
- *
- * Responsibilities:
- * - Detect response formats
- * - Parse JSON safely
- * - Format JSON/XML/HTML/text
- * - Escape HTML for safe display
- * - Format response metadata
- *
- * This module does not:
- * - Execute HTTP requests
- * - Modify application state
- * - Manipulate the DOM
- * - Render response UI
- */
-
-// ============================================================
-// Constants
-// ============================================================
-
-const FORMAT_TYPES = Object.freeze({
-    JSON: "json",
-    XML: "xml",
-    HTML: "html",
-    TEXT: "text",
-    UNKNOWN: "unknown",
-});
+import { RESPONSE_FORMAT } from "../../core/constants.js";
 
 const JSON_CONTENT_TYPES = [
     "application/json",
@@ -59,16 +30,6 @@ const BINARY_CONTENT_TYPES = [
     "video/",
 ];
 
-// ============================================================
-// Content-Type Helpers
-// ============================================================
-
-/**
- * Normalize a Content-Type header.
- *
- * @param {string} contentType
- * @returns {string}
- */
 export function normalizeContentType(contentType = "") {
     return String(contentType)
         .split(";")[0]
@@ -76,194 +37,104 @@ export function normalizeContentType(contentType = "") {
         .toLowerCase();
 }
 
-/**
- * Detect the response format from Content-Type.
- *
- * @param {string} contentType
- * @param {unknown} data
- * @returns {string}
- */
 export function detectResponseFormat(
     contentType = "",
     data = ""
 ) {
-    const normalized = normalizeContentType(contentType);
+    const type = normalizeContentType(contentType);
 
-    if (
-        JSON_CONTENT_TYPES.some((type) =>
-            normalized === type
-        )
-    ) {
-        return FORMAT_TYPES.JSON;
+    if (JSON_CONTENT_TYPES.includes(type)) {
+        return RESPONSE_FORMAT.JSON;
     }
 
-    if (
-        XML_CONTENT_TYPES.some((type) =>
-            normalized === type
-        )
-    ) {
-        return FORMAT_TYPES.XML;
+    if (XML_CONTENT_TYPES.includes(type)) {
+        return RESPONSE_FORMAT.XML;
     }
 
-    if (
-        HTML_CONTENT_TYPES.some((type) =>
-            normalized === type
-        )
-    ) {
-        return FORMAT_TYPES.HTML;
+    if (HTML_CONTENT_TYPES.includes(type)) {
+        return RESPONSE_FORMAT.HTML;
     }
 
-    if (
-        BINARY_CONTENT_TYPES.some((type) =>
-            normalized.startsWith(type)
-        )
-    ) {
-        return FORMAT_TYPES.UNKNOWN;
+    if (isBinaryContentType(type)) {
+        return RESPONSE_FORMAT.UNKNOWN;
     }
 
     return detectFormatFromContent(data);
 }
 
-/**
- * Detect a response format from its content.
- *
- * @param {unknown} data
- * @returns {string}
- */
 export function detectFormatFromContent(data = "") {
-    if (
-        data !== null &&
-        typeof data === "object"
-    ) {
-        return FORMAT_TYPES.JSON;
+    if (data !== null && typeof data === "object") {
+        return RESPONSE_FORMAT.JSON;
     }
 
     const text = String(data ?? "").trim();
 
     if (!text) {
-        return FORMAT_TYPES.TEXT;
+        return RESPONSE_FORMAT.TEXT;
     }
 
     if (isValidJson(text)) {
-        return FORMAT_TYPES.JSON;
+        return RESPONSE_FORMAT.JSON;
     }
 
     if (looksLikeXml(text)) {
-        return FORMAT_TYPES.XML;
+        return RESPONSE_FORMAT.XML;
     }
 
     if (looksLikeHtml(text)) {
-        return FORMAT_TYPES.HTML;
+        return RESPONSE_FORMAT.HTML;
     }
 
-    return FORMAT_TYPES.TEXT;
+    return RESPONSE_FORMAT.TEXT;
 }
 
-/**
- * Check whether a content type represents JSON.
- *
- * @param {string} contentType
- * @returns {boolean}
- */
 export function isJsonContentType(contentType = "") {
-    const normalized = normalizeContentType(contentType);
-
-    return JSON_CONTENT_TYPES.some(
-        (type) => normalized === type
+    return JSON_CONTENT_TYPES.includes(
+        normalizeContentType(contentType)
     );
 }
 
-/**
- * Check whether a content type represents XML.
- *
- * @param {string} contentType
- * @returns {boolean}
- */
 export function isXmlContentType(contentType = "") {
-    const normalized = normalizeContentType(contentType);
-
-    return XML_CONTENT_TYPES.some(
-        (type) => normalized === type
+    return XML_CONTENT_TYPES.includes(
+        normalizeContentType(contentType)
     );
 }
 
-/**
- * Check whether a content type represents HTML.
- *
- * @param {string} contentType
- * @returns {boolean}
- */
 export function isHtmlContentType(contentType = "") {
-    const normalized = normalizeContentType(contentType);
-
-    return HTML_CONTENT_TYPES.some(
-        (type) => normalized === type
+    return HTML_CONTENT_TYPES.includes(
+        normalizeContentType(contentType)
     );
 }
 
-/**
- * Check whether a content type is likely binary.
- *
- * @param {string} contentType
- * @returns {boolean}
- */
 export function isBinaryContentType(contentType = "") {
-    const normalized = normalizeContentType(contentType);
+    const type = normalizeContentType(contentType);
 
-    return BINARY_CONTENT_TYPES.some(
-        (type) => normalized.startsWith(type)
+    return BINARY_CONTENT_TYPES.some((value) =>
+        type.startsWith(value)
     );
 }
 
-// ============================================================
-// JSON
-// ============================================================
-
-/**
- * Check whether a value contains valid JSON.
- *
- * @param {unknown} value
- * @returns {boolean}
- */
 export function isValidJson(value) {
-    if (
-        value === null ||
-        value === undefined
-    ) {
+    if (typeof value !== "string") {
         return false;
     }
 
-    if (typeof value === "object") {
-        return true;
-    }
+    const text = value.trim();
 
-    if (
-        typeof value !== "string" ||
-        !value.trim()
-    ) {
+    if (!text) {
         return false;
     }
 
     try {
-        JSON.parse(value);
+        JSON.parse(text);
         return true;
     } catch {
         return false;
     }
 }
 
-/**
- * Parse JSON safely.
- *
- * @param {unknown} value
- * @returns {{success: boolean, data: unknown, error: Error|null}}
- */
 export function parseJson(value) {
-    if (
-        value === null ||
-        value === undefined ||
-        value === ""
-    ) {
+    if (value === null || value === undefined || value === "") {
         return {
             success: false,
             data: null,
@@ -297,13 +168,6 @@ export function parseJson(value) {
     }
 }
 
-/**
- * Format JSON using two-space indentation.
- *
- * @param {unknown} value
- * @param {number} indentation
- * @returns {string}
- */
 export function formatJson(value, indentation = 2) {
     const parsed = parseJson(value);
 
@@ -322,12 +186,6 @@ export function formatJson(value, indentation = 2) {
     }
 }
 
-/**
- * Minify JSON.
- *
- * @param {unknown} value
- * @returns {string}
- */
 export function minifyJson(value) {
     const parsed = parseJson(value);
 
@@ -342,26 +200,10 @@ export function minifyJson(value) {
     }
 }
 
-/**
- * Format JSON if valid, otherwise return original text.
- *
- * @param {string} value
- * @returns {string}
- */
 export function prettifyJson(value = "") {
     return formatJson(value, 2);
 }
 
-// ============================================================
-// XML
-// ============================================================
-
-/**
- * Check whether content looks like XML.
- *
- * @param {string} value
- * @returns {boolean}
- */
 export function looksLikeXml(value = "") {
     const text = String(value).trim();
 
@@ -377,19 +219,7 @@ export function looksLikeXml(value = "") {
     );
 }
 
-/**
- * Format XML with indentation.
- *
- * This is intended for display formatting, not XML transformation.
- *
- * @param {string} value
- * @param {number} indentation
- * @returns {string}
- */
-export function formatXml(
-    value = "",
-    indentation = 2
-) {
+export function formatXml(value = "", indentation = 2) {
     const text = String(value ?? "").trim();
 
     if (!text) {
@@ -402,15 +232,13 @@ export function formatXml(
 
     try {
         const parser = new DOMParser();
+
         const documentNode = parser.parseFromString(
             text,
             "application/xml"
         );
 
-        const parserError =
-            documentNode.querySelector("parsererror");
-
-        if (parserError) {
+        if (documentNode.querySelector("parsererror")) {
             return basicXmlFormat(text, indentation);
         }
 
@@ -424,27 +252,14 @@ export function formatXml(
     }
 }
 
-/**
- * Basic XML formatter used as a fallback.
- *
- * @param {string} value
- * @param {number} indentation
- * @returns {string}
- */
-function basicXmlFormat(
-    value,
-    indentation = 2
-) {
+function basicXmlFormat(value, indentation = 2) {
     const spaces = " ".repeat(
         Math.max(0, indentation)
     );
 
-    let formatted = value
+    const parts = value
         .replace(/>\s*</g, "><")
         .replace(/</g, "~::~<")
-        .replace(/\s*xmlns(:\w+)?="[^"]*"/g, "");
-
-    const parts = formatted
         .split("~::~")
         .filter(Boolean);
 
@@ -458,9 +273,7 @@ function basicXmlFormat(
             return;
         }
 
-        if (
-            /^<\/[^>]+>/.test(item)
-        ) {
+        if (/^<\/[^>]+>/.test(item)) {
             level = Math.max(0, level - 1);
         }
 
@@ -479,76 +292,50 @@ function basicXmlFormat(
     return output.join("\n");
 }
 
-/**
- * Serialize an XML node for display.
- *
- * @param {Node} node
- * @param {number} level
- * @param {number} indentation
- * @returns {string}
- */
-function serializeXmlNode(
-    node,
-    level,
-    indentation
-) {
+function serializeXmlNode(node, level, indentation) {
     const indent = " ".repeat(
         level * indentation
     );
 
-    if (
-        node.nodeType === Node.TEXT_NODE
-    ) {
+    if (node.nodeType === Node.TEXT_NODE) {
         return node.nodeValue?.trim() || "";
     }
 
-    if (
-        node.nodeType === Node.COMMENT_NODE
-    ) {
+    if (node.nodeType === Node.COMMENT_NODE) {
         return `${indent}<!--${node.nodeValue}-->`;
     }
 
-    if (
-        node.nodeType !== Node.ELEMENT_NODE
-    ) {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
         return "";
     }
 
-    const attributes = Array.from(
-        node.attributes || []
-    )
+    const attributes = Array.from(node.attributes || [])
         .map(
             (attribute) =>
-                ` ${attribute.name}="${escapeXml(
-                    attribute.value
-                )}"`
+                ` ${attribute.name}="${escapeXml(attribute.value)}"`
         )
         .join("");
 
-    const children = Array.from(
-        node.childNodes || []
-    ).filter((child) => {
-        if (child.nodeType === Node.TEXT_NODE) {
-            return Boolean(
-                child.nodeValue?.trim()
-            );
-        }
+    const children = Array.from(node.childNodes || [])
+        .filter((child) => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                return Boolean(child.nodeValue?.trim());
+            }
 
-        return true;
-    });
+            return true;
+        });
 
     if (!children.length) {
         return `${indent}<${node.tagName}${attributes}/>`;
     }
 
-    const hasOnlyText =
+    if (
         children.length === 1 &&
-        children[0].nodeType === Node.TEXT_NODE;
-
-    if (hasOnlyText) {
+        children[0].nodeType === Node.TEXT_NODE
+    ) {
         return (
             `${indent}<${node.tagName}${attributes}>` +
-            `${escapeXml(children[0].nodeValue || "")}` +
+            escapeXml(children[0].nodeValue || "") +
             `</${node.tagName}>`
         );
     }
@@ -571,12 +358,6 @@ function serializeXmlNode(
     ].join("\n");
 }
 
-/**
- * Escape XML special characters.
- *
- * @param {unknown} value
- * @returns {string}
- */
 export function escapeXml(value = "") {
     return String(value)
         .replace(/&/g, "&amp;")
@@ -586,16 +367,6 @@ export function escapeXml(value = "") {
         .replace(/'/g, "&apos;");
 }
 
-// ============================================================
-// HTML
-// ============================================================
-
-/**
- * Check whether content looks like HTML.
- *
- * @param {string} value
- * @returns {boolean}
- */
 export function looksLikeHtml(value = "") {
     const text = String(value).trim();
 
@@ -612,14 +383,6 @@ export function looksLikeHtml(value = "") {
     );
 }
 
-/**
- * Format HTML for text-based response display.
- *
- * The returned value is escaped and safe to insert as text.
- *
- * @param {string} value
- * @returns {string}
- */
 export function formatHtml(value = "") {
     const text = String(value ?? "").trim();
 
@@ -627,17 +390,7 @@ export function formatHtml(value = "") {
         return "";
     }
 
-    return basicHtmlFormat(text);
-}
-
-/**
- * Basic HTML formatter.
- *
- * @param {string} value
- * @returns {string}
- */
-function basicHtmlFormat(value) {
-    return value
+    return text
         .replace(/>\s+</g, "><")
         .replace(/</g, "\n<")
         .replace(/>/g, ">\n")
@@ -647,28 +400,12 @@ function basicHtmlFormat(value) {
         .join("\n");
 }
 
-// ============================================================
-// Text Formatting
-// ============================================================
-
-/**
- * Normalize line endings.
- *
- * @param {unknown} value
- * @returns {string}
- */
 export function normalizeText(value = "") {
     return String(value ?? "")
         .replace(/\r\n/g, "\n")
         .replace(/\r/g, "\n");
 }
 
-/**
- * Trim trailing whitespace from each line.
- *
- * @param {unknown} value
- * @returns {string}
- */
 export function cleanText(value = "") {
     return normalizeText(value)
         .split("\n")
@@ -677,33 +414,19 @@ export function cleanText(value = "") {
         .trim();
 }
 
-// ============================================================
-// Display Formatting
-// ============================================================
-
-/**
- * Format response data for display.
- *
- * @param {Object} options
- * @param {unknown} options.data
- * @param {string} [options.contentType]
- * @param {string} [options.raw]
- * @returns {{format: string, text: string, parsed: unknown|null}}
- */
 export function formatResponse({
     data = null,
     contentType = "",
     raw = "",
 } = {}) {
+    const value = data ?? raw;
     const format = detectResponseFormat(
         contentType,
-        data ?? raw
+        value
     );
 
-    if (format === FORMAT_TYPES.JSON) {
-        const parsed = parseJson(
-            data ?? raw
-        );
+    if (format === RESPONSE_FORMAT.JSON) {
+        const parsed = parseJson(value);
 
         if (parsed.success) {
             return {
@@ -714,25 +437,21 @@ export function formatResponse({
         }
     }
 
-    if (format === FORMAT_TYPES.XML) {
+    if (format === RESPONSE_FORMAT.XML) {
         return {
             format,
             text: formatXml(
-                typeof data === "string"
-                    ? data
-                    : raw
+                typeof value === "string" ? value : raw
             ),
             parsed: null,
         };
     }
 
-    if (format === FORMAT_TYPES.HTML) {
+    if (format === RESPONSE_FORMAT.HTML) {
         return {
             format,
             text: formatHtml(
-                typeof data === "string"
-                    ? data
-                    : raw
+                typeof value === "string" ? value : raw
             ),
             parsed: null,
         };
@@ -741,32 +460,26 @@ export function formatResponse({
     return {
         format,
         text: normalizeText(
-            typeof data === "string"
-                ? data
-                : data ?? raw ?? ""
+            typeof value === "string"
+                ? value
+                : value ?? ""
         ),
         parsed: null,
     };
 }
 
-/**
- * Get a display label for a response format.
- *
- * @param {string} format
- * @returns {string}
- */
 export function getFormatLabel(format = "") {
     switch (format) {
-        case FORMAT_TYPES.JSON:
+        case RESPONSE_FORMAT.JSON:
             return "JSON";
 
-        case FORMAT_TYPES.XML:
+        case RESPONSE_FORMAT.XML:
             return "XML";
 
-        case FORMAT_TYPES.HTML:
+        case RESPONSE_FORMAT.HTML:
             return "HTML";
 
-        case FORMAT_TYPES.TEXT:
+        case RESPONSE_FORMAT.TEXT:
             return "Text";
 
         default:
@@ -774,16 +487,6 @@ export function getFormatLabel(format = "") {
     }
 }
 
-// ============================================================
-// Safe Display Helpers
-// ============================================================
-
-/**
- * Escape HTML so response content can safely be displayed as HTML text.
- *
- * @param {unknown} value
- * @returns {string}
- */
 export function escapeHtml(value = "") {
     return String(value)
         .replace(/&/g, "&amp;")
@@ -793,28 +496,10 @@ export function escapeHtml(value = "") {
         .replace(/'/g, "&#039;");
 }
 
-/**
- * Convert response content into safe display HTML.
- *
- * No response content is treated as executable markup.
- *
- * @param {unknown} value
- * @returns {string}
- */
 export function toSafeHtml(value = "") {
     return escapeHtml(value);
 }
 
-// ============================================================
-// Metadata Formatting
-// ============================================================
-
-/**
- * Format response duration.
- *
- * @param {number} milliseconds
- * @returns {string}
- */
 export function formatDuration(milliseconds) {
     if (
         !Number.isFinite(milliseconds) ||
@@ -830,12 +515,6 @@ export function formatDuration(milliseconds) {
     return `${(milliseconds / 1000).toFixed(2)} s`;
 }
 
-/**
- * Format response size.
- *
- * @param {number} bytes
- * @returns {string}
- */
 export function formatSize(bytes) {
     if (
         !Number.isFinite(bytes) ||
@@ -853,10 +532,7 @@ export function formatSize(bytes) {
     }
 
     if (bytes < 1024 * 1024 * 1024) {
-        return `${(
-            bytes /
-            (1024 * 1024)
-        ).toFixed(1)} MB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     }
 
     return `${(
@@ -865,17 +541,7 @@ export function formatSize(bytes) {
     ).toFixed(1)} GB`;
 }
 
-/**
- * Format HTTP status.
- *
- * @param {number} status
- * @param {string} statusText
- * @returns {string}
- */
-export function formatStatus(
-    status,
-    statusText = ""
-) {
+export function formatStatus(status, statusText = "") {
     if (!Number.isFinite(status)) {
         return "";
     }
@@ -885,16 +551,8 @@ export function formatStatus(
         : String(status);
 }
 
-/**
- * Get a human-readable status category.
- *
- * @param {number} status
- * @returns {string}
- */
 export function getStatusCategory(status) {
-    if (
-        !Number.isFinite(status)
-    ) {
+    if (!Number.isFinite(status)) {
         return "unknown";
     }
 
@@ -917,21 +575,7 @@ export function getStatusCategory(status) {
     return "unknown";
 }
 
-// ============================================================
-// Utility Helpers
-// ============================================================
-
-/**
- * Return a short preview of response data.
- *
- * @param {unknown} value
- * @param {number} maxLength
- * @returns {string}
- */
-export function createPreview(
-    value = "",
-    maxLength = 120
-) {
+export function createPreview(value = "", maxLength = 120) {
     const text = normalizeText(
         typeof value === "string"
             ? value
@@ -942,20 +586,14 @@ export function createPreview(
         return text;
     }
 
-    return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
+    return `${text.slice(
+        0,
+        Math.max(0, maxLength - 3)
+    )}...`;
 }
 
-/**
- * Safely stringify any value.
- *
- * @param {unknown} value
- * @returns {string}
- */
 function stringifyValue(value) {
-    if (
-        value === null ||
-        value === undefined
-    ) {
+    if (value === null || value === undefined) {
         return "";
     }
 
@@ -970,26 +608,7 @@ function stringifyValue(value) {
     }
 }
 
-/**
- * Escape XML attribute/text content.
- *
- * @param {unknown} value
- * @returns {string}
- */
-function escapeXmlAttribute(value) {
-    return escapeXml(value);
-}
-
-// ============================================================
-// Exports
-// ============================================================
-
-export {
-    FORMAT_TYPES,
-};
-
 export default {
-    FORMAT_TYPES,
     normalizeContentType,
     detectResponseFormat,
     detectFormatFromContent,
