@@ -1,10 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
       content="Endpoint is a focused workspace for building, testing, and inspecting HTTP requests." />
@@ -60,16 +58,11 @@
                 aria-controls="sidebar"
                 aria-expanded="false"
                 title="Open navigation">
-                <i
-                  data-lucide="menu"
-                  class="h-4 w-4"
-                  aria-hidden="true"></i>
+                <i data-lucide="menu" class="h-4 w-4" aria-hidden="true"></i>
               </button>
 
               <div class="min-w-0">
-                <p
-                  class="truncate text-sm font-medium"
-                  id="workspace-title">
+                <p class="truncate text-sm font-medium" id="workspace-title">
                   Workspace
                 </p>
 
@@ -89,10 +82,7 @@
                 class="inline-flex h-8 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
                 aria-label="Search"
                 title="Search">
-                <i
-                  data-lucide="search"
-                  class="h-4 w-4"
-                  aria-hidden="true"></i>
+                <i data-lucide="search" class="h-4 w-4" aria-hidden="true"></i>
                 <span class="hidden lg:inline">Search</span>
               </button>
 
@@ -102,10 +92,7 @@
                 class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
                 aria-label="Toggle theme"
                 title="Toggle theme">
-                <i
-                  data-lucide="sun"
-                  class="h-4 w-4"
-                  aria-hidden="true"></i>
+                <i data-lucide="sun" class="h-4 w-4" aria-hidden="true"></i>
               </button>
 
               <button
@@ -261,13 +248,10 @@
               <div
                 id="request-toolbar"
                 class="shrink-0 border-b border-border bg-background p-2.5 sm:p-3">
-                <div
-                  class="flex min-w-0 flex-wrap items-center gap-2">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
                   <!-- HTTP method -->
                   <div class="relative w-[5.5rem] shrink-0 sm:w-auto">
-                    <label
-                      for="request-method"
-                      class="sr-only">
+                    <label for="request-method" class="sr-only">
                       HTTP method
                     </label>
 
@@ -293,9 +277,7 @@
                   <!-- URL -->
                   <div
                     class="relative order-2 min-w-0 flex-1 basis-full sm:order-none sm:basis-auto">
-                    <label
-                      for="request-url"
-                      class="sr-only">
+                    <label for="request-url" class="sr-only">
                       Request URL
                     </label>
 
@@ -405,9 +387,7 @@
                     <div
                       class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div class="min-w-0">
-                        <h2 class="text-sm font-medium">
-                          Query Parameters
-                        </h2>
+                        <h2 class="text-sm font-medium">Query Parameters</h2>
 
                         <p class="mt-0.5 text-xs text-muted-foreground">
                           Add parameters to your request URL.
@@ -426,9 +406,7 @@
                       </button>
                     </div>
 
-                    <div
-                      id="query-params-list"
-                      class="min-w-0 space-y-2">
+                    <div id="query-params-list" class="min-w-0 space-y-2">
                       <!-- Query parameter rows rendered by query-params.js -->
                     </div>
 
@@ -451,9 +429,7 @@
                     <div
                       class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div class="min-w-0">
-                        <h2 class="text-sm font-medium">
-                          Request Headers
-                        </h2>
+                        <h2 class="text-sm font-medium">Request Headers</h2>
 
                         <p class="mt-0.5 text-xs text-muted-foreground">
                           Configure headers sent with the request.
@@ -472,9 +448,7 @@
                       </button>
                     </div>
 
-                    <div
-                      id="headers-list"
-                      class="min-w-0 space-y-2">
+                    <div id="headers-list" class="min-w-0 space-y-2">
                       <!-- Header rows rendered by headers.js -->
                     </div>
 
@@ -497,17 +471,14 @@
                     <div
                       class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div class="min-w-0">
-                        <h2 class="text-sm font-medium">
-                          Request Body
-                        </h2>
+                        <h2 class="text-sm font-medium">Request Body</h2>
 
                         <p class="mt-0.5 text-xs text-muted-foreground">
                           Edit the request payload using the JSON editor.
                         </p>
                       </div>
 
-                      <div
-                        class="flex shrink-0 flex-wrap items-center gap-2">
+                      <div class="flex shrink-0 flex-wrap items-center gap-2">
                         <button
                           id="format-body-button"
                           type="button"
@@ -543,9 +514,7 @@
                     data-panel="auth"
                     class="hidden h-full min-w-0 p-3 sm:p-4">
                     <div class="mb-4">
-                      <h2 class="text-sm font-medium">
-                        Authorization
-                      </h2>
+                      <h2 class="text-sm font-medium">Authorization</h2>
 
                       <p class="mt-0.5 text-xs text-muted-foreground">
                         Configure authentication for this request.
@@ -569,9 +538,7 @@
                       </select>
                     </div>
 
-                    <div
-                      id="auth-fields"
-                      class="mt-4 w-full max-w-md">
+                    <div id="auth-fields" class="mt-4 w-full max-w-md">
                       <!-- Authentication fields rendered by the auth feature later -->
                     </div>
                   </section>
@@ -590,9 +557,7 @@
                   class="flex shrink-0 flex-col gap-2 border-b border-border bg-surface px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
                   <div
                     class="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-                    <h2 class="text-sm font-semibold">
-                      Response
-                    </h2>
+                    <h2 class="text-sm font-semibold">Response</h2>
 
                     <span
                       id="response-status"
@@ -694,8 +659,7 @@
                 </div>
 
                 <!-- Response content -->
-                <div
-                  class="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+                <div class="relative min-h-0 min-w-0 flex-1 overflow-hidden">
                   <!-- Empty state -->
                   <div
                     id="response-empty-state"
@@ -709,16 +673,11 @@
                           aria-hidden="true"></i>
                       </div>
 
-                      <h3 class="text-sm font-medium">
-                        No response yet
-                      </h3>
+                      <h3 class="text-sm font-medium">No response yet</h3>
 
-                      <p
-                        class="mt-1 text-xs leading-5 text-muted-foreground">
+                      <p class="mt-1 text-xs leading-5 text-muted-foreground">
                         Configure your request and press
-                        <span class="font-medium text-foreground">
-                          Send
-                        </span>
+                        <span class="font-medium text-foreground"> Send </span>
                         to see the response here.
                       </p>
                     </div>
@@ -787,15 +746,60 @@
            ============================================================ -->
 
       <!-- Modal container -->
-      <div
-        id="modal-root"
-        class="relative z-50"
-        aria-live="polite"></div>
+      <div id="modal-root" class="relative z-50" aria-live="polite">
+        <div
+          id="code-generator-modal"
+          class="fixed inset-0 hidden items-center justify-center bg-black/50 p-4">
+          <div
+            class="w-full max-w-3xl overflow-hidden rounded-lg border border-border bg-surface shadow-xl">
+            <div
+              class="flex items-center justify-between border-b border-border px-4 py-3">
+              <h2 class="text-sm font-semibold">Generated Code</h2>
+
+              <button
+                id="close-code-generator"
+                type="button"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
+                aria-label="Close">
+                <i data-lucide="x" class="h-4 w-4" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div class="space-y-3 p-4">
+              <select
+                id="code-language"
+                class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm">
+                <option value="javascript-fetch">JavaScript Fetch</option>
+                <option value="javascript-axios">JavaScript Axios</option>
+                <option value="curl">cURL</option>
+                <option value="python-requests">Python Requests</option>
+                <option value="node-fetch">Node.js Fetch</option>
+              </select>
+
+              <textarea
+                id="generated-code"
+                class="min-h-[300px] w-full resize-y rounded-md border border-border bg-background p-3 font-mono text-xs leading-5 outline-none"
+                readonly></textarea>
+
+              <div class="flex justify-end">
+                <button
+                  id="copy-code"
+                  type="button"
+                  class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white transition hover:bg-primary/90">
+                  <i
+                    data-lucide="copy"
+                    class="h-3.5 w-3.5"
+                    aria-hidden="true"></i>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Dropdown container -->
-      <div
-        id="dropdown-root"
-        class="relative z-40"></div>
+      <div id="dropdown-root" class="relative z-40"></div>
 
       <!-- Screen reader announcements -->
       <div
@@ -806,8 +810,6 @@
     </div>
 
     <!-- Application entry -->
-    <script
-      type="module"
-      src="./src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

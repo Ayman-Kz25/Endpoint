@@ -14,6 +14,7 @@ const elements = {
 };
 
 let initialized = false;
+let currentResponse = null;
 
 export function initResponseViewer() {
     cacheElements();
@@ -50,6 +51,8 @@ export function renderResponse(response = null) {
         return;
     }
 
+    currentResponse = response;
+
     state.response = {
         ...state.response,
         status: response.status ?? null,
@@ -69,6 +72,10 @@ export function renderResponse(response = null) {
     renderRaw();
     renderHeaders();
     updateEmptyState();
+}
+
+export function getResponse(){
+    return currentResponse;
 }
 
 function renderStatus() {
