@@ -4,7 +4,7 @@ import { initializeTheme } from "./scripts/ui/theme.js";
 import { initDOM } from "./scripts/ui/dom.js";
 import { initTabs } from "./scripts/ui/tabs.js";
 import { initDropdown } from "./scripts/ui/dropdown.js";
-import { initSidebar } from "./scripts/ui/sidebar.js";
+
 import { initLoader } from "./scripts/ui/loader.js";
 import { initEmptyState } from "./scripts/ui/empty-state.js";
 
@@ -31,6 +31,7 @@ import { initEditor } from "./scripts/features/editor/editor.js";
 import { initJsonEditor } from "./scripts/features/editor/json-editor.js";
 
 import { sendRequest } from "./scripts/api/request.js";
+import { initSidebar } from "./scripts/ui/sidebar.js";
 
 let initialized = false;
 let responseViewer = null;
