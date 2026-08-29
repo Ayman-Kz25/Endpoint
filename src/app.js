@@ -4,7 +4,6 @@ import { initializeTheme } from "./scripts/ui/theme.js";
 import { initDOM } from "./scripts/ui/dom.js";
 import { initTabs } from "./scripts/ui/tabs.js";
 import { initDropdown } from "./scripts/ui/dropdown.js";
-
 import { initLoader } from "./scripts/ui/loader.js";
 import { initEmptyState } from "./scripts/ui/empty-state.js";
 
@@ -13,13 +12,18 @@ import {
   initRequestBuilder,
   getFinalRequestUrl,
   validateRequest,
+  resetRequest,
 } from "./scripts/features/request-builder/request-builder.js";
 
 import { initQueryParams } from "./scripts/features/request-builder/query-params.js";
 import { initHeaders } from "./scripts/features/request-builder/headers.js";
 import { initRequestBody } from "./scripts/features/request-builder/body.js";
 
-import { initResponseViewer, getResponse } from "./scripts/features/response-viewer/response-viewer.js";
+import {
+  initResponseViewer,
+  getResponse,
+} from "./scripts/features/response-viewer/response-viewer.js";
+
 import { initResponseTabs } from "./scripts/features/response-viewer/response-tabs.js";
 
 import { initHistory } from "./scripts/features/history/history.js";
@@ -27,16 +31,19 @@ import { initHistoryRenderer } from "./scripts/features/history/history-renderer
 
 import { initCodeGenerator } from "./scripts/features/code-generator/code-generator.js";
 
-import { initEditor } from "./scripts/features/editor/editor.js";
 import { initJsonEditor } from "./scripts/features/editor/json-editor.js";
 
 import { sendRequest } from "./scripts/api/request.js";
 import { initSidebar } from "./scripts/ui/sidebar.js";
 
 let initialized = false;
+
 let responseViewer = null;
 let codeGenerator = null;
 
+/**
+ * Initialize the application.
+ */
 export function initializeApp() {
   if (initialized) {
     return;
@@ -45,11 +52,12 @@ export function initializeApp() {
   initialized = true;
 
   initDOM(document);
-  initializeTheme();
 
+  initializeTheme();
   initTabs();
   initDropdown();
   initSidebar();
+
   initLoader();
   initEmptyState();
 
@@ -58,10 +66,10 @@ export function initializeApp() {
   initHeaders();
   initRequestBody();
 
-  initEditor();
-  initJsonEditor();
+  initJsonEditor("#json-editor");
 
   responseViewer = initResponseViewer();
+
   initResponseTabs();
 
   initHistoryRenderer();
@@ -71,25 +79,231 @@ export function initializeApp() {
 
   bindAppEvents();
 
-  createIcons({
-    icons,
-  });
+  renderIcons();
 }
 
+/**
+ * Bind application-level events.
+ */
 function bindAppEvents() {
   const sendButton = document.getElementById("send-request-button");
   const generateCodeButton = document.getElementById("generate-code-button");
   const copyResponseButton = document.getElementById("copy-response-button");
   const downloadResponseButton = document.getElementById(
-    "download-response-button",
+    "download-response-button"
+  );
+  const backToRequestButton = document.getElementById(
+    "back-to-request-button"
   );
 
   sendButton?.addEventListener("click", handleSendRequest);
+
   generateCodeButton?.addEventListener("click", handleGenerateCode);
+
   copyResponseButton?.addEventListener("click", handleCopyResponse);
-  downloadResponseButton?.addEventListener("click", handleDownloadResponse);
+
+  downloadResponseButton?.addEventListener(
+    "click",
+    handleDownloadResponse
+  );
+
+  backToRequestButton?.addEventListener(
+    "click",
+    handleBackToRequest
+  );
+
+  document.addEventListener(
+    "sidebar:navigate",
+    handleSidebarNavigation
+  );
 }
 
+/**
+ * Handle navigation events emitted by the sidebar.
+ */
+function handleSidebarNavigation(event) {
+  const action = event.detail?.action;
+
+  switch (action) {
+    case "new-request":
+      handleNewRequest();
+      break;
+
+    case "collections":
+      handleCollections();
+      break;
+
+    case "history":
+      handleHistory();
+      break;
+
+    case "environments":
+      handleEnvironments();
+      break;
+
+    case "keyboard-shortcuts":
+      handleKeyboardShortcuts();
+      break;
+
+    default:
+      console.warn("Unknown sidebar action:", action);
+  }
+}
+
+/**
+ * Show the main request workspace.
+ */
+function showRequestWorkspace() {
+  const requestWorkspace = document.getElementById("request-workspace");
+  const featurePlaceholder = document.getElementById("feature-placeholder");
+
+  requestWorkspace?.classList.remove("hidden");
+
+  featurePlaceholder?.classList.add("hidden");
+  featurePlaceholder?.classList.remove("flex");
+
+  updateWorkspaceTitle(
+    "Workspace",
+    "HTTP Request Workspace"
+  );
+}
+
+/**
+ * Show a temporary placeholder for features that are not implemented yet.
+ */
+function showFeaturePlaceholder({
+  title,
+  description,
+  icon = "construction",
+}) {
+  const requestWorkspace = document.getElementById("request-workspace");
+  const featurePlaceholder = document.getElementById("feature-placeholder");
+
+  const titleElement = document.getElementById(
+    "feature-placeholder-title"
+  );
+
+  const descriptionElement = document.getElementById(
+    "feature-placeholder-description"
+  );
+
+  const iconElement = document.getElementById(
+    "feature-placeholder-icon"
+  );
+
+  if (!featurePlaceholder) {
+    console.warn("Feature placeholder element not found");
+    return;
+  }
+
+  requestWorkspace?.classList.add("hidden");
+
+  featurePlaceholder.classList.remove("hidden");
+  featurePlaceholder.classList.add("flex");
+
+  if (titleElement) {
+    titleElement.textContent = title;
+  }
+
+  if (descriptionElement) {
+    descriptionElement.textContent = description;
+  }
+
+  if (iconElement) {
+    iconElement.setAttribute("data-lucide", icon);
+  }
+
+  updateWorkspaceTitle(title, "Endpoint");
+
+  renderIcons();
+}
+
+/**
+ * Update the header workspace title.
+ */
+function updateWorkspaceTitle(title, subtitle) {
+  const workspaceTitle = document.getElementById("workspace-title");
+  const workspaceSubtitle = document.getElementById(
+    "workspace-subtitle"
+  );
+
+  if (workspaceTitle) {
+    workspaceTitle.textContent = title;
+  }
+
+  if (workspaceSubtitle) {
+    workspaceSubtitle.textContent = subtitle;
+  }
+}
+
+/**
+ * New Request sidebar action.
+ */
+function handleNewRequest() {
+  resetRequest();
+  showRequestWorkspace();
+
+  // console.log("New request created");
+}
+
+/**
+ * Collections sidebar action.
+ */
+function handleCollections() {
+  showFeaturePlaceholder({
+    title: "Collections",
+    description:
+      "Collections are coming soon. You will be able to organize and save your requests here.",
+    icon: "folder",
+  });
+}
+
+/**
+ * History sidebar action.
+ */
+function handleHistory() {
+  showFeaturePlaceholder({
+    title: "History",
+    description:
+      "Request history is coming soon. You will be able to browse and reopen previous requests here.",
+    icon: "history",
+  });
+}
+
+/**
+ * Environments sidebar action.
+ */
+function handleEnvironments() {
+  showFeaturePlaceholder({
+    title: "Environments",
+    description:
+      "Environments are coming soon. You will be able to manage variables and environment settings here.",
+    icon: "braces",
+  });
+}
+
+/**
+ * Keyboard Shortcuts sidebar action.
+ */
+function handleKeyboardShortcuts() {
+  showFeaturePlaceholder({
+    title: "Keyboard Shortcuts",
+    description:
+      "Keyboard shortcuts are coming soon. You will be able to view and customize shortcuts here.",
+    icon: "keyboard",
+  });
+}
+
+/**
+ * Back to Request button.
+ */
+function handleBackToRequest() {
+  showRequestWorkspace();
+}
+
+/**
+ * Send the current HTTP request.
+ */
 async function handleSendRequest() {
   const validation = validateRequest();
 
@@ -116,76 +330,87 @@ async function handleSendRequest() {
   }
 }
 
+/**
+ * Open the code generator for the current request.
+ */
 function handleGenerateCode() {
   const request = getRequest();
-
-  console.log("Generate Code button clicked");
-  console.log("Request:", request);
-  console.log("Code generator:", codeGenerator);
 
   codeGenerator?.render(request);
   codeGenerator?.open();
 }
 
+/**
+ * Copy the current response to the clipboard.
+ */
 async function handleCopyResponse(event) {
-    const button = event.currentTarget;
-    const response = getResponse();
+  const button = event.currentTarget;
+  const response = getResponse();
 
-    if (!response) {
-        return;
+  if (!response) {
+    return;
+  }
+
+  const text = getResponseText(response);
+
+  if (!text) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+
+    if (button) {
+      button.dataset.copied = "true";
+
+      setTimeout(() => {
+        delete button.dataset.copied;
+      }, 1200);
     }
-
-    const text = getResponseText(response);
-
-    if (!text) {
-        return;
-    }
-
-    try {
-        await navigator.clipboard.writeText(text);
-
-        if (button) {
-            button.dataset.copied = "true";
-
-            setTimeout(() => {
-                delete button.dataset.copied;
-            }, 1200);
-        }
-    } catch (error) {
-        console.error("Failed to copy response:", error);
-    }
+  } catch (error) {
+    console.error("Failed to copy response:", error);
+  }
 }
 
+/**
+ * Download the current response as JSON.
+ */
 function handleDownloadResponse() {
-    const response = getResponse();
+  const response = getResponse();
 
-    if (!response) {
-        return;
-    }
+  if (!response) {
+    return;
+  }
 
-    const text = getResponseText(response);
+  const text = getResponseText(response);
 
-    if (!text) {
-        return;
-    }
+  if (!text) {
+    return;
+  }
 
-    const blob = new Blob([text], {
-        type: "application/json;charset=utf-8",
-    });
+  const blob = new Blob([text], {
+    type: "application/json;charset=utf-8",
+  });
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
 
-    link.href = url;
-    link.download = "response.json";
+  const link = document.createElement("a");
 
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  link.href = url;
+  link.download = "response.json";
 
-    URL.revokeObjectURL(url);
+  document.body.appendChild(link);
+
+  link.click();
+
+  link.remove();
+
+  URL.revokeObjectURL(url);
 }
 
+/**
+ * Convert a response into displayable text.
+ */
 function getResponseText(response) {
   if (response == null) {
     return "";
@@ -222,17 +447,14 @@ function getResponseText(response) {
   }
 }
 
-function bootstrap() {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializeApp, {
-      once: true,
-    });
-  } else {
-    initializeApp();
-  }
+/**
+ * Render Lucide icons.
+ */
+function renderIcons() {
+  createIcons({
+    icons,
+  });
 }
-
-bootstrap();
 
 export default {
   initializeApp,

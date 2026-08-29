@@ -1,45 +1,68 @@
 // src/scripts/features/request-builder/body.js
 
+import {
+    getJsonValue,
+    setJsonValue,
+    hasJsonEditor,
+    validateJson as validateEditorJson,
+    formatJson as formatEditorJson,
+    minifyJson as minifyEditorJson,
+} from "../editor/json-editor.js";
+
 const elements = {
-    editor: null,
     formatButton: null,
     validationStatus: null,
 };
 
 let initialized = false;
-let bodyValue = "";
 
 function cacheElements() {
-    elements.editor = document.getElementById("json-editor");
-    elements.formatButton = document.getElementById("format-body-button");
+    elements.formatButton = document.getElementById(
+        "format-body-button",
+    );
+
     elements.validationStatus = document.getElementById(
-        "body-validation-status"
+        "body-validation-status",
     );
 }
 
-function getEditor() {
-    if (!elements.editor) {
-        cacheElements();
-    }
+function bindEvents() {
+    elements.formatButton?.addEventListener(
+        "click",
+        handleFormat,
+    );
 
-    return elements.editor;
+    document.addEventListener(
+        "json-editor:change",
+        handleEditorChange,
+    );
 }
 
-function bindEvents() {
-    elements.formatButton?.addEventListener("click", handleFormat);
+function handleEditorChange(event) {
+    const value = event.detail?.value ?? "";
+
+    validateRequestBody(value);
+
+    if (elements.validationStatus) {
+        elements.validationStatus.dataset.empty =
+            value.trim() ? "false" : "true";
+    }
 }
 
 function handleFormat(event) {
     event.preventDefault();
 
-    const formatted = formatJson(getRequestBody());
+    const result = formatEditorJson(
+        getRequestBody(),
+        2,
+    );
 
-    if (formatted === null) {
+    if (!result.valid) {
         updateValidationStatus(false);
         return;
     }
 
-    setRequestBody(formatted);
+    setRequestBody(result.value);
     updateValidationStatus(true);
 }
 
@@ -51,67 +74,10 @@ function updateValidationStatus(valid) {
     elements.validationStatus.textContent = valid
         ? "Valid JSON"
         : "Invalid JSON";
-}
 
-function readEditorValue() {
-    const editor = getEditor();
-
-    if (!editor) {
-        return bodyValue;
-    }
-
-    const textarea = editor.querySelector("textarea");
-
-    if (textarea) {
-        bodyValue = textarea.value;
-        return bodyValue;
-    }
-
-    const content = editor.querySelector(
-        ".cm-content, [contenteditable='true']"
+    elements.validationStatus.dataset.valid = String(
+        valid,
     );
-
-    if (content) {
-        bodyValue = content.textContent ?? "";
-        return bodyValue;
-    }
-
-    return bodyValue;
-}
-
-function writeEditorValue(value) {
-    const editor = getEditor();
-
-    bodyValue = String(value ?? "");
-
-    if (!editor) {
-        return;
-    }
-
-    const textarea = editor.querySelector("textarea");
-
-    if (textarea) {
-        textarea.value = bodyValue;
-        textarea.dispatchEvent(
-            new Event("input", {
-                bubbles: true,
-            })
-        );
-        return;
-    }
-
-    const content = editor.querySelector(
-        ".cm-content, [contenteditable='true']"
-    );
-
-    if (content) {
-        content.textContent = bodyValue;
-        content.dispatchEvent(
-            new Event("input", {
-                bubbles: true,
-            })
-        );
-    }
 }
 
 export function initRequestBody() {
@@ -138,24 +104,30 @@ export function initRequestBody() {
 }
 
 export function getRequestBody() {
-    return readEditorValue();
+    if (!hasJsonEditor()) {
+        return "";
+    }
+
+    return getJsonValue();
 }
 
 export function setRequestBody(value = "") {
     if (value === null || value === undefined) {
-        writeEditorValue("");
+        setJsonValue("");
         return;
     }
 
     if (typeof value === "string") {
-        writeEditorValue(value);
+        setJsonValue(value);
         return;
     }
 
     try {
-        writeEditorValue(JSON.stringify(value, null, 2));
+        setJsonValue(
+            JSON.stringify(value, null, 2),
+        );
     } catch {
-        writeEditorValue(String(value));
+        setJsonValue(String(value));
     }
 }
 
@@ -174,67 +146,27 @@ export function setBodyType(type = "json") {
         : "json";
 }
 
-export function isValidJson(value = "") {
-    if (typeof value !== "string" || !value.trim()) {
-        return false;
-    }
-
-    try {
-        JSON.parse(value);
-        return true;
-    } catch {
-        return false;
-    }
+export function isValidJson(value = getRequestBody()) {
+    return validateEditorJson(value).valid;
 }
 
 export function formatJson(value = "") {
-    if (
-        value === null ||
-        value === undefined ||
-        String(value).trim() === ""
-    ) {
-        return "";
-    }
-
-    try {
-        const parsed =
-            typeof value === "string"
-                ? JSON.parse(value)
-                : value;
-
-        return JSON.stringify(parsed, null, 2);
-    } catch {
-        return null;
-    }
+    return formatEditorJson(value, 2).value;
 }
 
 export function minifyJson(value = "") {
-    if (!value || !String(value).trim()) {
-        return "";
-    }
-
-    try {
-        return JSON.stringify(JSON.parse(value));
-    } catch {
-        return null;
-    }
+    return minifyEditorJson(value).value;
 }
 
 export function parseJsonBody(value = getRequestBody()) {
-    if (!value || !String(value).trim()) {
-        return null;
-    }
+    const result = validateEditorJson(value);
 
-    try {
-        return JSON.parse(value);
-    } catch {
-        return null;
-    }
+    return result.valid ? result.value : null;
 }
 
 export function validateRequestBody(
     value = getRequestBody(),
-    type = getBodyType()
+    type = getBodyType(),
 ) {
     const body = String(value ?? "").trim();
 
@@ -247,7 +179,10 @@ export function validateRequestBody(
         };
     }
 
-    if (type === "json" && !isValidJson(body)) {
+    if (
+        type === "json" &&
+        !validateEditorJson(body).valid
+    ) {
         updateValidationStatus(false);
 
         return {
@@ -265,15 +200,11 @@ export function validateRequestBody(
 }
 
 export function getContentTypeForBodyType(
-    type = getBodyType()
+    type = getBodyType(),
 ) {
-    switch (String(type).toLowerCase()) {
-        case "json":
-            return "application/json";
-
-        default:
-            return "";
-    }
+    return String(type).toLowerCase() === "json"
+        ? "application/json"
+        : "";
 }
 
 export default {

@@ -4,12 +4,10 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+      content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Endpoint is a focused workspace for building, testing, and inspecting HTTP requests."
-    />
+      content="Endpoint is a focused workspace for building, testing, and inspecting HTTP requests." />
     <meta name="theme-color" content="#0b0d10" />
 
     <title>Endpoint - HTTP Request Workspace</title>
@@ -20,41 +18,34 @@
   <body class="min-h-full min-w-0 overflow-hidden">
     <div
       id="app"
-      class="h-dvh min-h-0 min-w-0 overflow-hidden bg-background text-foreground"
-    >
+      class="h-dvh min-h-0 min-w-0 overflow-hidden bg-background text-foreground">
       <div class="flex h-full min-h-0 min-w-0 flex-col">
 
         <!-- Header -->
         <header
           id="app-header"
-          class="flex h-14 shrink-0 items-center border-b border-border bg-surface"
-        >
+          class="flex h-14 shrink-0 items-center border-b border-border bg-surface">
           <div
-            class="flex h-full min-w-0 shrink-0 items-center border-r border-border px-3 sm:px-4 md:w-64"
-          >
+            class="flex h-full min-w-0 shrink-0 items-center border-r border-border px-3 sm:px-4 md:w-64">
             <a
               href="/"
               class="flex min-w-0 items-center gap-2"
-              aria-label="Endpoint home"
-            >
+              aria-label="Endpoint home">
               <span
                 class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-white"
-                aria-hidden="true"
-              >
+                aria-hidden="true">
                 E
               </span>
 
               <span
-                class="hidden truncate text-sm font-semibold tracking-tight sm:inline"
-              >
+                class="hidden truncate text-sm font-semibold tracking-tight sm:inline">
                 Endpoint
               </span>
             </a>
           </div>
 
           <div
-            class="flex min-w-0 flex-1 items-center justify-between gap-2 px-2 sm:px-4"
-          >
+            class="flex min-w-0 flex-1 items-center justify-between gap-2 px-2 sm:px-4">
             <div class="flex min-w-0 items-center gap-2 sm:gap-3">
               <button
                 id="mobile-sidebar-button"
@@ -63,78 +54,68 @@
                 aria-label="Open navigation"
                 aria-controls="sidebar"
                 aria-expanded="false"
-                title="Open navigation"
-              >
+                title="Open navigation">
                 <i
                   data-lucide="menu"
                   class="h-4 w-4"
-                  aria-hidden="true"
-                ></i>
+                  aria-hidden="true"></i>
               </button>
 
               <div class="min-w-0">
                 <p
                   id="workspace-title"
-                  class="truncate text-sm font-medium"
-                >
+                  class="truncate text-sm font-medium">
                   Workspace
                 </p>
 
                 <p
                   id="workspace-subtitle"
-                  class="hidden truncate text-xs text-muted-foreground xs:block sm:block"
-                >
+                  class="hidden truncate text-xs text-muted-foreground xs:block sm:block">
                   HTTP Request Workspace
                 </p>
               </div>
             </div>
 
             <div class="flex shrink-0 items-center gap-1">
-              <button
+              <!--- <button
                 id="search-button"
                 type="button"
                 class="inline-flex h-8 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
                 aria-label="Search"
-                title="Search"
-              >
+                title="Search">
                 <i
                   data-lucide="search"
                   class="h-4 w-4"
-                  aria-hidden="true"
-                ></i>
+                  aria-hidden="true"></i>
 
                 <span class="hidden lg:inline">
                   Search
                 </span>
-              </button>
+              </button> -->
 
               <button
                 id="theme-toggle"
                 type="button"
                 class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
                 aria-label="Toggle theme"
-                title="Toggle theme"
-              >
+                title="Toggle theme">
                 <i
                   data-lucide="sun"
                   class="h-4 w-4"
-                  aria-hidden="true"
-                ></i>
+                  aria-hidden="true"></i>
               </button>
 
-              <button
+              <!-- <button
                 id="settings-button"
                 type="button"
                 class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
                 aria-label="Settings"
-                title="Settings"
-              >
+                title="Settings">
                 <i
                   data-lucide="settings"
                   class="h-4 w-4"
-                  aria-hidden="true"
-                ></i>
-              </button>
+                  aria-hidden="true"></i>
+              </button> -->
             </div>
           </div>
         </header>
@@ -146,23 +127,19 @@
           <div
             id="sidebar-backdrop"
             class="fixed inset-0 z-30 hidden bg-black/50 md:hidden"
-            aria-hidden="true"
-          ></div>
+            aria-hidden="true"></div>
 
           <!-- Sidebar -->
           <aside
             id="sidebar"
-            class="fixed top-14 bottom-0 left-0 z-40 hidden w-72 max-w-[85vw] shrink-0 flex-col border-r border-border bg-surface shadow-xl md:static md:flex md:h-auto md:w-64 md:max-w-none md:shadow-none"
-            aria-label="Application navigation"
-          >
+            class="fixed top-0 bottom-0 left-0 z-40 hidden w-72 max-w-[85vw] shrink-0 flex-col border-r border-border bg-surface shadow-xl md:static md:flex md:h-auto md:w-64 md:max-w-none md:shadow-none"
+            aria-label="Application navigation">
             <nav
-              class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3"
-            >
+              class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
               <!-- Workspace -->
               <div class="mb-6">
                 <div
-                  class="mb-3 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
-                >
+                  class="my-10 mb-3 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Workspace
                 </div>
 
@@ -170,13 +147,11 @@
                   <button
                     id="new-request-button"
                     type="button"
-                    class="flex min-h-9 w-full items-center gap-2 rounded-md bg-surface-raised px-2.5 py-2 text-left text-sm font-medium text-foreground transition hover:bg-surface-raised"
-                  >
+                    class="flex min-h-9 w-full items-center gap-2 rounded-md bg-surface-raised px-2.5 py-2 text-left text-sm font-medium text-foreground transition hover:bg-surface-raised">
                     <i
                       data-lucide="plus"
                       class="h-4 w-4 shrink-0"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="truncate">
                       New Request
@@ -186,13 +161,11 @@
                   <button
                     id="collections-button"
                     type="button"
-                    class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-                  >
+                    class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground">
                     <i
                       data-lucide="folder"
                       class="h-4 w-4 shrink-0"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="truncate">
                       Collections
@@ -202,13 +175,11 @@
                   <button
                     id="history-button"
                     type="button"
-                    class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-                  >
+                    class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground">
                     <i
                       data-lucide="history"
                       class="h-4 w-4 shrink-0"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="truncate">
                       History
@@ -218,13 +189,11 @@
                   <button
                     id="environments-button"
                     type="button"
-                    class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-                  >
+                    class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition hover:bg-surface-raised hover:text-foreground">
                     <i
                       data-lucide="braces"
                       class="h-4 w-4 shrink-0"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="truncate">
                       Environments
@@ -236,19 +205,16 @@
               <!-- Recent requests -->
               <div id="recent-requests-section">
                 <div
-                  class="mb-2 flex items-center justify-between px-2"
-                >
+                  class="mb-2 flex items-center justify-between px-2">
                   <span
-                    class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
-                  >
+                    class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Recent
                   </span>
 
                   <button
                     id="clear-recent-button"
                     type="button"
-                    class="hidden text-[11px] text-muted-foreground transition hover:text-foreground"
-                  >
+                    class="hidden text-[11px] text-muted-foreground transition hover:text-foreground">
                     Clear
                   </button>
                 </div>
@@ -256,13 +222,11 @@
                 <div
                   id="recent-requests-list"
                   class="min-w-0 space-y-1"
-                  aria-live="polite"
-                ></div>
+                  aria-live="polite"></div>
 
                 <div
                   id="recent-requests-empty"
-                  class="px-2 py-6 text-center text-xs text-muted-foreground"
-                >
+                  class="px-2 py-6 text-center text-xs text-muted-foreground">
                   No recent requests
                 </div>
               </div>
@@ -273,13 +237,11 @@
               <button
                 id="keyboard-shortcuts-button"
                 type="button"
-                class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-              >
+                class="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground">
                 <i
                   data-lucide="keyboard"
                   class="h-4 w-4 shrink-0"
-                  aria-hidden="true"
-                ></i>
+                  aria-hidden="true"></i>
 
                 <span class="truncate">
                   Keyboard shortcuts
@@ -291,39 +253,66 @@
           <!-- Main content -->
           <main
             id="main-content"
-            class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-          >
+            class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+
+            <div
+              id="feature-placeholder"
+              class="hidden flex-1 items-center justify-center overflow-auto p-6">
+              <div class="w-full max-w-md text-center">
+                <div
+                  class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-surface">
+                  <i
+                    id="feature-placeholder-icon"
+                    data-lucide="construction"
+                    class="h-5 w-5 text-muted-foreground"
+                    aria-hidden="true"></i>
+                </div>
+
+                <h2
+                  id="feature-placeholder-title"
+                  class="text-base font-semibold">
+                  Coming soon
+                </h2>
+
+                <p
+                  id="feature-placeholder-description"
+                  class="mt-1 text-sm leading-6 text-muted-foreground">
+                  This feature is currently under development.
+                </p>
+
+                <button
+                  id="back-to-request-button"
+                  type="button"
+                  class="mt-5 inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-medium text-white transition hover:bg-primary/90">
+                  Back to Request
+                </button>
+              </div>
+            </div>
 
             <!-- Request workspace -->
             <section
               id="request-workspace"
               class="flex min-h-0 min-w-0 flex-[0_1_45%] flex-col overflow-hidden border-b border-border"
-              aria-label="Request workspace"
-            >
+              aria-label="Request workspace">
               <!-- Request toolbar -->
               <div
                 id="request-toolbar"
-                class="shrink-0 border-b border-border bg-background p-2.5 sm:p-3"
-              >
+                class="shrink-0 border-b border-border bg-background p-2.5 sm:p-3">
                 <div
-                  class="flex min-w-0 flex-wrap-reverse items-center justify-center gap-2 md:flex-row md:justify-normal"
-                >
+                  class="flex min-w-0 flex-wrap-reverse items-center justify-center gap-2 md:flex-row md:justify-normal">
                   <!-- HTTP method -->
                   <div
-                    class="relative w-[5rem] shrink-0 sm:w-auto"
-                  >
+                    class="relative w-[5rem] shrink-0 sm:w-auto">
                     <label
                       for="request-method"
-                      class="sr-only"
-                    >
+                      class="sr-only">
                       HTTP method
                     </label>
 
                     <select
                       id="request-method"
                       name="method"
-                      class="h-10 w-full min-w-0 appearance-none rounded-md border border-border bg-surface px-2 pr-7 text-sm font-semibold outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-w-20 sm:px-3 sm:pr-8"
-                    >
+                      class="h-10 w-full min-w-0 appearance-none rounded-md border border-border bg-surface px-2 pr-7 text-sm font-semibold outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-w-20 sm:px-3 sm:pr-8">
                       <option value="GET">
                         GET
                       </option>
@@ -356,18 +345,15 @@
                     <i
                       data-lucide="chevron-down"
                       class="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
                   </div>
 
                   <!-- URL -->
                   <div
-                    class="relative order-2 min-w-0 flex-1 basis-full sm:order-none sm:basis-auto"
-                  >
+                    class="relative order-2 min-w-0 flex-1 basis-full sm:order-none sm:basis-auto">
                     <label
                       for="request-url"
-                      class="sr-only"
-                    >
+                      class="sr-only">
                       Request URL
                     </label>
 
@@ -378,8 +364,7 @@
                       autocomplete="off"
                       spellcheck="false"
                       placeholder="https://api.example.com/users"
-                      class="h-10 w-full min-w-0 rounded-md border border-border bg-surface px-3 font-mono text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
+                      class="h-10 w-full min-w-0 rounded-md border border-border bg-surface px-3 font-mono text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20" />
                   </div>
 
                   <!-- Save -->
@@ -387,13 +372,11 @@
                     id="save-request-button"
                     type="button"
                     class="order-3 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition hover:bg-surface-raised sm:order-none"
-                    title="Save request"
-                  >
+                    title="Save request">
                     <i
                       data-lucide="save"
                       class="h-4 w-4"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="hidden lg:inline">
                       Save
@@ -404,13 +387,11 @@
                   <button
                     id="send-request-button"
                     type="button"
-                    class="order-4 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:order-none"
-                  >
+                    class="order-4 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:order-none">
                     <i
                       data-lucide="send"
                       class="h-4 w-4"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span>
                       Send
@@ -422,15 +403,13 @@
               <!-- Request configuration -->
               <div
                 id="request-panel"
-                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-              >
+                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <!-- Request tabs -->
                 <div
                   id="request-tabs"
                   class="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-surface px-2 sm:px-3"
                   role="tablist"
-                  aria-label="Request configuration"
-                >
+                  aria-label="Request configuration">
                   <button
                     id="request-tab-params"
                     type="button"
@@ -438,8 +417,7 @@
                     aria-selected="true"
                     aria-controls="request-panel-params"
                     data-tab="params"
-                    class="request-tab shrink-0 border-b-2 border-primary px-3 py-2.5 text-xs font-medium text-foreground"
-                  >
+                    class="request-tab shrink-0 border-b-2 border-primary px-3 py-2.5 text-xs font-medium text-foreground">
                     Params
                   </button>
 
@@ -450,8 +428,7 @@
                     aria-selected="false"
                     aria-controls="request-panel-headers"
                     data-tab="headers"
-                    class="request-tab shrink-0 border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                  >
+                    class="request-tab shrink-0 border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
                     Headers
                   </button>
 
@@ -462,8 +439,7 @@
                     aria-selected="false"
                     aria-controls="request-panel-body"
                     data-tab="body"
-                    class="request-tab shrink-0 border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                  >
+                    class="request-tab shrink-0 border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
                     Body
                   </button>
 
@@ -474,35 +450,30 @@
                     aria-selected="false"
                     aria-controls="request-panel-auth"
                     data-tab="auth"
-                    class="request-tab shrink-0 border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                  >
+                    class="request-tab shrink-0 border-b-2 border-transparent px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
                     Auth
                   </button>
                 </div>
 
                 <!-- Request tab content -->
                 <div
-                  class="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain"
-                >
+                  class="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain">
                   <!-- Params -->
                   <section
                     id="request-panel-params"
                     role="tabpanel"
                     aria-labelledby="request-tab-params"
                     data-panel="params"
-                    class="min-w-0 p-3 sm:p-4"
-                  >
+                    class="min-w-0 p-3 sm:p-4">
                     <div
-                      class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-                    >
+                      class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div class="min-w-0">
                         <h2 class="text-sm font-medium">
                           Query Parameters
                         </h2>
 
                         <p
-                          class="mt-0.5 text-xs text-muted-foreground"
-                        >
+                          class="mt-0.5 text-xs text-muted-foreground">
                           Add parameters to your request URL.
                         </p>
                       </div>
@@ -510,13 +481,11 @@
                       <button
                         id="add-query-param-button"
                         type="button"
-                        class="inline-flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised"
-                      >
+                        class="inline-flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised">
                         <i
                           data-lucide="plus"
                           class="h-3.5 w-3.5"
-                          aria-hidden="true"
-                        ></i>
+                          aria-hidden="true"></i>
 
                         Add parameter
                       </button>
@@ -524,13 +493,11 @@
 
                     <div
                       id="query-params-list"
-                      class="min-w-0 space-y-2"
-                    ></div>
+                      class="min-w-0 space-y-2"></div>
 
                     <div
                       id="query-params-empty"
-                      class="rounded-md border border-dashed border-border px-4 py-8 text-center"
-                    >
+                      class="rounded-md border border-dashed border-border px-4 py-8 text-center">
                       <p class="text-xs text-muted-foreground">
                         No query parameters added.
                       </p>
@@ -543,19 +510,16 @@
                     role="tabpanel"
                     aria-labelledby="request-tab-headers"
                     data-panel="headers"
-                    class="hidden min-w-0 p-3 sm:p-4"
-                  >
+                    class="hidden min-w-0 p-3 sm:p-4">
                     <div
-                      class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-                    >
+                      class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div class="min-w-0">
                         <h2 class="text-sm font-medium">
                           Request Headers
                         </h2>
 
                         <p
-                          class="mt-0.5 text-xs text-muted-foreground"
-                        >
+                          class="mt-0.5 text-xs text-muted-foreground">
                           Configure headers sent with the request.
                         </p>
                       </div>
@@ -563,13 +527,11 @@
                       <button
                         id="add-header-button"
                         type="button"
-                        class="inline-flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised"
-                      >
+                        class="inline-flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised">
                         <i
                           data-lucide="plus"
                           class="h-3.5 w-3.5"
-                          aria-hidden="true"
-                        ></i>
+                          aria-hidden="true"></i>
 
                         Add header
                       </button>
@@ -577,13 +539,11 @@
 
                     <div
                       id="headers-list"
-                      class="min-w-0 space-y-2"
-                    ></div>
+                      class="min-w-0 space-y-2"></div>
 
                     <div
                       id="headers-empty"
-                      class="rounded-md border border-dashed border-border px-4 py-8 text-center"
-                    >
+                      class="rounded-md border border-dashed border-border px-4 py-8 text-center">
                       <p class="text-xs text-muted-foreground">
                         No custom headers added.
                       </p>
@@ -596,36 +556,30 @@
                     role="tabpanel"
                     aria-labelledby="request-tab-body"
                     data-panel="body"
-                    class="hidden min-w-0 p-3 sm:p-4"
-                  >
+                    class="hidden min-w-0 p-3 sm:p-4">
                     <div
-                      class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-                    >
+                      class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div class="min-w-0">
                         <h2 class="text-sm font-medium">
                           Request Body
                         </h2>
 
                         <p
-                          class="mt-0.5 text-xs text-muted-foreground"
-                        >
+                          class="mt-0.5 text-xs text-muted-foreground">
                           Edit the request payload using the JSON editor.
                         </p>
                       </div>
 
                       <div
-                        class="flex shrink-0 flex-wrap items-center gap-2"
-                      >
+                        class="flex shrink-0 flex-wrap items-center gap-2">
                         <button
                           id="format-body-button"
                           type="button"
-                          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised"
-                        >
+                          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium transition hover:bg-surface-raised">
                           <i
                             data-lucide="wand-sparkles"
                             class="h-3.5 w-3.5"
-                            aria-hidden="true"
-                          ></i>
+                            aria-hidden="true"></i>
 
                           Format
                         </button>
@@ -633,8 +587,7 @@
                         <span
                           id="body-validation-status"
                           class="text-xs text-muted-foreground"
-                          aria-live="polite"
-                        >
+                          aria-live="polite">
                           Valid JSON
                         </span>
                       </div>
@@ -642,8 +595,7 @@
 
                     <div
                       id="json-editor"
-                      class="min-h-[180px] min-w-0 max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[220px]"
-                    ></div>
+                      class="min-h-[180px] min-w-0 max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[220px]"></div>
                   </section>
 
                   <!-- Auth -->
@@ -652,16 +604,14 @@
                     role="tabpanel"
                     aria-labelledby="request-tab-auth"
                     data-panel="auth"
-                    class="hidden min-w-0 p-3 sm:p-4"
-                  >
+                    class="hidden min-w-0 p-3 sm:p-4">
                     <div class="mb-4">
                       <h2 class="text-sm font-medium">
                         Authorization
                       </h2>
 
                       <p
-                        class="mt-0.5 text-xs text-muted-foreground"
-                      >
+                        class="mt-0.5 text-xs text-muted-foreground">
                         Configure authentication for this request.
                       </p>
                     </div>
@@ -669,15 +619,13 @@
                     <div class="w-full max-w-md">
                       <label
                         for="auth-type"
-                        class="mb-1.5 block text-xs font-medium"
-                      >
+                        class="mb-1.5 block text-xs font-medium">
                         Authentication type
                       </label>
 
                       <select
                         id="auth-type"
-                        class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      >
+                        class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
                         <option value="none">
                           No Auth
                         </option>
@@ -698,8 +646,7 @@
 
                     <div
                       id="auth-fields"
-                      class="mt-4 w-full max-w-md"
-                    ></div>
+                      class="mt-4 w-full max-w-md"></div>
                   </section>
                 </div>
               </div>
@@ -709,15 +656,12 @@
             <section
               id="response-workspace"
               class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-              aria-label="Response viewer"
-            >
+              aria-label="Response viewer">
               <!-- Response header -->
               <div
-                class="flex shrink-0 flex-col gap-2 border-b border-border bg-surface px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4"
-              >
+                class="flex shrink-0 flex-col gap-2 border-b border-border bg-surface px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
                 <div
-                  class="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3"
-                >
+                  class="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
                   <h2 class="text-sm font-semibold">
                     Response
                   </h2>
@@ -725,22 +669,19 @@
                   <span
                     id="response-status"
                     class="hidden rounded-full px-2 py-0.5 text-[11px] font-medium"
-                    aria-live="polite"
-                  >
+                    aria-live="polite">
                     200 OK
                   </span>
 
                   <span
                     id="response-duration"
-                    class="hidden text-[11px] text-muted-foreground"
-                  >
+                    class="hidden text-[11px] text-muted-foreground">
                     184 ms
                   </span>
 
                   <span
                     id="response-size"
-                    class="hidden text-[11px] text-muted-foreground"
-                  >
+                    class="hidden text-[11px] text-muted-foreground">
                     1.2 KB
                   </span>
                 </div>
@@ -750,13 +691,11 @@
                     id="copy-response-button"
                     type="button"
                     class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-                    title="Copy response"
-                  >
+                    title="Copy response">
                     <i
                       data-lucide="copy"
                       class="h-3.5 w-3.5"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="hidden sm:inline">
                       Copy
@@ -767,13 +706,11 @@
                     id="download-response-button"
                     type="button"
                     class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-                    title="Download response"
-                  >
+                    title="Download response">
                     <i
                       data-lucide="download"
                       class="h-3.5 w-3.5"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="hidden sm:inline">
                       Download
@@ -784,13 +721,11 @@
                     id="generate-code-button"
                     type="button"
                     class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-                    title="Generate fetch code"
-                  >
+                    title="Generate fetch code">
                     <i
                       data-lucide="code-2"
                       class="h-3.5 w-3.5"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     <span class="hidden sm:inline">
                       Code
@@ -804,8 +739,7 @@
                 id="response-tabs"
                 class="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-surface px-2 sm:px-3"
                 role="tablist"
-                aria-label="Response view"
-              >
+                aria-label="Response view">
                 <button
                   id="response-tab-pretty"
                   type="button"
@@ -813,8 +747,7 @@
                   aria-selected="true"
                   aria-controls="response-panel-pretty"
                   data-response-tab="pretty"
-                  class="response-tab shrink-0 border-b-2 border-primary px-3 py-2 text-xs font-medium text-foreground"
-                >
+                  class="response-tab shrink-0 border-b-2 border-primary px-3 py-2 text-xs font-medium text-foreground">
                   Pretty
                 </button>
 
@@ -825,8 +758,7 @@
                   aria-selected="false"
                   aria-controls="response-panel-raw"
                   data-response-tab="raw"
-                  class="response-tab shrink-0 border-b-2 border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                >
+                  class="response-tab shrink-0 border-b-2 border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground">
                   Raw
                 </button>
 
@@ -837,30 +769,25 @@
                   aria-selected="false"
                   aria-controls="response-panel-headers"
                   data-response-tab="headers"
-                  class="response-tab shrink-0 border-b-2 border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                >
+                  class="response-tab shrink-0 border-b-2 border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground">
                   Headers
                 </button>
               </div>
 
               <!-- Response content -->
               <div
-                class="relative min-h-0 min-w-0 flex-1 overflow-hidden"
-              >
+                class="relative min-h-0 min-w-0 flex-1 overflow-hidden">
                 <!-- Empty state -->
                 <div
                   id="response-empty-state"
-                  class="flex h-full min-h-0 items-center justify-center overflow-auto p-4 sm:p-8"
-                >
+                  class="flex h-full min-h-0 items-center justify-center overflow-auto p-4 sm:p-8">
                   <div class="w-full max-w-sm text-center">
                     <div
-                      class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-surface"
-                    >
+                      class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-surface">
                       <i
                         data-lucide="terminal"
                         class="h-5 w-5 text-muted-foreground"
-                        aria-hidden="true"
-                      ></i>
+                        aria-hidden="true"></i>
                     </div>
 
                     <h3 class="text-sm font-medium">
@@ -868,8 +795,7 @@
                     </h3>
 
                     <p
-                      class="mt-1 text-xs leading-5 text-muted-foreground"
-                    >
+                      class="mt-1 text-xs leading-5 text-muted-foreground">
                       Configure your request and press
                       <span class="font-medium text-foreground">
                         Send
@@ -882,16 +808,13 @@
                 <!-- Loading state -->
                 <div
                   id="response-loading-state"
-                  class="absolute inset-0 z-10 hidden items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
-                >
+                  class="absolute inset-0 z-10 hidden items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
                   <div
-                    class="flex items-center gap-2 text-xs text-muted-foreground"
-                  >
+                    class="flex items-center gap-2 text-xs text-muted-foreground">
                     <i
                       data-lucide="loader-circle"
                       class="h-4 w-4 animate-spin"
-                      aria-hidden="true"
-                    ></i>
+                      aria-hidden="true"></i>
 
                     Sending request...
                   </div>
@@ -903,12 +826,10 @@
                   role="tabpanel"
                   aria-labelledby="response-tab-pretty"
                   data-response-panel="pretty"
-                  class="hidden h-full min-h-0 min-w-0 overflow-auto overscroll-contain"
-                >
+                  class="hidden h-full min-h-0 min-w-0 overflow-auto overscroll-contain">
                   <pre
                     id="response-pretty"
-                    class="m-0 min-w-0 whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 sm:p-4"
-                  ></pre>
+                    class="m-0 min-w-0 whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 sm:p-4"></pre>
                 </section>
 
                 <!-- Raw response -->
@@ -917,12 +838,10 @@
                   role="tabpanel"
                   aria-labelledby="response-tab-raw"
                   data-response-panel="raw"
-                  class="hidden h-full min-h-0 min-w-0 overflow-auto overscroll-contain"
-                >
+                  class="hidden h-full min-h-0 min-w-0 overflow-auto overscroll-contain">
                   <pre
                     id="response-raw"
-                    class="m-0 min-w-0 whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 sm:p-4"
-                  ></pre>
+                    class="m-0 min-w-0 whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 sm:p-4"></pre>
                 </section>
 
                 <!-- Response headers -->
@@ -931,12 +850,10 @@
                   role="tabpanel"
                   aria-labelledby="response-tab-headers"
                   data-response-panel="headers"
-                  class="hidden h-full min-h-0 min-w-0 overflow-auto overscroll-contain p-3 sm:p-4"
-                >
+                  class="hidden h-full min-h-0 min-w-0 overflow-auto overscroll-contain p-3 sm:p-4">
                   <div
                     id="response-headers-list"
-                    class="min-w-0 max-w-full overflow-x-auto rounded-md border border-border"
-                  ></div>
+                    class="min-w-0 max-w-full overflow-x-auto rounded-md border border-border"></div>
                 </section>
               </div>
             </section>
@@ -948,18 +865,14 @@
       <div
         id="modal-root"
         class="relative z-50"
-        aria-live="polite"
-      >
+        aria-live="polite">
         <div
           id="code-generator-modal"
-          class="fixed inset-0 hidden items-center justify-center bg-black/50 p-4"
-        >
+          class="fixed inset-0 hidden items-center justify-center bg-black/50 p-4">
           <div
-            class="w-full max-w-3xl overflow-hidden rounded-lg border border-border bg-surface shadow-xl"
-          >
+            class="w-full max-w-3xl overflow-hidden rounded-lg border border-border bg-surface shadow-xl">
             <div
-              class="flex items-center justify-between border-b border-border px-4 py-3"
-            >
+              class="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 class="text-sm font-semibold">
                 Generated Code
               </h2>
@@ -968,21 +881,18 @@
                 id="close-code-generator"
                 type="button"
                 class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-raised hover:text-foreground"
-                aria-label="Close"
-              >
+                aria-label="Close">
                 <i
                   data-lucide="x"
                   class="h-4 w-4"
-                  aria-hidden="true"
-                ></i>
+                  aria-hidden="true"></i>
               </button>
             </div>
 
             <div class="space-y-3 p-4">
               <select
                 id="code-language"
-                class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm"
-              >
+                class="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm">
                 <option value="javascript-fetch">
                   JavaScript Fetch
                 </option>
@@ -1007,20 +917,17 @@
               <textarea
                 id="generated-code"
                 class="min-h-[300px] w-full resize-y rounded-md border border-border bg-background p-3 font-mono text-xs leading-5 outline-none"
-                readonly
-              ></textarea>
+                readonly></textarea>
 
               <div class="flex justify-end">
                 <button
                   id="copy-code"
                   type="button"
-                  class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white transition hover:bg-primary/90"
-                >
+                  class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white transition hover:bg-primary/90">
                   <i
                     data-lucide="copy"
                     class="h-3.5 w-3.5"
-                    aria-hidden="true"
-                  ></i>
+                    aria-hidden="true"></i>
 
                   <span>
                     Copy
@@ -1035,21 +942,18 @@
       <!-- Dropdown root -->
       <div
         id="dropdown-root"
-        class="relative z-40"
-      ></div>
+        class="relative z-40"></div>
 
       <!-- Screen reader announcements -->
       <div
         id="live-region"
         class="sr-only"
         aria-live="polite"
-        aria-atomic="true"
-      ></div>
+        aria-atomic="true"></div>
     </div>
 
     <script
       type="module"
-      src="./src/main.js"
-    ></script>
+      src="./src/main.js"></script>
   </body>
 </html>
