@@ -1,0 +1,684 @@
+/* =========================================================
+   Endpoint — Component Theme
+   Dark: Deep Navy
+   Light: Pastel Baby Blue
+   ========================================================= */
+
+
+/* =========================================================
+   Theme Variables
+   ========================================================= */
+
+body {
+  --bg: #07111f;
+  --panel: #0b1728;
+  --panel2: #0f1d31;
+  --panel3: #14243a;
+
+  --line: #1d3048;
+  --line-strong: #2c4563;
+
+  --muted: #8195ad;
+  --text: #eef6ff;
+  --text-soft: #c1d1e3;
+
+  --input: #091628;
+
+  --hover: #152941;
+  --hover-strong: #1b3551;
+  --active: #173451;
+
+  --accent: #8ecbff;
+  --accent-strong: #66b8f0;
+  --accent-soft: rgba(142, 203, 255, 0.12);
+  --accent-border: rgba(142, 203, 255, 0.34);
+  --accent-contrast: #07111f;
+
+  --danger: #ff8999;
+  --warning: #f6d58a;
+  --info: #8ecbff;
+
+  --success: #86e3ba;
+
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.30);
+}
+
+
+/* =========================================================
+   Light Theme — Pastel Baby Blue
+   ========================================================= */
+
+body[data-theme="light"],
+body.light {
+  --bg: #eef7ff;
+  --panel: #ffffff;
+  --panel2: #f7fbff;
+  --panel3: #e8f3fc;
+
+  --line: #c9ddec;
+  --line-strong: #a9c9df;
+
+  --muted: #71879b;
+  --text: #19324a;
+  --text-soft: #405c75;
+
+  --input: #ffffff;
+
+  --hover: #eaf5fd;
+  --hover-strong: #dceefa;
+  --active: #d9edfb;
+
+  --accent: #5aaee8;
+  --accent-strong: #419cdd;
+  --accent-soft: rgba(90, 174, 232, 0.14);
+  --accent-border: rgba(90, 174, 232, 0.38);
+  --accent-contrast: #ffffff;
+
+  --danger: #d45d70;
+  --warning: #b78328;
+  --info: #4d9fd8;
+
+  --success: #48a982;
+
+  --shadow: 0 10px 26px rgba(61, 111, 145, 0.12);
+}
+
+
+/* =========================================================
+   Theme Utility Classes
+   ========================================================= */
+
+.bg-shell {
+  background: var(--bg);
+}
+
+.bg-panel {
+  background: var(--panel);
+}
+
+.bg-panel2 {
+  background: var(--panel2);
+}
+
+.bg-panel3 {
+  background: var(--panel3);
+}
+
+.border-line {
+  border-color: var(--line);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.text-main {
+  color: var(--text);
+}
+
+.text-soft {
+  color: var(--text-soft);
+}
+
+
+/* =========================================================
+   Inputs
+   ========================================================= */
+
+.input {
+  background: var(--input);
+  border: 1px solid var(--line);
+  color: var(--text);
+  outline: none;
+
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.input:hover {
+  border-color: var(--line-strong);
+}
+
+.input:focus,
+.input:focus-visible {
+  border-color: var(--accent);
+
+  box-shadow:
+    0 0 0 2px var(--accent-soft);
+
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+
+/* Native form controls */
+
+select,
+input,
+textarea {
+  color: var(--text);
+}
+
+select {
+  background-color: var(--input);
+}
+
+option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+
+.btn {
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+
+  border-radius: 7px;
+
+  padding: 0.42rem 0.7rem;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.12s ease;
+}
+
+.btn:hover {
+  border-color: var(--line-strong);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.btn:active {
+  background: var(--hover-strong);
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: none;
+
+  border-color: var(--accent);
+
+  box-shadow:
+    0 0 0 2px var(--accent-soft);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* =========================================================
+   Primary Button
+   ========================================================= */
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+
+  box-shadow:
+    0 2px 8px rgba(90, 174, 232, 0.12);
+}
+
+.btn-primary:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--accent-contrast);
+}
+
+.btn-primary:active {
+  background: var(--accent-strong);
+}
+
+
+/* =========================================================
+   Danger Button
+   ========================================================= */
+
+.btn-danger {
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: color-mix(
+    in srgb,
+    var(--danger) 10%,
+    var(--panel2)
+  );
+
+  border-color: color-mix(
+    in srgb,
+    var(--danger) 35%,
+    var(--line)
+  );
+
+  color: var(--danger);
+}
+
+
+/* =========================================================
+   Ghost Button
+   ========================================================= */
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-soft);
+}
+
+.btn-ghost:hover {
+  background: var(--hover);
+  border-color: transparent;
+  color: var(--text);
+}
+
+
+/* =========================================================
+   Icon Button
+   ========================================================= */
+
+.iconbtn {
+  width: 30px;
+  height: 30px;
+
+  padding: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 6px;
+}
+
+
+/* =========================================================
+   Request / Response Tabs
+   ========================================================= */
+
+.tab {
+  height: 34px;
+
+  border: 0;
+  border-bottom: 2px solid transparent;
+
+  color: var(--muted);
+  background: transparent;
+
+  padding: 0 11px;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  white-space: nowrap;
+
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.tab:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tab.active {
+  background: var(--active);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+
+/* =========================================================
+   HTTP Method Badges
+   ========================================================= */
+
+.method {
+  font: 600 12px "JetBrains Mono", monospace;
+
+  border-radius: 5px;
+
+  padding: 3px 6px;
+}
+
+
+/* GET — blue/green success tone */
+
+.method-GET {
+  color: var(--success);
+  background: rgba(134, 227, 186, 0.11);
+}
+
+
+/* POST — baby blue */
+
+.method-POST {
+  color: var(--info);
+  background: rgba(142, 203, 255, 0.12);
+}
+
+
+/* PUT / PATCH — amber */
+
+.method-PUT,
+.method-PATCH {
+  color: var(--warning);
+  background: rgba(246, 213, 138, 0.12);
+}
+
+
+/* DELETE — red */
+
+.method-DELETE {
+  color: var(--danger);
+  background: rgba(255, 137, 153, 0.12);
+}
+
+
+/* HEAD / OPTIONS / TRACE — lavender */
+
+.method-HEAD,
+.method-OPTIONS,
+.method-TRACE {
+  color: #b8a4ff;
+  background: rgba(184, 164, 255, 0.12);
+}
+
+
+/* =========================================================
+   Keyboard Shortcut Badges
+   ========================================================= */
+
+.kbd {
+  border: 1px solid var(--line);
+  background: var(--panel2);
+
+  border-radius: 4px;
+
+  padding: 1px 5px;
+
+  font: 11px "JetBrains Mono", monospace;
+
+  color: var(--muted);
+}
+
+
+/* =========================================================
+   Status Badges
+   ========================================================= */
+
+.badge {
+  border: 1px solid var(--line);
+
+  background: var(--panel2);
+
+  border-radius: 999px;
+
+  padding: 2px 7px;
+
+  font: 11px "JetBrains Mono", monospace;
+}
+
+.status-2 {
+  color: var(--success);
+  border-color: rgba(134, 227, 186, 0.30);
+}
+
+.status-3 {
+  color: var(--warning);
+  border-color: rgba(246, 213, 138, 0.30);
+}
+
+.status-4,
+.status-5 {
+  color: var(--danger);
+  border-color: rgba(255, 137, 153, 0.30);
+}
+
+
+/* =========================================================
+   Toast
+   ========================================================= */
+
+.toast {
+  animation: toast 0.18s ease-out;
+
+  background: var(--panel);
+  color: var(--text);
+
+  border: 1px solid var(--line);
+
+  box-shadow: var(--shadow);
+}
+
+@keyframes toast {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/* =========================================================
+   Modal
+   ========================================================= */
+
+.modal-backdrop {
+  background: rgba(5, 15, 28, 0.60);
+
+  backdrop-filter: blur(5px);
+}
+
+
+/* =========================================================
+   Command Palette
+   ========================================================= */
+
+.command-item {
+  color: var(--text-soft);
+
+  border: 1px solid transparent;
+
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.command-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.command-item.active {
+  background: var(--accent-soft);
+
+  border-color: var(--accent-border);
+
+  color: var(--text);
+}
+
+
+/* =========================================================
+   Sidebar Tree
+   ========================================================= */
+
+.tree-item {
+  border-left: 2px solid transparent;
+
+  color: var(--text-soft);
+
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.tree-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tree-item.active {
+  background: var(--active);
+
+  color: var(--text);
+
+  border-left-color: var(--accent);
+}
+
+
+/* =========================================================
+   Horizontal Resizer
+   ========================================================= */
+
+.resizer-h {
+  height: 5px;
+
+  cursor: row-resize;
+
+  background: transparent;
+
+  transition:
+    background-color 0.15s ease;
+}
+
+.resizer-h:hover {
+  background: var(--accent);
+}
+
+
+/* =========================================================
+   Vertical Splitter
+   ========================================================= */
+
+.splitter {
+  width: 5px;
+
+  cursor: col-resize;
+
+  background: transparent;
+
+  transition:
+    background-color 0.15s ease;
+}
+
+.splitter:hover,
+.splitter.dragging {
+  background: var(--accent);
+}
+
+
+/* =========================================================
+   Scrollbars
+   ========================================================= */
+
+.scroll {
+  scrollbar-width: thin;
+
+  scrollbar-color:
+    var(--line-strong)
+    transparent;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 5px;
+}
+
+.scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+
+/* =========================================================
+   Selection
+   ========================================================= */
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+
+/* =========================================================
+   Disabled Elements
+   ========================================================= */
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   Focus Accessibility
+   ========================================================= */
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+
+  box-shadow:
+    0 0 0 2px var(--accent-soft);
+
+  border-color: var(--accent);
+}
+
+
+/* =========================================================
+   Light Theme Modal Adjustment
+   ========================================================= */
+
+body[data-theme="light"] .modal-backdrop,
+body.light .modal-backdrop {
+  background: rgba(39, 83, 112, 0.28);
+}
+
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .desktop-sidebar {
+    box-shadow: var(--shadow);
+  }
+}

@@ -1,0 +1,628 @@
+/* =========================================================
+   Endpoint — Navy / Baby Blue Theme
+   Dark: deep navy developer workspace
+   Light: soft pastel baby-blue workspace
+   ========================================================= */
+
+:root {
+  /* ---------- Dark Theme ---------- */
+  --bg: #07111f;
+  --surface: #0b1728;
+  --surface-2: #0f1d31;
+  --surface-3: #14243a;
+  --surface-hover: #182b43;
+
+  --border: #1d3048;
+  --border-hover: #2c4563;
+
+  --text: #eef6ff;
+  --text-secondary: #c1d1e3;
+  --text-muted: #8195ad;
+
+  /* Primary blue */
+  --accent: #8ecbff;
+  --accent-hover: #a9d9ff;
+  --accent-soft: rgba(142, 203, 255, 0.12);
+  --accent-border: rgba(142, 203, 255, 0.34);
+  --accent-contrast: #07111f;
+
+  /* Semantic colors */
+  --success: #86e3ba;
+  --warning: #f6d58a;
+  --danger: #ff8999;
+  --info: #8ecbff;
+
+  --input: #091628;
+
+  --active: #173451;
+  --hover: #152941;
+  --hover-strong: #1b3551;
+
+  --panel: #0b1728;
+  --panel-2: #0f1d31;
+  --panel-3: #14243a;
+  --line: #1d3048;
+  --line-strong: #2c4563;
+
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.30);
+  --focus-ring: rgba(142, 203, 255, 0.20);
+
+  color-scheme: dark;
+}
+
+
+/* =========================================================
+   Light Theme — Pastel Baby Blue
+   Supports:
+   body[data-theme="light"]
+   body.light
+   ========================================================= */
+
+body[data-theme="light"],
+html[data-theme="light"],
+body.light,
+html.light {
+  --bg: #eef7ff;
+
+  --surface: #ffffff;
+  --surface-2: #f7fbff;
+  --surface-3: #e8f3fc;
+  --surface-hover: #deeffb;
+
+  --border: #c9ddec;
+  --border-hover: #a9c9df;
+
+  --text: #19324a;
+  --text-secondary: #405c75;
+  --text-muted: #71879b;
+
+  /* Baby blue primary */
+  --accent: #5aaee8;
+  --accent-hover: #419cdd;
+  --accent-soft: rgba(90, 174, 232, 0.14);
+  --accent-border: rgba(90, 174, 232, 0.38);
+  --accent-contrast: #ffffff;
+
+  /* Semantic colors */
+  --success: #48a982;
+  --warning: #b78328;
+  --danger: #d45d70;
+  --info: #4d9fd8;
+
+  --input: #ffffff;
+
+  --active: #d9edfb;
+  --hover: #eaf5fd;
+  --hover-strong: #dceefa;
+
+  --panel: #ffffff;
+  --panel-2: #f7fbff;
+  --panel-3: #e8f3fc;
+  --line: #c9ddec;
+  --line-strong: #a9c9df;
+
+  --shadow: 0 10px 26px rgba(61, 111, 145, 0.12);
+  --focus-ring: rgba(90, 174, 232, 0.20);
+
+  color-scheme: light;
+}
+
+
+/* =========================================================
+   Global Theme Application
+   ========================================================= */
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  background-color: var(--bg);
+}
+
+
+/* Panels / surfaces */
+
+.bg-shell {
+  background: var(--bg) !important;
+}
+
+.bg-panel {
+  background: var(--surface) !important;
+}
+
+.bg-panel2 {
+  background: var(--surface-2) !important;
+}
+
+
+/* Borders */
+
+.border-line {
+  border-color: var(--border) !important;
+}
+
+
+/* Typography */
+
+.text-main {
+  color: var(--text) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+
+/* =========================================================
+   Inputs
+   ========================================================= */
+
+.input,
+input,
+select,
+textarea {
+  background-color: var(--input);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.input:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 0.42rem 0.72rem;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease,
+    transform 0.14s ease;
+}
+
+.btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--accent-contrast);
+}
+
+.btn-danger {
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 137, 153, 0.10);
+  border-color: rgba(255, 137, 153, 0.30);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+
+/* =========================================================
+   Icon Buttons
+   ========================================================= */
+
+.iconbtn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+
+/* =========================================================
+   Tabs
+   ========================================================= */
+
+.tab {
+  height: 34px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    color 0.14s ease,
+    background 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.tab.active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+
+/* =========================================================
+   HTTP Method Badges
+   ========================================================= */
+
+.method {
+  font: 600 12px "JetBrains Mono", monospace;
+  border-radius: 5px;
+  padding: 3px 6px;
+}
+
+.method-GET {
+  color: #70d6ad;
+  background: rgba(112, 214, 173, 0.12);
+}
+
+.method-POST {
+  color: #8ecbff;
+  background: rgba(142, 203, 255, 0.14);
+}
+
+.method-PUT,
+.method-PATCH {
+  color: #f4cc72;
+  background: rgba(244, 204, 114, 0.13);
+}
+
+.method-DELETE {
+  color: #ff8999;
+  background: rgba(255, 137, 153, 0.13);
+}
+
+.method-HEAD,
+.method-OPTIONS,
+.method-TRACE {
+  color: #b8a4ff;
+  background: rgba(184, 164, 255, 0.13);
+}
+
+
+/* =========================================================
+   Keyboard Badges
+   ========================================================= */
+
+.kbd {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font: 11px "JetBrains Mono", monospace;
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   Status Badges
+   ========================================================= */
+
+.badge {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font: 11px "JetBrains Mono", monospace;
+}
+
+.status-2 {
+  color: var(--success);
+  border-color: rgba(134, 227, 186, 0.35);
+}
+
+.status-3 {
+  color: var(--warning);
+  border-color: rgba(246, 213, 138, 0.35);
+}
+
+.status-4,
+.status-5 {
+  color: var(--danger);
+  border-color: rgba(255, 137, 153, 0.35);
+}
+
+
+/* =========================================================
+   Tree / Sidebar Items
+   ========================================================= */
+
+.tree-item {
+  border-left: 2px solid transparent;
+  color: var(--text-secondary);
+}
+
+.tree-item:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.tree-item.active {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+
+
+/* =========================================================
+   Command Palette
+   ========================================================= */
+
+.command-item {
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+}
+
+.command-item:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.command-item.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+
+
+/* =========================================================
+   Splitters / Resizers
+   ========================================================= */
+
+.splitter {
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.splitter:hover,
+.splitter.dragging {
+  background: var(--accent);
+}
+
+.resizer-h {
+  height: 5px;
+  cursor: row-resize;
+  background: transparent;
+}
+
+.resizer-h:hover {
+  background: var(--accent);
+}
+
+
+/* =========================================================
+   Modal / Overlay
+   ========================================================= */
+
+.modal-backdrop {
+  background: rgba(5, 15, 28, 0.60);
+  backdrop-filter: blur(5px);
+}
+
+
+/* =========================================================
+   Toasts
+   ========================================================= */
+
+.toast {
+  animation: toast 0.18s ease-out;
+}
+
+@keyframes toast {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/* =========================================================
+   Code / JSON
+   ========================================================= */
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.code-editor {
+  font: 13px/1.55 "JetBrains Mono", monospace;
+  tab-size: 2;
+}
+
+.json-key {
+  color: #75bfff;
+}
+
+.json-string {
+  color: #e6a6a6;
+}
+
+.json-number {
+  color: #a8d99a;
+}
+
+.json-bool {
+  color: #b7a7ff;
+}
+
+.json-null {
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   Scrollbars
+   ========================================================= */
+
+.scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 5px;
+}
+
+.scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+
+/* =========================================================
+   Selection
+   ========================================================= */
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .desktop-sidebar {
+    position: fixed;
+    z-index: 50;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .desktop-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .mobile-overlay {
+    display: block;
+  }
+
+  .request-response {
+    grid-template-rows:
+      minmax(420px, 1fr)
+      minmax(320px, 1fr) !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .mobile-overlay {
+    display: none !important;
+  }
+}
+
+/* =========================================================
+   Font Awesome Icons
+   ========================================================= */
+
+.fa-solid,
+.fa-regular,
+.fa-brands {
+  width: 1em;
+  min-width: 1em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn > i,
+.iconbtn > i,
+.tab > i,
+.tree-item > i {
+  flex-shrink: 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconbtn .fa-solid,
+.iconbtn .fa-regular {
+  font-size: 13px;
+}
