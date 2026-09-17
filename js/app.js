@@ -64,7 +64,7 @@ function shell() {
       <header class="h-12 shrink-0 border-b border-line flex items-center px-3 gap-3 bg-panel">
 
         <button
-          class="btn iconbtn"
+          class="btn iconbtn p-3"
           id="sidebar-toggle"
           title="Toggle sidebar"
         >
@@ -358,7 +358,7 @@ function workspace() {
       <!-- Request URL bar -->
       <div class="p-3 border-b border-line">
 
-        <div class="flex gap-2">
+        <div class="request-url-bar flex gap-2 flex-wrap">
 
           <select
             id="method"
@@ -443,9 +443,9 @@ function workspace() {
         class="flex-1 min-h-0 grid request-response"
         style="
           grid-template-rows:
-            ${state.ui.requestSplit}%
+            ${state.ui.requestSplit}fr
             8px
-            ${100 - state.ui.requestSplit}%;
+            ${100 - state.ui.requestSplit}fr;
         "
       >
 
@@ -866,7 +866,6 @@ function bindShell() {
 /* SPLITTER */
 function bindSplitter() {
   const split = document.querySelector("#horizontal-split");
-
   const container = document.querySelector(".request-response");
 
   if (!split || !container) {
@@ -876,43 +875,60 @@ function bindSplitter() {
   let dragging = false;
 
   const update = (event) => {
-    if (!dragging) return;
+    if (!dragging) {
+      return;
+    }
 
     const rect = container.getBoundingClientRect();
 
-    if (!rect.height) return;
+    if (!rect.height) {
+      return;
+    }
+
+    const percentage =
+      ((event.clientY - rect.top) / rect.height) * 100;
 
     state.ui.requestSplit = Math.max(
       20,
-      Math.min(80, ((event.clientY - rect.top) / rect.height) * 100),
+      Math.min(80, percentage)
     );
 
-    container.style.gridTemplateRows = `${state.ui.requestSplit}% 8px ${
-      100 - state.ui.requestSplit
-    }%`;
+    container.style.gridTemplateRows = `
+      ${state.ui.requestSplit}fr
+      8px
+      ${100 - state.ui.requestSplit}fr
+    `;
   };
 
   const stop = () => {
-    if (!dragging) return;
+    if (!dragging) {
+      return;
+    }
 
     dragging = false;
 
+    split.classList.remove("dragging");
     document.body.classList.remove("resizing");
 
     persist();
   };
 
-  split.addEventListener("mousedown", (event) => {
+  split.addEventListener("pointerdown", (event) => {
     event.preventDefault();
 
     dragging = true;
 
+    split.classList.add("dragging");
     document.body.classList.add("resizing");
+
+    split.setPointerCapture?.(event.pointerId);
   });
 
-  window.addEventListener("mousemove", update);
+  split.addEventListener("pointermove", update);
 
-  window.addEventListener("mouseup", stop);
+  split.addEventListener("pointerup", stop);
+  split.addEventListener("pointercancel", stop);
+  split.addEventListener("lostpointercapture", stop);
 }
 
 /* SEND REQUEST */

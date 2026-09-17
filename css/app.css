@@ -1,11 +1,5 @@
-/* =========================================================
-   Endpoint — Navy / Baby Blue Theme
-   Dark: deep navy developer workspace
-   Light: soft pastel baby-blue workspace
-   ========================================================= */
-
 :root {
-  /* ---------- Dark Theme ---------- */
+  /* Dark Theme */
   --bg: #07111f;
   --surface: #0b1728;
   --surface-2: #0f1d31;
@@ -51,13 +45,7 @@
 }
 
 
-/* =========================================================
-   Light Theme — Pastel Baby Blue
-   Supports:
-   body[data-theme="light"]
-   body.light
-   ========================================================= */
-
+/* Light Theme */
 body[data-theme="light"],
 html[data-theme="light"],
 body.light,
@@ -108,10 +96,7 @@ html.light {
 }
 
 
-/* =========================================================
-   Global Theme Application
-   ========================================================= */
-
+/* Global Theme Application */
 html,
 body {
   background: var(--bg);
@@ -124,7 +109,6 @@ body {
 
 
 /* Panels / surfaces */
-
 .bg-shell {
   background: var(--bg) !important;
 }
@@ -139,14 +123,12 @@ body {
 
 
 /* Borders */
-
 .border-line {
   border-color: var(--border) !important;
 }
 
 
 /* Typography */
-
 .text-main {
   color: var(--text) !important;
 }
@@ -156,10 +138,7 @@ body {
 }
 
 
-/* =========================================================
-   Inputs
-   ========================================================= */
-
+/* Inputs */
 .input,
 input,
 select,
@@ -184,16 +163,13 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Buttons
-   ========================================================= */
-
+/* Buttons */
 .btn {
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
   border-radius: 7px;
-  padding: 0.42rem 0.72rem;
+  padding: 0.92rem 0.7rem;
   font-size: 12px;
   font-weight: 600;
   transition:
@@ -252,10 +228,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Icon Buttons
-   ========================================================= */
-
+/* Icon Buttons */
 .iconbtn {
   width: 30px;
   height: 30px;
@@ -267,10 +240,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Tabs
-   ========================================================= */
-
+/* Tabs */
 .tab {
   height: 34px;
   border-bottom: 2px solid transparent;
@@ -296,10 +266,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   HTTP Method Badges
-   ========================================================= */
-
+/* HTTP Method Badges */
 .method {
   font: 600 12px "JetBrains Mono", monospace;
   border-radius: 5px;
@@ -335,10 +302,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Keyboard Badges
-   ========================================================= */
-
+/* Keyboard Badges */
 .kbd {
   border: 1px solid var(--border);
   background: var(--surface-2);
@@ -349,10 +313,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Status Badges
-   ========================================================= */
-
+/* Status Badges */
 .badge {
   border: 1px solid var(--border);
   background: var(--surface-2);
@@ -378,10 +339,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Tree / Sidebar Items
-   ========================================================= */
-
+/* Tree / Sidebar Items */
 .tree-item {
   border-left: 2px solid transparent;
   color: var(--text-secondary);
@@ -399,10 +357,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Command Palette
-   ========================================================= */
-
+/* Command Palette */
 .command-item {
   border: 1px solid transparent;
   color: var(--text-secondary);
@@ -420,10 +375,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Splitters / Resizers
-   ========================================================= */
-
+/* Splitters / Resizers */
 .splitter {
   width: 5px;
   cursor: col-resize;
@@ -447,20 +399,14 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Modal / Overlay
-   ========================================================= */
-
+/* Modal / Overlay */
 .modal-backdrop {
   background: rgba(5, 15, 28, 0.60);
   backdrop-filter: blur(5px);
 }
 
 
-/* =========================================================
-   Toasts
-   ========================================================= */
-
+/* Toasts */
 .toast {
   animation: toast 0.18s ease-out;
 }
@@ -478,10 +424,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Code / JSON
-   ========================================================= */
-
+/* Code / JSON */
 .mono {
   font-family: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -512,10 +455,7 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Scrollbars
-   ========================================================= */
-
+/* Scrollbars */
 .scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--border-hover) transparent;
@@ -540,28 +480,22 @@ textarea::placeholder {
 }
 
 
-/* =========================================================
-   Selection
-   ========================================================= */
-
+/* Selection */
 ::selection {
   background: var(--accent);
   color: var(--accent-contrast);
 }
 
 
-/* =========================================================
-   Mobile
-   ========================================================= */
-
+/* Mobile */
 @media (max-width: 900px) {
   .desktop-sidebar {
     position: fixed;
-    z-index: 50;
+    top: 3rem;
     left: 0;
-    top: 0;
     bottom: 0;
-    width: 280px;
+    width: min(18rem, 85vw);
+    z-index: 50;
     transform: translateX(-100%);
     transition: transform 0.2s ease;
   }
@@ -571,7 +505,7 @@ textarea::placeholder {
   }
 
   .mobile-overlay {
-    display: block;
+    z-index: 40;
   }
 
   .request-response {
@@ -587,10 +521,7 @@ textarea::placeholder {
   }
 }
 
-/* =========================================================
-   Font Awesome Icons
-   ========================================================= */
-
+/* Font Awesome Icons */
 .fa-solid,
 .fa-regular,
 .fa-brands {
@@ -625,4 +556,403 @@ textarea::placeholder {
 .iconbtn .fa-solid,
 .iconbtn .fa-regular {
   font-size: 13px;
+}
+
+/* =========================================================
+   RESPONSIVE LAYOUT
+   ========================================================= */
+
+/* Prevent accidental horizontal scrolling */
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+/* Main application shell */
+#app > * {
+  min-width: 0;
+}
+
+/* Header */
+header {
+  min-width: 0;
+}
+
+header .font-bold {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Sidebar */
+.desktop-sidebar {
+  min-width: 0;
+}
+
+/* Request/response grid */
+.request-response {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Keep grid children from forcing the grid wider/taller */
+.request-response > section,
+.request-response > .resizer-h {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Request and response content */
+#request-section,
+#response-section,
+#request-pane {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Horizontal splitter */
+.resizer-h {
+  height: 8px;
+  min-height: 8px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  touch-action: none;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.resizer-h:hover,
+.resizer-h.dragging {
+  background: var(--accent);
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .desktop-sidebar {
+    position: fixed;
+    top: 3rem;
+    left: 0;
+    bottom: 0;
+    width: min(18rem, 85vw);
+    max-width: 85vw;
+    z-index: 50;
+
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+
+    box-shadow: var(--shadow);
+  }
+
+  .desktop-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .mobile-overlay {
+    position: fixed;
+    inset: 3rem 0 0;
+    z-index: 40;
+  }
+
+  /*
+   * The splitter is 8px tall. Using fr here prevents the
+   * old percentage + 8px overflow problem.
+   */
+  .request-response {
+    grid-template-rows:
+      minmax(240px, 1fr)
+      8px
+      minmax(220px, 1fr) !important;
+  }
+
+  /* Don't let the URL controls force horizontal scrolling */
+  #url {
+    min-width: 0;
+  }
+
+  /* Settings */
+  .max-w-3xl {
+    max-width: 100%;
+  }
+}
+
+/* =========================================================
+   PHONE
+   ========================================================= */
+
+@media (max-width: 640px) {
+  /* Header */
+  header {
+    height: 3rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    gap: 0.4rem;
+  }
+
+  header .font-bold {
+    font-size: 12px;
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  header .font-bold .text-muted {
+    display: none;
+  }
+
+  header .h-5 {
+    display: none;
+  }
+
+  #env-switch {
+    max-width: 7rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  header [data-action="global-search"] {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+
+  header [data-action="global-search"] {
+    font-size: 0;
+  }
+
+  header [data-action="global-search"] i {
+    font-size: 13px;
+    padding-left: 0 !important;
+  }
+
+  header [data-open="settings"] {
+    display: none;
+  }
+
+  /* Sidebar */
+  .desktop-sidebar {
+    width: min(18rem, 88vw);
+    max-width: 88vw;
+  }
+
+  /* Request tabs */
+  .request-tabs,
+  .h-10 {
+    min-width: 0;
+  }
+
+  /* URL bar becomes two rows */
+  .request-url-bar {
+    padding: 0.6rem;
+  }
+
+  /* The actual wrapper in workspace() */
+  #method {
+    width: 5.5rem;
+    flex: 0 0 5.5rem;
+  }
+
+  #send {
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+    flex: 0 0 auto;
+  }
+
+  /*
+   * Allow URL to occupy the full second row.
+   * This targets the p-3 wrapper around the URL controls.
+   */
+  #url {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  #method {
+    order: 1;
+  }
+
+  #send {
+    order: 2;
+  }
+
+  /* Resolved URL */
+  #url + button {
+    min-width: 0;
+  }
+
+  /* Request/response */
+  .request-response {
+    grid-template-rows:
+      minmax(280px, 1fr)
+      8px
+      minmax(240px, 1fr) !important;
+  }
+
+  /* Settings pages */
+  .h-full.overflow-auto.scroll.p-5 {
+    padding: 1rem;
+  }
+
+  /* Prevent large controls from overflowing */
+  .btn {
+    max-width: 100%;
+  }
+
+  /* Command palette */
+  #palette {
+    padding-top: 5rem;
+  }
+
+  #palette > div {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 6rem);
+  }
+
+  /* cURL modal */
+  #curl-modal {
+    padding: 0.5rem;
+  }
+
+  #curl-modal > div {
+    width: 100%;
+    max-height: calc(100dvh - 1rem);
+    display: flex;
+    flex-direction: column;
+  }
+
+  #curl-input {
+    min-height: 180px;
+    max-height: 55dvh;
+  }
+}
+
+/* =========================================================
+   VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 420px) {
+  header .font-bold {
+    max-width: 6rem;
+  }
+
+  #env-switch {
+    max-width: 5.5rem;
+  }
+
+  #method {
+    width: 5rem;
+    flex-basis: 5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  #send {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
+  #send i {
+    display: none;
+  }
+
+  .request-response {
+    grid-template-rows:
+      minmax(240px, 1fr)
+      8px
+      minmax(200px, 1fr) !important;
+  }
+}
+
+/* =========================================================
+   DESKTOP
+   ========================================================= */
+
+@media (min-width: 901px) {
+  .mobile-overlay {
+    display: none !important;
+  }
+}
+
+/* =========================================================
+   ACCESSIBILITY / REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+body.resizing {
+  cursor: row-resize;
+  user-select: none;
+}
+
+@media (max-width: 640px) {
+  .request-url-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .request-url-bar #method {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .request-url-bar #send {
+    width: auto;
+  }
+
+  .request-url-bar #url {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .mobile-overlay {
+    position: fixed;
+    top: 3rem;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.6);
+  }
+}
+
+#request-pane,
+#response-section {
+  overflow: hidden;
+}
+
+#request-pane > *,
+#response-section > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+pre,
+.code-editor,
+textarea {
+  max-width: 100%;
+}
+
+table {
+  max-width: 100%;
 }
