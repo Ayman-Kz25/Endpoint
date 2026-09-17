@@ -1,1 +1,16 @@
-export const routes={workspace:'workspace',history:'history',collections:'collections',environments:'environments',code:'code',settings:'settings',shortcuts:'shortcuts'};export function go(v){history.replaceState({},'',`#${v}`);window.dispatchEvent(new HashChangeEvent('hashchange'))}export function current(){return location.hash.slice(1)||'workspace'}
+export const routes = {
+  workspace: "workspace",
+  history: "history",
+  collections: "collections",
+  environments: "environments",
+  code: "code",
+  settings: "settings",
+  shortcuts: "shortcuts",
+};
+export function go(v) {
+  history.replaceState({}, "", `#${v}`);
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+}
+export function current() {
+  return location.hash.slice(1) || "workspace";
+}

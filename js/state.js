@@ -1,25 +1,25 @@
-import { deepClone, uid } from './utils.js';
-import { storage } from './storage.js';
+import { deepClone, uid } from "./utils.js";
+import { storage } from "./storage.js";
 
 const data = storage.load();
 
 const blank = () => ({
-  method: 'GET',
-  url: '',
+  method: "GET",
+  url: "",
   params: [],
   headers: [],
   auth: {
-    type: 'none'
+    type: "none",
   },
   body: {
-    type: 'none',
-    content: ''
+    type: "none",
+    content: "",
   },
   scripts: {
-    pre: '',
-    post: ''
+    pre: "",
+    post: "",
   },
-  mode: 'live'
+  mode: "live",
 });
 
 export const state = {
@@ -32,32 +32,31 @@ export const state = {
 
   settings: Object.assign(
     {
-      theme: 'dark',
+      theme: "dark",
       historyEnabled: true,
       maxHistory: 100,
-      activeEnvironment: ''
+      activeEnvironment: "",
     },
-    data.settings || {}
+    data.settings || {},
   ),
 
   ui: {
     sidebar: true,
-    requestTab: 'params',
-    responseTab: 'body',
-    globalSearch: '',
+    requestTab: "params",
+    responseTab: "body",
+    globalSearch: "",
     commandOpen: false,
     modal: null,
     loading: false,
-    requestSplit: 52
+    requestSplit: 52,
   },
 
   tabs: [],
   activeTab: null,
 
   undo: [],
-  redo: []
+  redo: [],
 };
-
 
 /* ---------------------------------------------------------
    Restore workspace
@@ -70,46 +69,35 @@ if (
 ) {
   state.tabs = data.workspace.tabs;
 
-  state.activeTab =
-    data.workspace.activeTab ||
-    state.tabs[0].id;
+  state.activeTab = data.workspace.activeTab || state.tabs[0].id;
 
-  const active =
-    state.tabs.find(
-      tab => tab.id === state.activeTab
-    );
+  const active = state.tabs.find((tab) => tab.id === state.activeTab);
 
   if (active) {
-    state.request =
-      deepClone(active.request || blank());
+    state.request = deepClone(active.request || blank());
 
-    state.response =
-      deepClone(active.response || null);
+    state.response = deepClone(active.response || null);
   }
-
 } else {
-
-  const id = uid('tab');
+  const id = uid("tab");
 
   state.tabs = [
     {
       id,
-      name: 'New Request',
+      name: "New Request",
       request: blank(),
       response: null,
       savedRef: null,
-      dirty: false
-    }
+      dirty: false,
+    },
   ];
 
   state.activeTab = id;
 
-  state.request =
-    deepClone(state.tabs[0].request);
+  state.request = deepClone(state.tabs[0].request);
 
   state.response = null;
 }
-
 
 /* ---------------------------------------------------------
    Events
@@ -130,27 +118,18 @@ export function emit() {
     try {
       fn(state);
     } catch (error) {
-      console.error(
-        'Endpoint state listener failed:',
-        error
-      );
+      console.error("Endpoint state listener failed:", error);
     }
   }
 }
-
 
 /* ---------------------------------------------------------
    Request state
 --------------------------------------------------------- */
 
-export function setRequest(
-  patch,
-  { history = true } = {}
-) {
+export function setRequest(patch, { history = true } = {}) {
   if (history) {
-    state.undo.push(
-      deepClone(state.request)
-    );
+    state.undo.push(deepClone(state.request));
 
     if (state.undo.length > 100) {
       state.undo.shift();
@@ -159,25 +138,16 @@ export function setRequest(
 
   state.redo = [];
 
-  Object.assign(
-    state.request,
-    patch
-  );
+  Object.assign(state.request, patch);
 
   syncTab();
 
   emit();
 }
 
-
-export function replaceRequest(
-  request,
-  { history = true } = {}
-) {
+export function replaceRequest(request, { history = true } = {}) {
   if (history) {
-    state.undo.push(
-      deepClone(state.request)
-    );
+    state.undo.push(deepClone(state.request));
 
     if (state.undo.length > 100) {
       state.undo.shift();
@@ -186,46 +156,35 @@ export function replaceRequest(
 
   state.redo = [];
 
-  state.request =
-    deepClone(request || blank());
+  state.request = deepClone(request || blank());
 
   syncTab();
 
   emit();
 }
-
 
 /* ---------------------------------------------------------
    Active tab synchronization
 --------------------------------------------------------- */
 
 export function syncTab() {
-  const tab =
-    state.tabs.find(
-      item => item.id === state.activeTab
-    );
+  const tab = state.tabs.find((item) => item.id === state.activeTab);
 
   if (!tab) {
     return;
   }
 
-  tab.request =
-    deepClone(state.request);
+  tab.request = deepClone(state.request);
 
-  tab.response =
-    deepClone(state.response);
+  tab.response = deepClone(state.response);
 }
-
 
 /* ---------------------------------------------------------
    Dirty state
 --------------------------------------------------------- */
 
 export function markDirty(value = true) {
-  const tab =
-    state.tabs.find(
-      item => item.id === state.activeTab
-    );
+  const tab = state.tabs.find((item) => item.id === state.activeTab);
 
   if (tab) {
     tab.dirty = value;
@@ -241,21 +200,14 @@ export function markDirty(value = true) {
   emit();
 }
 
-
 /* ---------------------------------------------------------
    Tabs
 --------------------------------------------------------- */
 
-export function newTab(
-  request = null,
-  name = 'New Request'
-) {
-  const id = uid('tab');
+export function newTab(request = null, name = "New Request") {
+  const id = uid("tab");
 
-  const nextRequest =
-    request
-      ? deepClone(request)
-      : blank();
+  const nextRequest = request ? deepClone(request) : blank();
 
   const tab = {
     id,
@@ -263,15 +215,14 @@ export function newTab(
     request: nextRequest,
     response: null,
     savedRef: null,
-    dirty: false
+    dirty: false,
   };
 
   state.tabs.push(tab);
 
   state.activeTab = id;
 
-  state.request =
-    deepClone(nextRequest);
+  state.request = deepClone(nextRequest);
 
   state.response = null;
 
@@ -281,12 +232,8 @@ export function newTab(
   emit();
 }
 
-
 export function activateTab(id) {
-  const tab =
-    state.tabs.find(
-      item => item.id === id
-    );
+  const tab = state.tabs.find((item) => item.id === id);
 
   if (!tab) {
     return;
@@ -294,11 +241,9 @@ export function activateTab(id) {
 
   state.activeTab = id;
 
-  state.request =
-    deepClone(tab.request || blank());
+  state.request = deepClone(tab.request || blank());
 
-  state.response =
-    deepClone(tab.response || null);
+  state.response = deepClone(tab.response || null);
 
   state.undo = [];
   state.redo = [];
@@ -306,26 +251,16 @@ export function activateTab(id) {
   emit();
 }
 
-
 export function closeTab(id) {
-  const index =
-    state.tabs.findIndex(
-      item => item.id === id
-    );
+  const index = state.tabs.findIndex((item) => item.id === id);
 
   if (index < 0) {
     return;
   }
 
-  const tab =
-    state.tabs[index];
+  const tab = state.tabs[index];
 
-  if (
-    tab.dirty &&
-    !confirm(
-      'This tab has unsaved changes. Close anyway?'
-    )
-  ) {
+  if (tab.dirty && !confirm("This tab has unsaved changes. Close anyway?")) {
     return;
   }
 
@@ -337,17 +272,13 @@ export function closeTab(id) {
   }
 
   if (state.activeTab === id) {
-    const nextIndex =
-      Math.max(0, index - 1);
+    const nextIndex = Math.max(0, index - 1);
 
-    activateTab(
-      state.tabs[nextIndex].id
-    );
+    activateTab(state.tabs[nextIndex].id);
   } else {
     emit();
   }
 }
-
 
 /* ---------------------------------------------------------
    Undo / redo
@@ -358,69 +289,45 @@ export function undo() {
     return;
   }
 
-  state.redo.push(
-    deepClone(state.request)
-  );
+  state.redo.push(deepClone(state.request));
 
-  state.request =
-    state.undo.pop();
+  state.request = state.undo.pop();
 
   syncTab();
   emit();
 }
-
 
 export function redo() {
   if (!state.redo.length) {
     return;
   }
 
-  state.undo.push(
-    deepClone(state.request)
-  );
+  state.undo.push(deepClone(state.request));
 
-  state.request =
-    state.redo.pop();
+  state.request = state.redo.pop();
 
   syncTab();
   emit();
 }
-
 
 /* ---------------------------------------------------------
    Persistence
 --------------------------------------------------------- */
 
 export function persist() {
-  storage.save(
-    'settings',
-    state.settings
-  );
+  storage.save("settings", state.settings);
 
-  storage.save(
-    'environments',
-    state.environments
-  );
+  storage.save("environments", state.environments);
 
-  storage.save(
-    'collections',
-    state.collections
-  );
+  storage.save("collections", state.collections);
 
-  storage.save(
-    'history',
-    state.history
-  );
+  storage.save("history", state.history);
 
-  storage.save(
-    'workspace',
-    {
-      tabs: state.tabs,
-      activeTab: state.activeTab
-    }
-  );
+  storage.save("workspace", {
+    tabs: state.tabs,
+    activeTab: state.activeTab,
+  });
 }
-
 
 /* ---------------------------------------------------------
    Environments
@@ -433,41 +340,27 @@ export function activeEnv() {
 
   return (
     state.environments.find(
-      environment =>
-        environment.name ===
-        state.settings.activeEnvironment
+      (environment) => environment.name === state.settings.activeEnvironment,
     ) ||
     state.environments[0] ||
     null
   );
 }
 
-
 export function vars() {
-  const environment =
-    activeEnv();
+  const environment = activeEnv();
 
   if (!environment) {
     return {};
   }
 
-  const variables =
-    Array.isArray(environment.variables)
-      ? environment.variables
-      : [];
+  const variables = Array.isArray(environment.variables)
+    ? environment.variables
+    : [];
 
   return Object.fromEntries(
     variables
-      .filter(
-        variable =>
-          variable.enabled !== false &&
-          variable.key
-      )
-      .map(
-        variable => [
-          variable.key,
-          variable.currentValue ?? ''
-        ]
-      )
+      .filter((variable) => variable.enabled !== false && variable.key)
+      .map((variable) => [variable.key, variable.currentValue ?? ""]),
   );
 }

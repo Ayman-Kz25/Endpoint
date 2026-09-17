@@ -1,5 +1,85 @@
-import {state,emit,persist,newTab} from './state.js';import {uid,formatDuration,statusClass,esc} from './utils.js';
-export function record(request,response){if(!state.settings.historyEnabled)return;state.history.unshift({id:uid('hist'),timestamp:new Date().toISOString(),request:structuredClone(request),response:response?{status:response.status,statusText:response.statusText,duration:response.duration,size:response.size,headers:response.headers,body:response.body,bodyKind:response.bodyKind,type:response.type,finalUrl:response.finalUrl}:null});state.history=state.history.slice(0,state.settings.maxHistory||100);persist()}
-export function restore(id,duplicate=false){const h=state.history.find(x=>x.id===id);if(!h)return;if(duplicate)newTab(h.request,`${h.request.method} ${new URL(h.request.url).pathname||'/'}`);else{state.request=structuredClone(h.request);state.response=structuredClone(h.response);emit()}}
-export function renderPanel(){return `<div class="h-full flex flex-col"><div class="p-3 border-b border-line flex items-center justify-between"><div><div class="font-semibold text-sm">History</div><div class="text-xs text-muted">${state.history.length} entries</div></div><button class="btn btn-danger" data-history-clear>Clear all</button></div><div class="p-2 border-b border-line"><input class="input w-full px-2 py-2 rounded text-xs" placeholder="Search history…" data-history-search value="${esc(state.ui.globalSearch||'')}"></div><div class="flex-1 overflow-auto scroll">${state.history.filter(h=>{const q=(state.ui.globalSearch||'').toLowerCase();return !q||h.request.url.toLowerCase().includes(q)||h.request.method.toLowerCase().includes(q)}).map(h=>`<div class="p-2 border-b border-line hover:bg-white/[.03] group" data-history-id="${h.id}"><div class="flex items-center gap-2"><span class="method method-${h.request.method}">${esc(h.request.method)}</span><span class="mono text-xs truncate flex-1">${esc(h.request.url)}</span>${h.response?`<span class="badge ${statusClass(h.response.status)}">${h.response.status}</span>`:''}</div><div class="flex justify-between mt-1 text-[10px] text-muted"><span>${new Date(h.timestamp).toLocaleString()}</span><span>${formatDuration(h.response?.duration)} · ${h.response?.size??0} B</span></div><div class="hidden group-hover:flex gap-1 mt-2"><button class="btn" data-history-restore="${h.id}">Restore</button><button class="btn" data-history-duplicate="${h.id}">Duplicate</button><button class="btn" data-history-save="${h.id}">Save</button><button class="btn btn-danger" data-history-delete="${h.id}">Delete</button></div></div>`).join('')}</div></div>`}
-export function bindPanel(root){root.addEventListener('input',e=>{if(e.target.matches('[data-history-search]')){state.ui.globalSearch=e.target.value;emit()}});root.addEventListener('click',e=>{const id=e.target.closest('[data-history-restore]')?.dataset.historyRestore;if(id)restore(id);const du=e.target.closest('[data-history-duplicate]')?.dataset.historyDuplicate;if(du)restore(du,true);const del=e.target.closest('[data-history-delete]')?.dataset.historyDelete;if(del){state.history=state.history.filter(h=>h.id!==del);persist();emit()}if(e.target.matches('[data-history-clear]')){if(confirm('Clear request history?')){state.history=[];persist();emit()}}})}
+import { state, emit, persist, newTab } from "./state.js";
+import { uid, formatDuration, statusClass, esc } from "./utils.js";
+export function record(request, response) {
+  if (!state.settings.historyEnabled) return;
+  state.history.unshift({
+    id: uid("hist"),
+    timestamp: new Date().toISOString(),
+    request: structuredClone(request),
+    response: response
+      ? {
+          status: response.status,
+          statusText: response.statusText,
+          duration: response.duration,
+          size: response.size,
+          headers: response.headers,
+          body: response.body,
+          bodyKind: response.bodyKind,
+          type: response.type,
+          finalUrl: response.finalUrl,
+        }
+      : null,
+  });
+  state.history = state.history.slice(0, state.settings.maxHistory || 100);
+  persist();
+}
+export function restore(id, duplicate = false) {
+  const h = state.history.find((x) => x.id === id);
+  if (!h) return;
+  if (duplicate)
+    newTab(
+      h.request,
+      `${h.request.method} ${new URL(h.request.url).pathname || "/"}`,
+    );
+  else {
+    state.request = structuredClone(h.request);
+    state.response = structuredClone(h.response);
+    emit();
+  }
+}
+export function renderPanel() {
+  return `<div class="h-full flex flex-col"><div class="p-3 border-b border-line flex items-center justify-between"><div><div class="font-semibold text-sm">History</div><div class="text-xs text-muted">${state.history.length} entries</div></div><button class="btn btn-danger" data-history-clear>Clear all</button></div><div class="p-2 border-b border-line"><input class="input w-full px-2 py-2 rounded text-xs" placeholder="Search history…" data-history-search value="${esc(state.ui.globalSearch || "")}"></div><div class="flex-1 overflow-auto scroll">${state.history
+    .filter((h) => {
+      const q = (state.ui.globalSearch || "").toLowerCase();
+      return (
+        !q ||
+        h.request.url.toLowerCase().includes(q) ||
+        h.request.method.toLowerCase().includes(q)
+      );
+    })
+    .map(
+      (h) =>
+        `<div class="p-2 border-b border-line hover:bg-white/[.03] group" data-history-id="${h.id}"><div class="flex items-center gap-2"><span class="method method-${h.request.method}">${esc(h.request.method)}</span><span class="mono text-xs truncate flex-1">${esc(h.request.url)}</span>${h.response ? `<span class="badge ${statusClass(h.response.status)}">${h.response.status}</span>` : ""}</div><div class="flex justify-between mt-1 text-[10px] text-muted"><span>${new Date(h.timestamp).toLocaleString()}</span><span>${formatDuration(h.response?.duration)} · ${h.response?.size ?? 0} B</span></div><div class="hidden group-hover:flex gap-1 mt-2"><button class="btn" data-history-restore="${h.id}">Restore</button><button class="btn" data-history-duplicate="${h.id}">Duplicate</button><button class="btn" data-history-save="${h.id}">Save</button><button class="btn btn-danger" data-history-delete="${h.id}">Delete</button></div></div>`,
+    )
+    .join("")}</div></div>`;
+}
+export function bindPanel(root) {
+  root.addEventListener("input", (e) => {
+    if (e.target.matches("[data-history-search]")) {
+      state.ui.globalSearch = e.target.value;
+      emit();
+    }
+  });
+  root.addEventListener("click", (e) => {
+    const id = e.target.closest("[data-history-restore]")?.dataset
+      .historyRestore;
+    if (id) restore(id);
+    const du = e.target.closest("[data-history-duplicate]")?.dataset
+      .historyDuplicate;
+    if (du) restore(du, true);
+    const del = e.target.closest("[data-history-delete]")?.dataset
+      .historyDelete;
+    if (del) {
+      state.history = state.history.filter((h) => h.id !== del);
+      persist();
+      emit();
+    }
+    if (e.target.matches("[data-history-clear]")) {
+      if (confirm("Clear request history?")) {
+        state.history = [];
+        persist();
+        emit();
+      }
+    }
+  });
+}

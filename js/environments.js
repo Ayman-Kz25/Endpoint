@@ -1,14 +1,7 @@
 import { state, emit, persist, activeEnv } from "./state.js";
 import { uid, esc, resolveVars } from "./utils.js";
 
-/* =========================================================
-   Environment Helpers
-   ========================================================= */
-
-/**
- * Return variables from the currently active environment.
- * Disabled variables are excluded.
- */
+/* Environment Helpers */
 export function environmentVars() {
   const env = activeEnv();
   const variables = env?.variables || [];
@@ -21,9 +14,7 @@ export function environmentVars() {
   );
 }
 
-/**
- * Activate an environment by name.
- */
+/* Activate an environment by name */
 export function setActive(name) {
   const environment = (state.environments || []).find(
     (env) => env.name === name,
@@ -41,15 +32,6 @@ export function setActive(name) {
   emit();
 }
 
-/**
- * Create a new environment.
- *
- * Duplicate names are automatically numbered:
- *
- * New Environment
- * New Environment 2
- * New Environment 3
- */
 export function addEnvironment(name = "New Environment") {
   const environments = state.environments || [];
 
@@ -87,11 +69,6 @@ export function addEnvironment(name = "New Environment") {
   emit();
 }
 
-/**
- * Delete an environment.
- *
- * The default environment cannot be deleted.
- */
 export function deleteEnvironment(envId) {
   const environments = state.environments || [];
 
@@ -146,9 +123,7 @@ export function deleteEnvironment(envId) {
   emit();
 }
 
-/**
- * Add a variable to an environment.
- */
+/* Add a variable to an environment */
 export function addVariable(envId) {
   const environment = state.environments.find((env) => env.id === envId);
 
@@ -181,9 +156,7 @@ export function addVariable(envId) {
   emit();
 }
 
-/**
- * Delete a variable.
- */
+/* Delete a variable */
 export function deleteVariable(envId, variableId) {
   const environment = state.environments.find((env) => env.id === envId);
 
@@ -209,29 +182,11 @@ export function deleteVariable(envId, variableId) {
   emit();
 }
 
-/**
- * Resolve environment variables in a string.
- *
- * Example:
- *
- * {{baseUrl}}/users/{{userId}}
- */
 export function resolve(value) {
   return resolveVars(value ?? "", environmentVars());
 }
 
-/* =========================================================
-   Variable Rendering
-   ========================================================= */
-
-/**
- * Render a single variable row.
- *
- * IMPORTANT:
- * Keep this grid identical to the column-label grid above it.
- * This prevents the Key / Value / Secret / Delete columns from
- * drifting out of alignment.
- */
+/* Variable Rendering */
 function renderVariable(environment, variable) {
   const variableId = `${environment.id}:${variable.id}`;
   const isSecret = variable.secret === true;
@@ -340,13 +295,7 @@ function renderVariable(environment, variable) {
   `;
 }
 
-/* =========================================================
-   Environment Rendering
-   ========================================================= */
-
-/**
- * Render a single environment card.
- */
+/* Environment Rendering */
 function renderEnvironment(environment) {
   const isActive = environment.name === state.settings.activeEnvironment;
 
@@ -545,9 +494,7 @@ function renderEnvironment(environment) {
   `;
 }
 
-/**
- * Render complete environments panel.
- */
+/* Render complete environments panel. */
 export function renderPanel() {
   const environments = state.environments || [];
 
@@ -625,10 +572,7 @@ export function renderPanel() {
   `;
 }
 
-/* =========================================================
-   Helpers
-   ========================================================= */
-
+/* Helpers */
 function getVariableFromIdentifier(identifier) {
   if (!identifier) return null;
 
@@ -659,33 +603,19 @@ function getVariableFromIdentifier(identifier) {
   };
 }
 
-/* =========================================================
-   Event Binding
-   ========================================================= */
-
+/* Event Binding */
 export function bindPanel(root) {
   if (!root) return;
 
-  /*
-   * The main render() replaces <main> every time.
-   * Therefore the newly-created root normally has no listener.
-   * Keep this guard anyway so a root can safely be bound twice.
-   */
   if (root.dataset.environmentsBound === "true") {
     return;
   }
 
   root.dataset.environmentsBound = "true";
 
-  /* =======================================================
-     Click Events
-     ======================================================= */
-
+  /* Click Events */
   root.addEventListener("click", (event) => {
-    /* -----------------------------------------------------
-       Add environment
-       ----------------------------------------------------- */
-
+    /* Add environment */
     const addEnvironmentButton = event.target.closest(
       '[data-action="env-add"]',
     );
@@ -695,10 +625,7 @@ export function bindPanel(root) {
       return;
     }
 
-    /* -----------------------------------------------------
-       Activate environment
-       ----------------------------------------------------- */
-
+    /* Activate environment */
     const useButton = event.target.closest("[data-env-use]");
 
     if (useButton) {
@@ -711,10 +638,7 @@ export function bindPanel(root) {
       return;
     }
 
-    /* -----------------------------------------------------
-       Delete environment
-       ----------------------------------------------------- */
-
+    /* Delete environment */
     const deleteEnvironmentButton = event.target.closest("[data-env-delete]");
 
     if (deleteEnvironmentButton) {
@@ -727,10 +651,7 @@ export function bindPanel(root) {
       return;
     }
 
-    /* -----------------------------------------------------
-       Add variable
-       ----------------------------------------------------- */
-
+    /* Add variable */
     const addVariableButton = event.target.closest("[data-var-add]");
 
     if (addVariableButton) {
@@ -743,10 +664,7 @@ export function bindPanel(root) {
       return;
     }
 
-    /* -----------------------------------------------------
-       Delete variable
-       ----------------------------------------------------- */
-
+    /* Delete variable */
     const deleteVariableButton = event.target.closest("[data-var-delete]");
 
     if (deleteVariableButton) {
@@ -761,10 +679,7 @@ export function bindPanel(root) {
       return;
     }
 
-    /* -----------------------------------------------------
-       Toggle secret visibility
-       ----------------------------------------------------- */
-
+    /* Toggle secret visibility */
     const toggleSecretButton = event.target.closest("[data-var-toggle-secret]");
 
     if (toggleSecretButton) {
@@ -775,11 +690,7 @@ export function bindPanel(root) {
       );
 
       if (!input) return;
-
-      /*
-       * This only changes visibility.
-       * It does NOT change variable.secret.
-       */
+    
       const currentlyHidden = input.type === "password";
 
       input.type = currentlyHidden ? "text" : "password";
@@ -803,10 +714,7 @@ export function bindPanel(root) {
     }
   });
 
-  /* =======================================================
-     Change Events
-     ======================================================= */
-
+  /* Change Events */
   root.addEventListener("change", (event) => {
     const target = event.target;
 
@@ -814,10 +722,7 @@ export function bindPanel(root) {
 
     const dataset = target.dataset;
 
-    /* -----------------------------------------------------
-       Environment name
-       ----------------------------------------------------- */
-
+    /* Environment name */
     if (dataset.envName) {
       const environment = state.environments.find(
         (env) => env.id === dataset.envName,
@@ -856,10 +761,7 @@ export function bindPanel(root) {
       }
     }
 
-    /* -----------------------------------------------------
-       Variable enabled
-       ----------------------------------------------------- */
-
+    /* Variable enabled */
     if (dataset.varEnabled) {
       const result = getVariableFromIdentifier(dataset.varEnabled);
 
@@ -868,15 +770,7 @@ export function bindPanel(root) {
       }
     }
 
-    /* -----------------------------------------------------
-       Variable secret
-       ----------------------------------------------------- */
-
-    /*
-     * Kept for compatibility with older markup/state.
-     * The current UI uses the eye button for visibility,
-     * while `secret` remains the persisted property.
-     */
+    /* Variable secret */
     if (dataset.varSecret) {
       const result = getVariableFromIdentifier(dataset.varSecret);
 
@@ -885,10 +779,7 @@ export function bindPanel(root) {
       }
     }
 
-    /* -----------------------------------------------------
-       Variable key
-       ----------------------------------------------------- */
-
+    /* Variable key */
     if (dataset.varKey) {
       const result = getVariableFromIdentifier(dataset.varKey);
 
@@ -897,10 +788,7 @@ export function bindPanel(root) {
       }
     }
 
-    /* -----------------------------------------------------
-       Variable value
-       ----------------------------------------------------- */
-
+    /* Variable value */
     if (dataset.varValue) {
       const result = getVariableFromIdentifier(dataset.varValue);
 

@@ -54,10 +54,7 @@ applyTheme();
 
 let viewKey = "";
 
-/* =========================================================
-   SHELL
-========================================================= */
-
+/* SHELL */
 function shell() {
   const env = activeEnv();
 
@@ -136,10 +133,7 @@ function shell() {
   `;
 }
 
-/* =========================================================
-   SIDEBAR
-========================================================= */
-
+/* SIDEBAR */
 function sidebar() {
   const route = current();
 
@@ -269,10 +263,7 @@ function sidebar() {
   `;
 }
 
-/* =========================================================
-   MAIN ROUTER VIEW
-========================================================= */
-
+/* MAIN ROUTER VIEW */
 function main() {
   const route = current();
 
@@ -315,10 +306,7 @@ function main() {
   return workspace();
 }
 
-/* =========================================================
-   WORKSPACE
-========================================================= */
-
+/* WORKSPACE */
 function workspace() {
   return `
     <div class="h-full flex flex-col bg-panel">
@@ -497,10 +485,7 @@ function workspace() {
   `;
 }
 
-/* =========================================================
-   SETTINGS
-========================================================= */
-
+/* SETTINGS */
 function settingsPage(which) {
   return `
     <div class="h-full overflow-auto scroll bg-panel p-5 md:p-8">
@@ -673,10 +658,7 @@ function shortcuts() {
   `;
 }
 
-/* =========================================================
-   RENDER
-========================================================= */
-
+/* RENDER */
 function render() {
   const app = document.getElementById("app");
 
@@ -744,10 +726,7 @@ function render() {
   }
 }
 
-/* =========================================================
-   SHELL EVENTS
-========================================================= */
-
+/* SHELL EVENTS */
 function bindShell() {
   /* Navigation */
   document.querySelectorAll("[data-nav]").forEach((element) => {
@@ -763,21 +742,6 @@ function bindShell() {
     });
   });
 
-  /*
-   * IMPORTANT:
-   *
-   * Do NOT use:
-   *
-   * document.querySelectorAll("[data-tab]")
-   *
-   * here.
-   *
-   * Request Builder uses its own tab controls for:
-   * Params / Body / Headers / Auth.
-   *
-   * Application tabs therefore use:
-   * data-request-tab-id
-   */
   document.querySelectorAll("[data-request-tab-id]").forEach((element) => {
     element.addEventListener("click", (event) => {
       event.preventDefault();
@@ -899,10 +863,7 @@ function bindShell() {
   bindSplitter();
 }
 
-/* =========================================================
-   SPLITTER
-========================================================= */
-
+/* SPLITTER */
 function bindSplitter() {
   const split = document.querySelector("#horizontal-split");
 
@@ -954,10 +915,7 @@ function bindSplitter() {
   window.addEventListener("mouseup", stop);
 }
 
-/* =========================================================
-   SEND REQUEST
-========================================================= */
-
+/* SEND REQUEST */
 async function send() {
   if (state.ui.loading) {
     return;
@@ -982,10 +940,6 @@ async function send() {
 
     state.response = response;
 
-    /*
-     * Important for the supplied state.js:
-     * save the response into the active request tab.
-     */
     syncTab();
 
     History.record(config, response);
@@ -1022,20 +976,14 @@ async function send() {
   }
 }
 
-/* =========================================================
-   SAVE
-========================================================= */
-
+/* SAVE */
 function save() {
   Collections.saveCurrent();
 
   toast("Request saved");
 }
 
-/* =========================================================
-   COMMAND PALETTE
-========================================================= */
-
+/* COMMAND PALETTE */
 function palette(searchOnly = false) {
   state.ui.commandOpen = true;
   state.ui.paletteSearch = searchOnly ? "" : "";
@@ -1164,10 +1112,7 @@ function palette(searchOnly = false) {
   });
 }
 
-/* =========================================================
-   CURL MODAL
-========================================================= */
-
+/* CURL MODAL */
 function curlModal() {
   document.body.insertAdjacentHTML(
     "beforeend",
@@ -1261,10 +1206,7 @@ function curlModal() {
   });
 }
 
-/* =========================================================
-   RESET
-========================================================= */
-
+/* RESET */
 function reset() {
   if (
     !confirm(
@@ -1279,10 +1221,7 @@ function reset() {
   location.reload();
 }
 
-/* =========================================================
-   FILE IMPORT
-========================================================= */
-
+/* FILE IMPORT */
 function bindFileImport() {
   const input = document.querySelector("#file-import");
 
@@ -1311,22 +1250,9 @@ function bindFileImport() {
   });
 }
 
-/* =========================================================
-   GLOBAL EVENTS
-========================================================= */
-
+/* GLOBAL EVENTS */
 window.addEventListener("hashchange", render);
 
-/*
- * State changes:
- *
- * We intentionally re-render the workspace so that
- * request/response state stays synchronized.
- *
- * Request Builder owns Params/Body/Headers/Auth tab
- * interaction. The shell does NOT intercept those
- * controls.
- */
 subscribe(() => {
   persist();
 
@@ -1337,20 +1263,14 @@ subscribe(() => {
   render();
 });
 
-/* =========================================================
-   INITIALIZE
-========================================================= */
-
+/* INITIALIZE */
 viewKey = current();
 
 render();
 
 bindFileImport();
 
-/* =========================================================
-   KEYBOARD SHORTCUTS
-========================================================= */
-
+/* KEYBOARD SHORTCUTS */
 initKeyboard({
   send,
 
