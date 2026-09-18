@@ -600,7 +600,7 @@ function workspace() {
             ${esc(getResolvedURL())}
           </span>
 
-          <span class="unreslved-vars">
+          <span class="unresolved-vars">
           ${unresolvedVars(state.request.url)
             .map(
               (variable) => `

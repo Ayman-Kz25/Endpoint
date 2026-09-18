@@ -1077,7 +1077,6 @@ function emitAndRender(root) {
 }
 
 export function prepareRequest() {
-
   const request =
     typeof structuredClone === 'function'
       ? structuredClone(state.request)
@@ -1087,12 +1086,22 @@ export function prepareRequest() {
 
   const variables = vars();
 
-  request.url =
-    resolveVars(
-      request.url,
-      variables
-    );
+  /*
+   * -------------------------------------------------------
+   * Resolve URL variables first
+   * -------------------------------------------------------
+   */
+  request.url = resolveVars(
+    request.url,
+    variables
+  );
 
+
+  /*
+   * -------------------------------------------------------
+   * Resolve and filter query parameters
+   * -------------------------------------------------------
+   */
   request.params =
     (request.params || [])
       .filter(function (param) {
@@ -1107,17 +1116,39 @@ export function prepareRequest() {
           param,
           {
             key: resolveVars(
-              param.key,
+              String(param.key || '').trim(),
               variables
             ),
+
             value: resolveVars(
-              param.value,
+              String(param.value || ''),
               variables
             )
           }
         );
       });
 
+
+  /*
+   * -------------------------------------------------------
+   * IMPORTANT:
+   * Build the FINAL URL including query parameters.
+   *
+   * This is what was missing.
+   * -------------------------------------------------------
+   */
+  request.url = paramsToURL(
+    request.url,
+    request.params,
+    {}
+  );
+
+
+  /*
+   * -------------------------------------------------------
+   * Headers
+   * -------------------------------------------------------
+   */
   request.headers =
     (request.headers || [])
       .filter(function (header) {
@@ -1134,6 +1165,7 @@ export function prepareRequest() {
             key: String(
               header.key || ''
             ).trim(),
+
             value: resolveVars(
               header.value,
               variables
@@ -1143,6 +1175,11 @@ export function prepareRequest() {
       });
 
 
+  /*
+   * -------------------------------------------------------
+   * Authentication
+   * -------------------------------------------------------
+   */
   const auth =
     request.auth || {};
 
@@ -1151,15 +1188,16 @@ export function prepareRequest() {
     auth.type === 'bearer' &&
     auth.token
   ) {
-
     request.headers.push({
       key: 'Authorization',
+
       value:
         'Bearer ' +
         resolveVars(
           auth.token,
           variables
         ),
+
       enabled: true
     });
   }
@@ -1169,7 +1207,6 @@ export function prepareRequest() {
     auth.type === 'basic' &&
     auth.username
   ) {
-
     const username =
       resolveVars(
         auth.username,
@@ -1184,6 +1221,7 @@ export function prepareRequest() {
 
     request.headers.push({
       key: 'Authorization',
+
       value:
         'Basic ' +
         btoa(
@@ -1191,6 +1229,7 @@ export function prepareRequest() {
           ':' +
           password
         ),
+
       enabled: true
     });
   }
@@ -1200,30 +1239,34 @@ export function prepareRequest() {
     auth.type === 'apikey' &&
     auth.location === 'header'
   ) {
-
     request.headers.push({
       key: auth.key,
+
       value:
         resolveVars(
           auth.value || '',
           variables
         ),
+
       enabled: true
     });
   }
 
 
+  /*
+   * -------------------------------------------------------
+   * JSON body validation
+   * -------------------------------------------------------
+   */
   if (
     request.body &&
     request.body.type === 'json'
   ) {
-
     try {
       JSON.parse(
         request.body.content
       );
     } catch (error) {
-
       throw new Error(
         'Invalid JSON body: ' +
         error.message
@@ -1232,16 +1275,21 @@ export function prepareRequest() {
   }
 
 
+  /*
+   * -------------------------------------------------------
+   * Check unresolved variables in FINAL URL
+   * -------------------------------------------------------
+   */
   const unresolved =
     unresolvedVars(request.url);
 
   if (unresolved.length) {
-
     throw new Error(
       'Unresolved environment variable(s): ' +
       unresolved.join(', ')
     );
   }
+
 
   return request;
 }
