@@ -80,7 +80,7 @@ export async function request(config, { signal } = {}) {
   );
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch((url), {
       method: config.method || 'GET',
       headers,
       body,

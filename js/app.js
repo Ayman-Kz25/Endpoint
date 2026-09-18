@@ -93,7 +93,7 @@ function shell() {
 
         <button class="btn" data-action="global-search">
           Search
-          <i class="fa-solid fa-magnifying-glass pl-2"></i>
+          <i class="fa-solid fa-magnifying-glass"></i>
         </button>
 
         <button class="btn" data-open="settings">
