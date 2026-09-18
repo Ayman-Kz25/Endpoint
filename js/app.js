@@ -289,7 +289,7 @@ function sidebar() {
           }"
           data-nav="history"
         >
-          <i class="fa-solid fa-clock-rotate-left mr-2"></i>
+          <i class="fa-solid fa-clock-rotate-left"></i>
 
           <span>History</span>
 
@@ -350,7 +350,7 @@ function sidebarNavButton(routeName, icon, label, activeRoute) {
       }"
       data-nav="${routeName}"
     >
-      <i class="${icon}"></i>
+      <i class="${icon} sidebarIcon"></i>
       <span>${label}</span>
     </button>
   `;

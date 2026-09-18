@@ -464,7 +464,6 @@ textarea::placeholder {
 .tab > i,
 .tree-item > i {
   flex-shrink: 0;
-  margin-right: 6px;
 }
 
 .iconbtn .fa-solid,
@@ -1366,6 +1365,7 @@ body.resizing {
 
 .desktop-sidebar .tree-item span {
   min-width: 0;
+  margin-left: 12px;
 }
 
 
