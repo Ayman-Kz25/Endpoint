@@ -123,11 +123,8 @@ export function emit() {
   }
 }
 
-/* ---------------------------------------------------------
-   Request state
---------------------------------------------------------- */
-
-export function setRequest(patch, { history = true } = {}) {
+/* Request state */
+export function setRequest(patch, { history = true, emitChange = true } = {}) {
   if (history) {
     state.undo.push(deepClone(state.request));
 
@@ -142,7 +139,9 @@ export function setRequest(patch, { history = true } = {}) {
 
   syncTab();
 
-  emit();
+  if(emitChange){
+    emit();
+  }
 }
 
 export function replaceRequest(request, { history = true } = {}) {
@@ -163,10 +162,7 @@ export function replaceRequest(request, { history = true } = {}) {
   emit();
 }
 
-/* ---------------------------------------------------------
-   Active tab synchronization
---------------------------------------------------------- */
-
+/* Active tab synchronization */
 export function syncTab() {
   const tab = state.tabs.find((item) => item.id === state.activeTab);
 
@@ -179,25 +175,17 @@ export function syncTab() {
   tab.response = deepClone(state.response);
 }
 
-/* ---------------------------------------------------------
-   Dirty state
---------------------------------------------------------- */
-
-export function markDirty(value = true) {
+/* Dirty state */
+export function markDirty(value = true, {emitChange=true} = {}) {
   const tab = state.tabs.find((item) => item.id === state.activeTab);
 
   if (tab) {
     tab.dirty = value;
   }
 
-  /*
-   * Do NOT call syncTab() here.
-   *
-   * syncTab() copies request/response but should not
-   * be necessary just to change the dirty flag.
-   */
-
-  emit();
+  if(emitChange){
+    emit();
+  }
 }
 
 /* ---------------------------------------------------------

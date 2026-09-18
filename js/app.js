@@ -389,7 +389,7 @@ function workspace() {
 
           <input
             id="url"
-            class="input flex-1 min-w-0 rounded-lg px-3 py-2 mono text-sm"
+            class="input flex-1 min-w-0 rounded-lg px-3 py-2 text-sm"
             placeholder="https://api.example.com/resource or {{baseUrl}}/resource"
             value="${esc(state.request.url)}"
           />
@@ -813,10 +813,11 @@ function bindShell() {
       },
       {
         history: false,
+        emitChange: false,
       },
     );
 
-    markDirty(false);
+    markDirty(false, { emitChange: false });
   });
 
   /* Send */
@@ -885,13 +886,9 @@ function bindSplitter() {
       return;
     }
 
-    const percentage =
-      ((event.clientY - rect.top) / rect.height) * 100;
+    const percentage = ((event.clientY - rect.top) / rect.height) * 100;
 
-    state.ui.requestSplit = Math.max(
-      20,
-      Math.min(80, percentage)
-    );
+    state.ui.requestSplit = Math.max(20, Math.min(80, percentage));
 
     container.style.gridTemplateRows = `
       ${state.ui.requestSplit}fr

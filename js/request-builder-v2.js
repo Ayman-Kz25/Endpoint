@@ -768,10 +768,11 @@ export function bindRequest(root) {
       },
       {
         history: false,
+        emitChange: false,
       },
     );
 
-    markDirty(false);
+    markDirty(false, { emitChange: false });
 
     const err = e.target.parentElement.querySelector("#body-error");
 

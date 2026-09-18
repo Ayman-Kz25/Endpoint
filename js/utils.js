@@ -2,6 +2,7 @@ export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 export const uid = (p = "id") =>
   `${p}_${crypto.randomUUID?.() || Date.now() + Math.random().toString(16).slice(2)}`;
+
 export const esc = (s) =>
   String(s ?? "").replace(
     /[&<>"']/g,
@@ -10,6 +11,7 @@ export const esc = (s) =>
         c
       ],
   );
+
 export const debounce = (fn, ms = 180) => {
   let t;
   return (...a) => {
@@ -17,19 +19,24 @@ export const debounce = (fn, ms = 180) => {
     t = setTimeout(() => fn(...a), ms);
   };
 };
+
 export const now = () => new Date().toISOString();
+
 export function statusClass(n) {
   return n ? `status-${String(n)[0]}` : "";
 }
+
 export function formatBytes(n) {
   if (n == null || Number.isNaN(n)) return "—";
   if (n < 1024) return `${n} B`;
   if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / 1048576).toFixed(1)} MB`;
 }
+
 export function formatDuration(n) {
   return n == null ? "—" : `${Math.round(n)} ms`;
 }
+
 export function safeJSON(v, fallback = null) {
   try {
     return JSON.parse(v);
@@ -37,9 +44,11 @@ export function safeJSON(v, fallback = null) {
     return fallback;
   }
 }
+
 export function deepClone(v) {
   return structuredClone ? structuredClone(v) : JSON.parse(JSON.stringify(v));
 }
+
 export function parseHeaders(text) {
   const out = [];
   for (const line of text.split(/\r?\n/)) {
@@ -54,20 +63,25 @@ export function parseHeaders(text) {
   }
   return out;
 }
+
 export function normalizeHeaderKey(k) {
   return k.trim().toLowerCase();
 }
+
 export function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
 export function resolveVars(str, vars) {
   return String(str ?? "").replace(/\{\{([\w.-]+)\}\}/g, (m, k) =>
     Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : m,
   );
 }
+
 export function unresolvedVars(str) {
   return [...new Set(String(str ?? "").match(/\{\{([\w.-]+)\}\}/g) || [])];
 }
+
 export function parseURL(url) {
   try {
     return new URL(url);
@@ -75,6 +89,7 @@ export function parseURL(url) {
     return null;
   }
 }
+
 export function headersToObject(rows, vars = {}) {
   const o = {};
   for (const h of rows || []) {
@@ -83,6 +98,7 @@ export function headersToObject(rows, vars = {}) {
   }
   return o;
 }
+
 export function paramsToURL(base, params, vars = {}) {
   let u;
   try {
@@ -96,6 +112,7 @@ export function paramsToURL(base, params, vars = {}) {
   }
   return u.toString();
 }
+
 export function extractParams(url) {
   try {
     const u = new URL(url);
@@ -110,6 +127,7 @@ export function extractParams(url) {
     return [];
   }
 }
+
 export function highlightJSON(obj) {
   const s = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   return esc(s)
@@ -119,6 +137,7 @@ export function highlightJSON(obj) {
     .replace(/\b(true|false)\b/g, '<span class="json-bool">$1</span>')
     .replace(/\bnull\b/g, '<span class="json-null">null</span>');
 }
+
 export function jsonPath(root, targetPath) {
   const parts = targetPath
     .replace(/^\$\.?/, "")
