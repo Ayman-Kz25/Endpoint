@@ -1,47 +1,40 @@
 /* =========================================================
-   ENDPOINT — COMPONENTS
-   Visual/component styling only.
-
-   Layout + responsive behavior belongs in app.css.
-   ========================================================= */
-
-
-/* =========================================================
-   COMPONENT THEME VARIABLES
+   PROFESSIONAL DEVELOPER TOOL THEME
    ========================================================= */
 
 body {
-  --bg: #07111f;
+  --bg: #0a0d12;
 
-  --panel: #0b1728;
-  --panel2: #0f1d31;
-  --panel3: #14243a;
+  --panel: #10141b;
+  --panel2: #151a22;
+  --panel3: #1b222c;
 
-  --line: #1d3048;
-  --line-strong: #2c4563;
+  --line: #252d38;
+  --line-strong: #35404e;
 
-  --muted: #8195ad;
-  --text: #eef6ff;
-  --text-soft: #c1d1e3;
+  --muted: #7f8a99;
+  --text: #f2f5f8;
+  --text-soft: #b7c0cc;
 
-  --input: #091628;
+  --input: #0c1118;
 
-  --hover: #152941;
-  --hover-strong: #1b3551;
-  --active: #173451;
+  --hover: #181f28;
+  --hover-strong: #202934;
+  --active: #1c2b40;
 
-  --accent: #8ecbff;
-  --accent-strong: #66b8f0;
-  --accent-soft: rgba(142, 203, 255, 0.12);
-  --accent-border: rgba(142, 203, 255, 0.34);
-  --accent-contrast: #07111f;
+  --accent: #6ea8fe;
+  --accent-strong: #82b5ff;
 
-  --danger: #ff8999;
-  --warning: #f6d58a;
-  --info: #8ecbff;
-  --success: #86e3ba;
+  --accent-soft: rgba(110, 168, 254, 0.10);
+  --accent-border: rgba(110, 168, 254, 0.30);
+  --accent-contrast: #ffffff;
 
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  --danger: #ef6b7a;
+  --warning: #e6b450;
+  --info: #6ea8fe;
+  --success: #5ac78a;
+
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 
@@ -51,37 +44,38 @@ body {
 
 body[data-theme="light"],
 body.light {
-  --bg: #eef7ff;
+  --bg: #f5f7fa;
 
   --panel: #ffffff;
-  --panel2: #f7fbff;
-  --panel3: #e8f3fc;
+  --panel2: #f8fafc;
+  --panel3: #eef2f6;
 
-  --line: #c9ddec;
-  --line-strong: #a9c9df;
+  --line: #d8dee6;
+  --line-strong: #b8c2ce;
 
-  --muted: #71879b;
-  --text: #19324a;
-  --text-soft: #405c75;
+  --muted: #738092;
+  --text: #17202b;
+  --text-soft: #465363;
 
   --input: #ffffff;
 
-  --hover: #eaf5fd;
-  --hover-strong: #dceefa;
-  --active: #d9edfb;
+  --hover: #f0f3f7;
+  --hover-strong: #e6ebf1;
+  --active: #e4edf9;
 
-  --accent: #5aaee8;
-  --accent-strong: #419cdd;
-  --accent-soft: rgba(90, 174, 232, 0.14);
-  --accent-border: rgba(90, 174, 232, 0.38);
+  --accent: #3978c7;
+  --accent-strong: #2f6dbb;
+
+  --accent-soft: rgba(57, 120, 199, 0.09);
+  --accent-border: rgba(57, 120, 199, 0.30);
   --accent-contrast: #ffffff;
 
-  --danger: #d45d70;
-  --warning: #b78328;
-  --info: #4d9fd8;
-  --success: #48a982;
+  --danger: #c94f60;
+  --warning: #a36f16;
+  --info: #3978c7;
+  --success: #26845a;
 
-  --shadow: 0 10px 26px rgba(61, 111, 145, 0.12);
+  --shadow: 0 10px 26px rgba(25, 40, 60, 0.10);
 }
 
 
