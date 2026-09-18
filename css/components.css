@@ -1,16 +1,18 @@
 /* =========================================================
-   Endpoint — Component Theme
-   Dark: Deep Navy
-   Light: Pastel Baby Blue
+   ENDPOINT — COMPONENTS
+   Visual/component styling only.
+
+   Layout + responsive behavior belongs in app.css.
    ========================================================= */
 
 
 /* =========================================================
-   Theme Variables
+   COMPONENT THEME VARIABLES
    ========================================================= */
 
 body {
   --bg: #07111f;
+
   --panel: #0b1728;
   --panel2: #0f1d31;
   --panel3: #14243a;
@@ -37,20 +39,20 @@ body {
   --danger: #ff8999;
   --warning: #f6d58a;
   --info: #8ecbff;
-
   --success: #86e3ba;
 
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.30);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
 }
 
 
 /* =========================================================
-   Light Theme — Pastel Baby Blue
+   LIGHT THEME
    ========================================================= */
 
 body[data-theme="light"],
 body.light {
   --bg: #eef7ff;
+
   --panel: #ffffff;
   --panel2: #f7fbff;
   --panel3: #e8f3fc;
@@ -77,7 +79,6 @@ body.light {
   --danger: #d45d70;
   --warning: #b78328;
   --info: #4d9fd8;
-
   --success: #48a982;
 
   --shadow: 0 10px 26px rgba(61, 111, 145, 0.12);
@@ -85,7 +86,7 @@ body.light {
 
 
 /* =========================================================
-   Theme Utility Classes
+   THEME UTILITIES
    ========================================================= */
 
 .bg-shell {
@@ -122,7 +123,7 @@ body.light {
 
 
 /* =========================================================
-   Inputs
+   INPUTS
    ========================================================= */
 
 .input {
@@ -156,7 +157,7 @@ body.light {
 }
 
 
-/* Native form controls */
+/* Native controls */
 
 select,
 input,
@@ -175,7 +176,7 @@ option {
 
 
 /* =========================================================
-   Buttons
+   BUTTONS
    ========================================================= */
 
 .btn {
@@ -184,7 +185,6 @@ option {
   color: var(--text);
 
   border-radius: 7px;
-
   padding: 0.42rem 0.7rem;
 
   font-size: 12px;
@@ -226,7 +226,7 @@ option {
 
 
 /* =========================================================
-   Primary Button
+   PRIMARY BUTTON
    ========================================================= */
 
 .btn-primary {
@@ -250,7 +250,7 @@ option {
 
 
 /* =========================================================
-   Danger Button
+   DANGER BUTTON
    ========================================================= */
 
 .btn-danger {
@@ -275,7 +275,7 @@ option {
 
 
 /* =========================================================
-   Ghost Button
+   GHOST BUTTON
    ========================================================= */
 
 .btn-ghost {
@@ -292,7 +292,7 @@ option {
 
 
 /* =========================================================
-   Icon Button
+   ICON BUTTON
    ========================================================= */
 
 .iconbtn {
@@ -310,7 +310,7 @@ option {
 
 
 /* =========================================================
-   Request / Response Tabs
+   TABS
    ========================================================= */
 
 .tab {
@@ -348,35 +348,24 @@ option {
 
 
 /* =========================================================
-   HTTP Method Badges
+   HTTP METHOD BADGES
    ========================================================= */
 
 .method {
   font: 600 12px "JetBrains Mono", monospace;
-
   border-radius: 5px;
-
   padding: 3px 6px;
 }
-
-
-/* GET — blue/green success tone */
 
 .method-GET {
   color: var(--success);
   background: rgba(134, 227, 186, 0.11);
 }
 
-
-/* POST — baby blue */
-
 .method-POST {
   color: var(--info);
   background: rgba(142, 203, 255, 0.12);
 }
-
-
-/* PUT / PATCH — amber */
 
 .method-PUT,
 .method-PATCH {
@@ -384,16 +373,10 @@ option {
   background: rgba(246, 213, 138, 0.12);
 }
 
-
-/* DELETE — red */
-
 .method-DELETE {
   color: var(--danger);
   background: rgba(255, 137, 153, 0.12);
 }
-
-
-/* HEAD / OPTIONS / TRACE — lavender */
 
 .method-HEAD,
 .method-OPTIONS,
@@ -404,7 +387,7 @@ option {
 
 
 /* =========================================================
-   Keyboard Shortcut Badges
+   KEYBOARD BADGES
    ========================================================= */
 
 .kbd {
@@ -416,18 +399,16 @@ option {
   padding: 1px 5px;
 
   font: 11px "JetBrains Mono", monospace;
-
   color: var(--muted);
 }
 
 
 /* =========================================================
-   Status Badges
+   STATUS BADGES
    ========================================================= */
 
 .badge {
   border: 1px solid var(--line);
-
   background: var(--panel2);
 
   border-radius: 999px;
@@ -439,34 +420,34 @@ option {
 
 .status-2 {
   color: var(--success);
-  border-color: rgba(134, 227, 186, 0.30);
+  border-color: rgba(134, 227, 186, 0.3);
 }
 
 .status-3 {
   color: var(--warning);
-  border-color: rgba(246, 213, 138, 0.30);
+  border-color: rgba(246, 213, 138, 0.3);
 }
 
 .status-4,
 .status-5 {
   color: var(--danger);
-  border-color: rgba(255, 137, 153, 0.30);
+  border-color: rgba(255, 137, 153, 0.3);
 }
 
 
 /* =========================================================
-   Toast
+   TOAST
    ========================================================= */
 
 .toast {
-  animation: toast 0.18s ease-out;
-
   background: var(--panel);
   color: var(--text);
 
   border: 1px solid var(--line);
 
   box-shadow: var(--shadow);
+
+  animation: toast 0.18s ease-out;
 }
 
 @keyframes toast {
@@ -483,23 +464,26 @@ option {
 
 
 /* =========================================================
-   Modal
+   MODAL
    ========================================================= */
 
 .modal-backdrop {
-  background: rgba(5, 15, 28, 0.60);
-
+  background: rgba(5, 15, 28, 0.6);
   backdrop-filter: blur(5px);
+}
+
+body[data-theme="light"] .modal-backdrop,
+body.light .modal-backdrop {
+  background: rgba(39, 83, 112, 0.28);
 }
 
 
 /* =========================================================
-   Command Palette
+   COMMAND PALETTE
    ========================================================= */
 
 .command-item {
   color: var(--text-soft);
-
   border: 1px solid transparent;
 
   transition:
@@ -515,20 +499,17 @@ option {
 
 .command-item.active {
   background: var(--accent-soft);
-
   border-color: var(--accent-border);
-
   color: var(--text);
 }
 
 
 /* =========================================================
-   Sidebar Tree
+   SIDEBAR TREE
    ========================================================= */
 
 .tree-item {
   border-left: 2px solid transparent;
-
   color: var(--text-soft);
 
   transition:
@@ -544,15 +525,13 @@ option {
 
 .tree-item.active {
   background: var(--active);
-
   color: var(--text);
-
   border-left-color: var(--accent);
 }
 
 
 /* =========================================================
-   Horizontal Resizer
+   RESIZERS
    ========================================================= */
 
 .resizer-h {
@@ -569,11 +548,6 @@ option {
 .resizer-h:hover {
   background: var(--accent);
 }
-
-
-/* =========================================================
-   Vertical Splitter
-   ========================================================= */
 
 .splitter {
   width: 5px;
@@ -593,12 +567,11 @@ option {
 
 
 /* =========================================================
-   Scrollbars
+   SCROLLBARS
    ========================================================= */
 
 .scroll {
   scrollbar-width: thin;
-
   scrollbar-color:
     var(--line-strong)
     transparent;
@@ -624,7 +597,7 @@ option {
 
 
 /* =========================================================
-   Selection
+   SELECTION
    ========================================================= */
 
 ::selection {
@@ -634,7 +607,7 @@ option {
 
 
 /* =========================================================
-   Disabled Elements
+   DISABLED
    ========================================================= */
 
 button:disabled,
@@ -647,7 +620,7 @@ textarea:disabled {
 
 
 /* =========================================================
-   Focus Accessibility
+   FOCUS
    ========================================================= */
 
 button:focus-visible,
@@ -660,25 +633,4 @@ textarea:focus-visible {
     0 0 0 2px var(--accent-soft);
 
   border-color: var(--accent);
-}
-
-
-/* =========================================================
-   Light Theme Modal Adjustment
-   ========================================================= */
-
-body[data-theme="light"] .modal-backdrop,
-body.light .modal-backdrop {
-  background: rgba(39, 83, 112, 0.28);
-}
-
-
-/* =========================================================
-   Mobile
-   ========================================================= */
-
-@media (max-width: 900px) {
-  .desktop-sidebar {
-    box-shadow: var(--shadow);
-  }
 }

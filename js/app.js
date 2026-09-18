@@ -43,7 +43,12 @@ import { initKeyboard } from "./keyboard.js";
 import { init as initToast, toast } from "./notifications.js";
 import { apply as applyTheme, setTheme } from "./theme.js";
 
-import { esc, formatDuration, resolveVars, unresolvedVars } from "./utils.js";
+import {
+  esc,
+  formatDuration,
+  resolveVars,
+  unresolvedVars,
+} from "./utils.js";
 
 import { go, current } from "./router.js";
 
@@ -54,76 +59,167 @@ applyTheme();
 
 let viewKey = "";
 
-/* SHELL */
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+function getResolvedURL() {
+  const env = activeEnv();
+
+  const variables = Object.fromEntries(
+    (env?.variables || []).map((variable) => [
+      variable.key,
+      variable.currentValue,
+    ]),
+  );
+
+  return resolveVars(effectiveURL(), variables);
+}
+
+
+/* =========================================================
+   APP SHELL
+   ========================================================= */
+
 function shell() {
   const env = activeEnv();
 
+  const sidebarOpen = Boolean(state.ui.sidebar);
+  const overlayHidden = !sidebarOpen;
+
   return `
-    <div class="h-full flex flex-col bg-shell">
+    <div
+      class="h-full min-h-0 flex flex-col bg-shell overflow-hidden"
+      id="app-shell"
+    >
 
-      <header class="h-12 shrink-0 border-b border-line flex items-center px-3 gap-3 bg-panel">
+      <!-- =================================================
+           HEADER
+           ================================================= -->
 
-        <button
-          class="btn iconbtn p-3"
-          id="sidebar-toggle"
-          title="Toggle sidebar"
-        >
-        <i class='fa-solid fa-bars'></i>
-        </button>
+      <header
+        class="app-header h-12 shrink-0 border-b border-line bg-panel"
+      >
 
-        <div class="font-bold tracking-tight text-sm">
-          Endpoint
-          <span class="text-muted font-normal">
-            / API Request Builder
-          </span>
+        <div class="app-header-left">
+
+          <!-- Sidebar -->
+          <button
+            class="btn iconbtn shrink-0"
+            id="sidebar-toggle"
+            title="Toggle sidebar"
+            aria-label="Toggle sidebar"
+            aria-expanded="${sidebarOpen}"
+          >
+            <i class="fa-solid fa-bars-staggered"></i>
+          </button>
+
+
+          <!-- Brand -->
+          <div class="app-brand">
+            
+            <div class="font-bold tracking-tight text-sm">
+              Endpoint
+            </div>
+
+            <span class="app-brand-subtitle text-muted font-normal">
+              / API Request Builder
+            </span>
+          </div>
+
+
+          <!-- Divider -->
+          <div class="app-header-divider"></div>
+
+
+          <!-- Environment -->
+          <button
+            class="btn app-env-button"
+            id="env-switch"
+            title="Active Environment"
+          >
+          <i class="fa-regular fa-circle-dot fa-sm"></i>
+
+            <span class="app-env-name truncate">
+              ${esc(env?.name || "No environment")}
+            </span>
+
+            <i class="fa-solid fa-caret-down"></i>
+          </button>
+
         </div>
 
-        <div class="h-5 w-px bg-[var(--line)]"></div>
 
-        <button
-          class="btn flex items-center justify-center gap-2"
-          id="env-switch"
-        >
-        <i class='fa-solid fa-circle fa-xs'></i>
-        ${esc(env?.name || "No environment")}
-        <i class='fa-solid fa-chevron-down fa-xs'></i>
-        </button>
+        <!-- Header actions -->
+        <div class="app-header-actions">
 
-        <div class="flex-1"></div>
+          <button
+            class="btn"
+            data-action="global-search"
+            title="Search"
+          >
+            <span class="app-search-label">Search</span>
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
 
-        <button class="btn" data-action="global-search">
-          Search
-          <i class="fa-solid fa-magnifying-glass"></i>
-        </button>
+          <button
+            class="btn"
+            data-open="settings"
+          >
+            Settings
+          </button>
 
-        <button class="btn" data-open="settings">
-        Settings
-        </button>
+          <button
+            class="btn iconbtn"
+            data-action="theme"
+            title="Toggle theme"
+            aria-label="Toggle theme"
+          >
+            ${
+              state.settings.theme === "dark"
+                ? '<i class="fa-solid fa-toggle-off"></i>'
+                : '<i class="fa-solid fa-toggle-on"></i>'
+            }
+          </button>
 
-        <button class="btn" data-action="theme">
-          ${state.settings.theme === "dark" ? "<i class='fa-solid fa-moon'></i>" : "<i class='fa-solid fa-sun'></i>"}
-        </button>
-
+        </div>
 
       </header>
 
+
+      <!-- =================================================
+           APP BODY
+           ================================================= -->
+
       <div class="flex flex-1 min-h-0 relative">
 
+        <!-- Sidebar -->
         <aside
           id="sidebar"
-          class="desktop-sidebar w-60 shrink-0 border-r border-line bg-panel overflow-hidden ${
-            state.ui.sidebar ? "open" : ""
+          class="desktop-sidebar border-r border-line bg-panel ${
+            sidebarOpen ? "open" : ""
           }"
         >
           ${sidebar()}
         </aside>
 
+
+        <!-- Mobile overlay -->
         <div
-          class="mobile-overlay fixed inset-0 z-40 bg-black/60 hidden"
           id="overlay"
+          class="mobile-overlay fixed inset-0 z-40 bg-black/60 ${
+            overlayHidden ? "hidden" : ""
+          }"
+          aria-hidden="${overlayHidden}"
         ></div>
 
-        <main class="flex-1 min-w-0 min-h-0">
+
+        <!-- Main -->
+        <main
+          class="flex-1 min-w-0 min-h-0"
+          id="main-content"
+        >
           ${main()}
         </main>
 
@@ -133,210 +229,271 @@ function shell() {
   `;
 }
 
-/* SIDEBAR */
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
 function sidebar() {
   const route = current();
 
   return `
-    <div class="p-2 border-b border-line flex gap-1">
+    <div class="min-h-full flex flex-col">
 
-      <button
-        class="btn btn-primary flex-1"
-        data-new
+      <!-- Sidebar actions -->
+      <div class="p-2 border-b border-line flex gap-1">
+
+        <button
+          class="btn btn-primary flex-1"
+          data-new
+        >
+          <i class="fa-regular fa-plus"></i>
+          <span>New</span>
+        </button>
+
+        <button
+          class="btn iconbtn"
+          data-import-curl
+          title="Import cURL"
+          aria-label="Import cURL"
+        >
+          <i class="fa-solid fa-upload"></i>
+        </button>
+
+      </div>
+
+
+      <!-- Navigation -->
+      <nav
+        class="p-2 space-y-1 text-xs"
+        aria-label="Main navigation"
       >
-      <i class="fa-solid fa-plus"></i>  
-      New
-      </button>
 
-      <button
-        class="btn iconbtn"
-        data-import-curl
-        title="Import cURL"
+        ${sidebarNavButton(
+          "workspace",
+          "fa-regular fa-square-plus",
+          "Workspace",
+          route,
+        )}
+
+        ${sidebarNavButton(
+          "collections",
+          "fa-regular fa-folder-open",
+          "Collections",
+          route,
+        )}
+
+        <button
+          class="tree-item w-full text-left p-5 py-2 rounded ${
+            route === "history" ? "active" : ""
+          }"
+          data-nav="history"
+        >
+          <i class="fa-solid fa-clock-rotate-left mr-2"></i>
+
+          <span>History</span>
+
+          <span class="float-right text-muted">
+            ${state.history.length}
+          </span>
+        </button>
+
+        ${sidebarNavButton(
+          "environments",
+          "fa-solid fa-layer-group",
+          "Environments",
+          route,
+        )}
+
+        ${sidebarNavButton(
+          "code",
+          "fa-solid fa-code",
+          "Code Generator",
+          route,
+        )}
+
+      </nav>
+
+
+      <!-- Open requests -->
+      <div
+        class="px-3 pt-5 pb-2 text-[10px] uppercase tracking-widest text-muted"
       >
-        <i class="fa-solid fa-file-import"></i>
-      </button>
+        Open requests
+      </div>
 
-    </div>
 
-    <nav class="p-2 space-y-1 text-xs">
+      <div class="px-2 pb-3 space-y-1 min-w-0">
 
-      <button
-        class="tree-item w-full text-left px-2 py-2 rounded ${
-          route === "workspace" ? "active" : ""
-        }"
-        data-nav="workspace"
-      >
-      <i class="fa-solid fa-plus pr-2"></i>
-        Workspace
-      </button>
+        ${
+          state.tabs.length
+            ? state.tabs.map(renderSidebarTab).join("")
+            : `
+              <div class="px-2 py-3 text-xs text-muted">
+                No open requests
+              </div>
+            `
+        }
 
-      <button
-        class="tree-item w-full text-left px-2 py-2 rounded ${
-          route === "collections" ? "active" : ""
-        }"
-        data-nav="collections"
-      >
-      <i class="fa-solid fa-folder pr-2"></i>  
-      Collections
-      </button>
-
-      <button
-        class="tree-item w-full text-left px-2 py-2 rounded ${
-          route === "history" ? "active" : ""
-        }"
-        data-nav="history"
-      >
-      <i class="fa-solid fa-clock-rotate-left pr-2"></i>  
-      History
-        <span class="float-right text-muted">
-          ${state.history.length}
-        </span>
-      </button>
-
-      <button
-        class="tree-item w-full text-left px-2 py-2 rounded ${
-          route === "environments" ? "active" : ""
-        }"
-        data-nav="environments"
-      >
-      <i class="fa-solid fa-layer-group pr-2 "></i>
-        Environments
-      </button>
-
-      <button
-        class="tree-item w-full text-left px-2 py-2 rounded ${
-          route === "code" ? "active" : ""
-        }"
-        data-nav="code"
-      >
-      <i class="fa-solid fa-code pr-2"></i>
-        Code Generator
-      </button>
-
-    </nav>
-
-    <div class="px-3 pt-5 pb-2 text-[10px] uppercase tracking-widest text-muted">
-      Open requests
-    </div>
-
-    <div class="px-2 space-y-1">
-
-      ${state.tabs
-        .map(
-          (tab) => `
-            <div
-              class="tree-item ${
-                tab.id === state.activeTab ? "active" : ""
-              } rounded flex items-center"
-            >
-
-              <button
-                class="flex-1 text-left px-2 py-2 min-w-0"
-                data-request-tab-id="${esc(tab.id)}"
-              >
-                <div class="flex items-center gap-1">
-
-                  <span class="method method-${esc(tab.request.method)}">
-                    ${esc(tab.request.method)}
-                  </span>
-
-                  <span class="truncate text-xs">
-                    ${esc(tab.name)}${tab.dirty ? " •" : ""}
-                  </span>
-
-                </div>
-              </button>
-
-              <button
-                class="btn btn-ghost iconbtn"
-                data-close-request="${esc(tab.id)}"
-              >
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-
-            </div>
-          `,
-        )
-        .join("")}
+      </div>
 
     </div>
   `;
 }
 
-/* MAIN ROUTER VIEW */
+
+function sidebarNavButton(routeName, icon, label, activeRoute) {
+  return `
+    <button
+      class="tree-item w-full text-left px-5 py-2 rounded ${
+        activeRoute === routeName ? "active" : ""
+      }"
+      data-nav="${routeName}"
+    >
+      <i class="${icon}"></i>
+      <span>${label}</span>
+    </button>
+  `;
+}
+
+
+function renderSidebarTab(tab) {
+  const active = tab.id === state.activeTab;
+
+  return `
+    <div
+      class="tree-item ${
+        active ? "active" : ""
+      } rounded flex items-center min-w-0"
+    >
+
+      <button
+        class="flex-1 text-left px-2 py-2 min-w-0 overflow-hidden"
+        data-request-tab-id="${esc(tab.id)}"
+        title="${esc(tab.name)}"
+      >
+
+        <div class="flex items-center gap-1 min-w-0">
+
+          <span
+            class="method method-${esc(tab.request.method)} shrink-0"
+          >
+            ${esc(tab.request.method)}
+          </span>
+
+          <span class="truncate text-xs">
+            ${esc(tab.name)}${tab.dirty ? " •" : ""}
+          </span>
+
+        </div>
+
+      </button>
+
+
+      <button
+        class="btn btn-ghost iconbtn shrink-0"
+        data-close-request="${esc(tab.id)}"
+        title="Close request"
+        aria-label="Close request"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+    </div>
+  `;
+}
+
+
+/* =========================================================
+   MAIN ROUTER VIEW
+   ========================================================= */
+
 function main() {
   const route = current();
 
-  if (route === "history") {
-    return `
-      <div class="h-full bg-panel">
-        ${History.renderPanel()}
-      </div>
-    `;
-  }
+  switch (route) {
+    case "history":
+      return `
+        <div class="h-full min-h-0 bg-panel">
+          ${History.renderPanel()}
+        </div>
+      `;
 
-  if (route === "collections") {
-    return `
-      <div class="h-full bg-panel">
-        ${Collections.renderPanel()}
-      </div>
-    `;
-  }
+    case "collections":
+      return `
+        <div class="h-full min-h-0 bg-panel">
+          ${Collections.renderPanel()}
+        </div>
+      `;
 
-  if (route === "environments") {
-    return `
-      <div class="h-full overflow-auto scroll p-4 md:p-6">
-        ${Envs.renderPanel()}
-      </div>
-    `;
-  }
+    case "environments":
+      return `
+        <div class="h-full min-h-0 overflow-auto scroll bg-panel p-4 md:p-6">
+          ${Envs.renderPanel()}
+        </div>
+      `;
 
-  if (route === "code") {
-    return `
-      <div class="h-full bg-panel">
-        ${Code.render()}
-      </div>
-    `;
-  }
+    case "code":
+      return `
+        <div class="h-full min-h-0 bg-panel">
+          ${Code.render()}
+        </div>
+      `;
 
-  if (route === "settings" || route === "shortcuts") {
-    return settingsPage(route);
-  }
+    case "settings":
+    case "shortcuts":
+      return settingsPage(route);
 
-  return workspace();
+    case "workspace":
+    default:
+      return workspace();
+  }
 }
 
-/* WORKSPACE */
+
+/* =========================================================
+   WORKSPACE
+   ========================================================= */
+
 function workspace() {
   return `
-    <div class="h-full flex flex-col bg-panel">
+    <div
+      class="workspace h-full min-h-0 flex flex-col bg-panel"
+    >
 
-      <!-- Request tabs -->
-      <div class="h-10 shrink-0 border-b border-line flex items-center overflow-x-auto">
+      <!-- REQUEST TABS -->
+      <div
+        class="request-tabs h-10 shrink-0 border-b border-line flex items-center overflow-x-auto"
+      >
 
         ${state.tabs
           .map(
             (tab) => `
               <div
-                class="h-full flex items-center border-r border-line ${
+                class="h-full shrink-0 flex items-center border-r border-line ${
                   tab.id === state.activeTab ? "bg-panel2" : ""
                 }"
               >
 
                 <button
-                  class="px-3 text-xs ${
-                    tab.id === state.activeTab ? "text-main" : "text-muted"
+                  class="h-full px-3 text-xs whitespace-nowrap ${
+                    tab.id === state.activeTab
+                      ? "text-main"
+                      : "text-muted"
                   }"
                   data-request-tab-id="${esc(tab.id)}"
+                  title="${esc(tab.name)}"
                 >
                   ${esc(tab.name)}${tab.dirty ? " •" : ""}
                 </button>
 
                 <button
-                  class="btn btn-ghost iconbtn"
+                  class="btn btn-ghost iconbtn shrink-0"
                   data-close-request="${esc(tab.id)}"
+                  title="Close request"
+                  aria-label="Close request"
                 >
-                  <i class='fa-solid fa-xmark'></i>
+                  <i class="fa-solid fa-xmark"></i>
                 </button>
 
               </div>
@@ -344,10 +501,13 @@ function workspace() {
           )
           .join("")}
 
+
+        <!-- New request -->
         <button
-          class="btn btn-ghost iconbtn m-1"
+          class="btn btn-ghost iconbtn m-1 shrink-0"
           data-new
           title="New request"
+          aria-label="New request"
         >
           <i class="fa-solid fa-plus"></i>
         </button>
@@ -355,14 +515,21 @@ function workspace() {
       </div>
 
 
-      <!-- Request URL bar -->
-      <div class="p-3 border-b border-line">
+      <!-- =================================================
+           REQUEST TOOLBAR
+           ================================================= -->
 
-        <div class="request-url-bar flex gap-2 flex-wrap">
+      <div
+        class="request-toolbar shrink-0 p-3 border-b border-line"
+      >
 
+        <div class="request-url-bar flex min-w-0 gap-2">
+
+          <!-- Method -->
           <select
             id="method"
-            class="input rounded-lg px-3 py-2 mono font-semibold w-28"
+            class="input request-method rounded-lg px-3 py-2 mono font-semibold"
+            aria-label="HTTP method"
           >
             ${[
               "GET",
@@ -378,7 +545,11 @@ function workspace() {
                 (method) => `
                   <option
                     value="${method}"
-                    ${state.request.method === method ? "selected" : ""}
+                    ${
+                      state.request.method === method
+                        ? "selected"
+                        : ""
+                    }
                   >
                     ${method}
                   </option>
@@ -387,58 +558,68 @@ function workspace() {
               .join("")}
           </select>
 
+
+          <!-- URL -->
           <input
             id="url"
-            class="input flex-1 min-w-0 rounded-lg px-3 py-2 text-sm"
+            class="input request-url-input flex-1 min-w-0 rounded-lg px-3 py-2 text-sm"
             placeholder="https://api.example.com/resource or {{baseUrl}}/resource"
             value="${esc(state.request.url)}"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Request URL"
           />
 
+
+          <!-- Send -->
           <button
-            class="btn btn-primary px-5"
+            class="btn btn-primary request-send px-5 shrink-0"
             id="send"
             ${state.ui.loading ? "disabled" : ""}
           >
-            ${state.ui.loading ? "SENDING…" : "SEND"}
-            <i class="fa-solid fa-paper-plane ml-1"></i>
+            <span>
+              ${state.ui.loading ? "SENDING…" : "SEND"}
+            </span>
+
+            <i class="fa-solid fa-paper-plane"></i>
           </button>
 
         </div>
 
-        <div class="mt-2 flex items-center gap-2 text-[10px] text-muted">
 
-          <span>Resolved:</span>
+        <!-- Resolved URL -->
+        <div
+          class="mt-2 flex min-w-0 items-center gap-2 text-[10px] text-muted"
+        >
 
-          <span class="mono truncate">
-            ${esc(
-              resolveVars(
-                effectiveURL(),
-                Object.fromEntries(
-                  (activeEnv()?.variables || []).map((v) => [
-                    v.key,
-                    v.currentValue,
-                  ]),
-                ),
-              ),
-            )}
+          <span class="shrink-0">
+            Resolved:
           </span>
 
+          <span class="mono truncate min-w-0 resolved-url">
+            ${esc(getResolvedURL())}
+          </span>
+
+          <span class="unreslved-vars">
           ${unresolvedVars(state.request.url)
             .map(
-              (v) => `
-                <span class="badge text-red-400">
-                  ${esc(v)} unresolved
+              (variable) => `
+                <span class="badge text-red-400 shrink-0">
+                  ${esc(variable)} unresolved
                 </span>
               `,
             )
             .join("")}
-
+          </span>
         </div>
 
       </div>
 
 
-      <!-- Request / response -->
+      <!-- =================================================
+           REQUEST / RESPONSE
+           ================================================= -->
+
       <div
         class="flex-1 min-h-0 grid request-response"
         style="
@@ -456,7 +637,7 @@ function workspace() {
         >
           <div
             id="request-pane"
-            class="h-full"
+            class="h-full min-h-0"
           >
             ${renderRequest()}
           </div>
@@ -465,9 +646,11 @@ function workspace() {
 
         <!-- Splitter -->
         <div
-          class="resizer-h"
           id="horizontal-split"
+          class="resizer-h"
           title="Resize request/response"
+          role="separator"
+          aria-orientation="horizontal"
         ></div>
 
 
@@ -485,10 +668,16 @@ function workspace() {
   `;
 }
 
-/* SETTINGS */
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
 function settingsPage(which) {
+  const shortcutsPage = which === "shortcuts";
+
   return `
-    <div class="h-full overflow-auto scroll bg-panel p-5 md:p-8">
+    <div class="h-full min-h-0 overflow-auto scroll bg-panel p-5 md:p-8">
 
       <div class="max-w-3xl mx-auto">
 
@@ -497,12 +686,12 @@ function settingsPage(which) {
           <div>
 
             <div class="text-xl font-bold">
-              ${which === "shortcuts" ? "Keyboard shortcuts" : "Settings"}
+              ${shortcutsPage ? "Keyboard shortcuts" : "Settings"}
             </div>
 
             <div class="text-xs text-muted mt-1">
               ${
-                which === "shortcuts"
+                shortcutsPage
                   ? "Command desk controls"
                   : "Local workspace preferences"
               }
@@ -512,7 +701,7 @@ function settingsPage(which) {
 
         </div>
 
-        ${which === "shortcuts" ? shortcuts() : settings()}
+        ${shortcutsPage ? shortcuts() : settings()}
 
       </div>
 
@@ -520,10 +709,12 @@ function settingsPage(which) {
   `;
 }
 
+
 function settings() {
   return `
     <div class="space-y-6">
 
+      <!-- Appearance -->
       <section>
 
         <h3 class="text-sm font-semibold mb-2">
@@ -561,6 +752,7 @@ function settings() {
       </section>
 
 
+      <!-- History -->
       <section>
 
         <h3 class="text-sm font-semibold mb-2">
@@ -570,7 +762,9 @@ function settings() {
         <label
           class="flex items-center justify-between border border-line rounded p-3 text-xs"
         >
-          Enable history
+          <span>
+            Enable history
+          </span>
 
           <input
             type="checkbox"
@@ -579,7 +773,9 @@ function settings() {
           />
         </label>
 
+
         <label class="block text-xs mt-2">
+
           Maximum history entries
 
           <input
@@ -590,11 +786,13 @@ function settings() {
             max="1000"
             value="${state.settings.maxHistory}"
           />
+
         </label>
 
       </section>
 
 
+      <!-- Privacy -->
       <section>
 
         <h3 class="text-sm font-semibold mb-2">
@@ -603,15 +801,24 @@ function settings() {
 
         <div class="flex gap-2 flex-wrap">
 
-          <button class="btn" data-export>
+          <button
+            class="btn"
+            data-export
+          >
             Export workspace
           </button>
 
-          <button class="btn" data-import>
+          <button
+            class="btn"
+            data-import
+          >
             Import workspace
           </button>
 
-          <button class="btn btn-danger" data-reset>
+          <button
+            class="btn btn-danger"
+            data-reset
+          >
             Reset local data
           </button>
 
@@ -630,25 +837,33 @@ function settings() {
   `;
 }
 
+
 function shortcuts() {
+  const items = [
+    ["Ctrl + Enter", "Send request"],
+    ["Ctrl + S", "Save request"],
+    ["Ctrl + K", "Command palette"],
+    ["Ctrl + F", "Global/response search"],
+    ["Ctrl + /", "Focus URL"],
+    ["Escape", "Close modal/palette"],
+  ];
+
   return `
     <div class="border border-line rounded-lg overflow-hidden">
 
-      ${[
-        ["Ctrl + Enter", "Send request"],
-        ["Ctrl + S", "Save request"],
-        ["Ctrl + K", "Command palette"],
-        ["Ctrl + F", "Global/response search"],
-        ["Ctrl + /", "Focus URL"],
-        ["Escape", "Close modal/palette"],
-      ]
+      ${items
         .map(
           ([key, label]) => `
             <div
-              class="flex justify-between px-4 py-3 border-b border-line text-xs"
+              class="flex items-center justify-between gap-4 px-4 py-3 border-b border-line text-xs last:border-b-0"
             >
-              <span>${label}</span>
-              <span class="kbd">${key}</span>
+              <span>
+                ${esc(label)}
+              </span>
+
+              <span class="kbd shrink-0">
+                ${esc(key)}
+              </span>
             </div>
           `,
         )
@@ -658,89 +873,133 @@ function shortcuts() {
   `;
 }
 
-/* RENDER */
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+
 function render() {
   const app = document.getElementById("app");
 
-  if (!app) return;
+  if (!app) {
+    return;
+  }
 
   app.innerHTML = shell();
 
   bindShell();
 
-  if (current() === "workspace") {
-    const requestPane = document.querySelector("#request-pane");
+  const route = current();
 
-    if (requestPane) {
-      bindRequest(requestPane);
-    }
-
-    const responseSection = document.querySelector("#response-section");
-
-    if (responseSection) {
-      bindResponse(responseSection);
-    }
+  if (route === "workspace") {
+    bindWorkspace();
   }
 
-  if (current() === "history") {
+  if (route === "history") {
     History.bindPanel(document.querySelector("main"));
   }
 
-  if (current() === "collections") {
+  if (route === "collections") {
     Collections.bindPanel(document.querySelector("main"));
   }
 
-  if (current() === "environments") {
+  if (route === "environments") {
     Envs.bindPanel(document.querySelector("main"));
   }
 
-  if (current() === "code") {
+  if (route === "code") {
     Code.bind(document.querySelector("main"));
   }
 
-  if (current() === "settings") {
-    document
-      .querySelector("#theme-setting")
-      ?.addEventListener("change", (event) => {
-        setTheme(event.target.value);
-      });
-
-    document
-      .querySelector("#history-setting")
-      ?.addEventListener("change", (event) => {
-        state.settings.historyEnabled = event.target.checked;
-
-        persist();
-      });
-
-    document
-      .querySelector("#max-history")
-      ?.addEventListener("change", (event) => {
-        state.settings.maxHistory = Math.max(
-          10,
-          Math.min(1000, Number(event.target.value)),
-        );
-
-        persist();
-      });
+  if (route === "settings") {
+    bindSettings();
   }
 }
 
-/* SHELL EVENTS */
+
+function bindWorkspace() {
+  const requestPane = document.querySelector("#request-pane");
+
+  if (requestPane) {
+    bindRequest(requestPane);
+  }
+
+  const responseSection = document.querySelector("#response-section");
+
+  if (responseSection) {
+    bindResponse(responseSection);
+  }
+}
+
+
+/* =========================================================
+   SETTINGS EVENTS
+   ========================================================= */
+
+function bindSettings() {
+  document
+    .querySelector("#theme-setting")
+    ?.addEventListener("change", (event) => {
+      setTheme(event.target.value);
+    });
+
+
+  document
+    .querySelector("#history-setting")
+    ?.addEventListener("change", (event) => {
+      state.settings.historyEnabled = event.target.checked;
+      persist();
+    });
+
+
+  document
+    .querySelector("#max-history")
+    ?.addEventListener("change", (event) => {
+      const value = Number(event.target.value);
+
+      state.settings.maxHistory = Math.max(
+        10,
+        Math.min(1000, Number.isFinite(value) ? value : 100),
+      );
+
+      persist();
+    });
+}
+
+
+/* =========================================================
+   SHELL EVENTS
+   ========================================================= */
+
 function bindShell() {
-  /* Navigation */
+
+  /* -------------------------------------------------------
+     Navigation
+     ------------------------------------------------------- */
+
   document.querySelectorAll("[data-nav]").forEach((element) => {
     element.addEventListener("click", () => {
+      closeMobileSidebar();
       go(element.dataset.nav);
     });
   });
 
-  /* Settings / shell navigation */
+
+  /* -------------------------------------------------------
+     Settings / shell navigation
+     ------------------------------------------------------- */
+
   document.querySelectorAll("[data-open]").forEach((element) => {
     element.addEventListener("click", () => {
+      closeMobileSidebar();
       go(element.dataset.open);
     });
   });
+
+
+  /* -------------------------------------------------------
+     Request tabs
+     ------------------------------------------------------- */
 
   document.querySelectorAll("[data-request-tab-id]").forEach((element) => {
     element.addEventListener("click", (event) => {
@@ -750,15 +1009,24 @@ function bindShell() {
       const id = element.dataset.requestTabId;
 
       if (!id || id === state.activeTab) {
+        closeMobileSidebar();
+        go("workspace");
         return;
       }
 
       activateTab(id);
+
+      closeMobileSidebar();
+
       go("workspace");
     });
   });
 
-  /* Close request */
+
+  /* -------------------------------------------------------
+     Close request
+     ------------------------------------------------------- */
+
   document.querySelectorAll("[data-close-request]").forEach((element) => {
     element.addEventListener("click", (event) => {
       event.preventDefault();
@@ -768,103 +1036,287 @@ function bindShell() {
     });
   });
 
-  /* New request */
+
+  /* -------------------------------------------------------
+     New request
+     ------------------------------------------------------- */
+
   document.querySelectorAll("[data-new]").forEach((element) => {
     element.addEventListener("click", () => {
       newTab();
+
+      closeMobileSidebar();
+
       go("workspace");
     });
   });
 
-  /* Sidebar */
-  document.querySelector("#sidebar-toggle")?.addEventListener("click", () => {
-    state.ui.sidebar = !state.ui.sidebar;
 
-    document
-      .querySelector("#sidebar")
-      ?.classList.toggle("open", state.ui.sidebar);
+  /* -------------------------------------------------------
+     Sidebar toggle
+     ------------------------------------------------------- */
 
-    document
-      .querySelector("#overlay")
-      ?.classList.toggle("hidden", state.ui.sidebar);
-  });
+  document
+    .querySelector("#sidebar-toggle")
+    ?.addEventListener("click", toggleSidebar);
 
-  /* Mobile overlay */
-  document.querySelector("#overlay")?.addEventListener("click", () => {
-    state.ui.sidebar = false;
 
-    render();
-  });
+  /* -------------------------------------------------------
+     Mobile overlay
+     ------------------------------------------------------- */
 
-  /* HTTP method */
-  document.querySelector("#method")?.addEventListener("change", (event) => {
-    setRequest({
-      method: event.target.value,
+  document
+    .querySelector("#overlay")
+    ?.addEventListener("click", closeMobileSidebar);
+
+
+  /* -------------------------------------------------------
+     Method
+     ------------------------------------------------------- */
+
+  document
+    .querySelector("#method")
+    ?.addEventListener("change", (event) => {
+      setRequest(
+        {
+          method: event.target.value,
+        },
+        {
+          history: true,
+          emitChange: true,
+        },
+      );
+
+      markDirty(true, {
+        emitChange: true,
+      });
     });
 
-    markDirty();
-  });
 
-  /* URL */
-  document.querySelector("#url")?.addEventListener("input", (event) => {
-    setRequest(
-      {
-        url: event.target.value,
-      },
-      {
-        history: false,
+  /* -------------------------------------------------------
+     URL
+
+     IMPORTANT:
+     Do not render on every keystroke.
+     ------------------------------------------------------- */
+
+  document
+    .querySelector("#url")
+    ?.addEventListener("input", (event) => {
+      setRequest(
+        {
+          url: event.target.value,
+        },
+        {
+          history: false,
+          emitChange: false,
+        },
+      );
+
+      markDirty(true, {
         emitChange: false,
-      },
-    );
+      });
 
-    markDirty(false, { emitChange: false });
-  });
+      updateResolvedURLPreview();
+    });
 
-  /* Send */
-  document.querySelector("#send")?.addEventListener("click", send);
 
-  /* Theme */
+  /* -------------------------------------------------------
+     Send
+     ------------------------------------------------------- */
+
+  document
+    .querySelector("#send")
+    ?.addEventListener("click", send);
+
+
+  /* -------------------------------------------------------
+     Theme
+     ------------------------------------------------------- */
+
   document
     .querySelector('[data-action="theme"]')
     ?.addEventListener("click", () => {
-      setTheme(state.settings.theme === "dark" ? "light" : "dark");
+      setTheme(
+        state.settings.theme === "dark"
+          ? "light"
+          : "dark",
+      );
     });
 
-  /* Global search */
+
+  /* -------------------------------------------------------
+     Global search
+     ------------------------------------------------------- */
+
   document
     .querySelector('[data-action="global-search"]')
     ?.addEventListener("click", () => {
       palette(true);
     });
 
-  /* Import cURL */
+
+  /* -------------------------------------------------------
+     Import cURL
+     ------------------------------------------------------- */
+
   document
     .querySelector("[data-import-curl]")
     ?.addEventListener("click", curlModal);
 
-  /* Export */
+
+  /* -------------------------------------------------------
+     Export
+     ------------------------------------------------------- */
+
   document
     .querySelector("[data-export]")
     ?.addEventListener("click", exportWorkspace);
 
-  /* Import */
-  document.querySelector("[data-import]")?.addEventListener("click", () => {
-    document.querySelector("#file-import")?.click();
-  });
 
-  /* Reset */
-  document.querySelector("[data-reset]")?.addEventListener("click", reset);
+  /* -------------------------------------------------------
+     Import workspace
+     ------------------------------------------------------- */
 
-  /* Environment */
-  document.querySelector("#env-switch")?.addEventListener("click", () => {
-    go("environments");
-  });
+  document
+    .querySelector("[data-import]")
+    ?.addEventListener("click", () => {
+      document.querySelector("#file-import")?.click();
+    });
 
-  /* Request/response splitter */
+
+  /* -------------------------------------------------------
+     Reset
+     ------------------------------------------------------- */
+
+  document
+    .querySelector("[data-reset]")
+    ?.addEventListener("click", reset);
+
+
+  /* -------------------------------------------------------
+     Environment
+     ------------------------------------------------------- */
+
+  document
+    .querySelector("#env-switch")
+    ?.addEventListener("click", () => {
+      closeMobileSidebar();
+      go("environments");
+    });
+
+
+  /* -------------------------------------------------------
+     Splitter
+     ------------------------------------------------------- */
+
   bindSplitter();
 }
 
-/* SPLITTER */
+
+/* =========================================================
+   SIDEBAR HELPERS
+   ========================================================= */
+
+function toggleSidebar() {
+  state.ui.sidebar = !state.ui.sidebar;
+
+  const sidebarElement = document.querySelector("#sidebar");
+  const overlayElement = document.querySelector("#overlay");
+  const toggleElement = document.querySelector("#sidebar-toggle");
+
+  sidebarElement?.classList.toggle(
+    "open",
+    state.ui.sidebar,
+  );
+
+  overlayElement?.classList.toggle(
+    "hidden",
+    !state.ui.sidebar,
+  );
+
+  overlayElement?.setAttribute(
+    "aria-hidden",
+    String(!state.ui.sidebar),
+  );
+
+  toggleElement?.setAttribute(
+    "aria-expanded",
+    String(state.ui.sidebar),
+  );
+}
+
+
+function closeMobileSidebar() {
+  if (!state.ui.sidebar) {
+    return;
+  }
+
+  state.ui.sidebar = false;
+
+  document
+    .querySelector("#sidebar")
+    ?.classList.remove("open");
+
+  document
+    .querySelector("#overlay")
+    ?.classList.add("hidden");
+
+  document
+    .querySelector("#overlay")
+    ?.setAttribute("aria-hidden", "true");
+
+  document
+    .querySelector("#sidebar-toggle")
+    ?.setAttribute("aria-expanded", "false");
+}
+
+
+/* =========================================================
+   RESOLVED URL
+   ========================================================= */
+
+function updateResolvedURLPreview() {
+  const workspace = document.querySelector(".workspace");
+
+  if (!workspace) {
+    return;
+  }
+
+  const resolvedElement = workspace.querySelector(
+    ".resolved-url",
+  );
+
+  if (resolvedElement) {
+    resolvedElement.textContent = getResolvedURL();
+  }
+
+  const unresolvedContainer = workspace.querySelector(
+    ".unresolved-vars",
+  );
+
+  if (!unresolvedContainer) {
+    return;
+  }
+
+  unresolvedContainer.innerHTML = unresolvedVars(
+    state.request.url,
+  )
+    .map(
+      (variable) => `
+        <span class="badge text-red-400 shrink-0">
+          ${esc(variable)} unresolved
+        </span>
+      `,
+    )
+    .join("");
+}
+
+
+/* =========================================================
+   SPLITTER
+   ========================================================= */
+
 function bindSplitter() {
   const split = document.querySelector("#horizontal-split");
   const container = document.querySelector(".request-response");
@@ -874,6 +1326,21 @@ function bindSplitter() {
   }
 
   let dragging = false;
+
+
+  const applySplit = (percentage) => {
+    state.ui.requestSplit = Math.max(
+      20,
+      Math.min(80, percentage),
+    );
+
+    container.style.gridTemplateRows = `
+      ${state.ui.requestSplit}fr
+      8px
+      ${100 - state.ui.requestSplit}fr
+    `;
+  };
+
 
   const update = (event) => {
     if (!dragging) {
@@ -886,16 +1353,12 @@ function bindSplitter() {
       return;
     }
 
-    const percentage = ((event.clientY - rect.top) / rect.height) * 100;
+    const percentage =
+      ((event.clientY - rect.top) / rect.height) * 100;
 
-    state.ui.requestSplit = Math.max(20, Math.min(80, percentage));
-
-    container.style.gridTemplateRows = `
-      ${state.ui.requestSplit}fr
-      8px
-      ${100 - state.ui.requestSplit}fr
-    `;
+    applySplit(percentage);
   };
+
 
   const stop = () => {
     if (!dragging) {
@@ -907,8 +1370,13 @@ function bindSplitter() {
     split.classList.remove("dragging");
     document.body.classList.remove("resizing");
 
+    split.releasePointerCapture?.(
+      split.pointerId,
+    );
+
     persist();
   };
+
 
   split.addEventListener("pointerdown", (event) => {
     event.preventDefault();
@@ -921,14 +1389,24 @@ function bindSplitter() {
     split.setPointerCapture?.(event.pointerId);
   });
 
+
   split.addEventListener("pointermove", update);
 
   split.addEventListener("pointerup", stop);
+
   split.addEventListener("pointercancel", stop);
-  split.addEventListener("lostpointercapture", stop);
+
+  split.addEventListener(
+    "lostpointercapture",
+    stop,
+  );
 }
 
-/* SEND REQUEST */
+
+/* =========================================================
+   SEND REQUEST
+   ========================================================= */
+
 async function send() {
   if (state.ui.loading) {
     return;
@@ -939,14 +1417,23 @@ async function send() {
   try {
     config = prepareRequest();
   } catch (error) {
-    toast(error?.message || "Unable to prepare request.", "error");
+    toast(
+      error?.message ||
+        "Unable to prepare request.",
+      "error",
+    );
 
     return;
   }
 
+
   state.ui.loading = true;
 
+  /*
+     Render once to disable the Send button.
+  */
   render();
+
 
   try {
     const response = await request(config);
@@ -957,19 +1444,25 @@ async function send() {
 
     History.record(config, response);
 
-    markDirty(false);
+    markDirty(false, {
+      emitChange: false,
+    });
 
     toast(
-      `${response.status} ${response.statusText} · ${formatDuration(
-        response.duration,
-      )}`,
+      `${response.status} ${
+        response.statusText
+      } · ${formatDuration(response.duration)}`,
     );
+
   } catch (error) {
+
     state.response = {
       status: 0,
       statusText: "Request failed",
       headers: {},
-      body: error?.message || "Request failed.",
+      body:
+        error?.message ||
+        "Request failed.",
       bodyKind: "text",
       duration: 0,
       size: 0,
@@ -979,8 +1472,14 @@ async function send() {
 
     syncTab();
 
-    toast(error?.message || "Request failed.", "error");
+    toast(
+      error?.message ||
+        "Request failed.",
+      "error",
+    );
+
   } finally {
+
     state.ui.loading = false;
 
     persist();
@@ -989,28 +1488,44 @@ async function send() {
   }
 }
 
-/* SAVE */
+
+/* =========================================================
+   SAVE
+   ========================================================= */
+
 function save() {
   Collections.saveCurrent();
 
   toast("Request saved");
 }
 
-/* COMMAND PALETTE */
-function palette(searchOnly = false) {
+
+/* =========================================================
+   COMMAND PALETTE
+   ========================================================= */
+
+function palette() {
+  if (document.querySelector("#palette")) {
+    return;
+  }
+
   state.ui.commandOpen = true;
-  state.ui.paletteSearch = searchOnly ? "" : "";
+  state.ui.paletteSearch = "";
+
 
   document.body.insertAdjacentHTML(
     "beforeend",
     `
       <div
-        class="fixed inset-0 z-[90] modal-backdrop flex items-start justify-center pt-[12vh]"
+        class="fixed inset-0 z-[90] modal-backdrop flex items-start justify-center pt-[12vh] p-3"
         id="palette"
       >
 
         <div
-          class="bg-panel border border-line rounded-xl shadow-2xl w-[min(680px,calc(100vw-24px))] overflow-hidden"
+          class="bg-panel border border-line rounded-xl shadow-2xl w-[min(680px,100%)] overflow-hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Command palette"
         >
 
           <input
@@ -1018,6 +1533,7 @@ function palette(searchOnly = false) {
             autofocus
             class="input w-full border-0 border-b border-line rounded-none px-4 py-3"
             placeholder="Search commands…"
+            autocomplete="off"
           />
 
           <div
@@ -1031,6 +1547,7 @@ function palette(searchOnly = false) {
     `,
   );
 
+
   const commands = [
     ["New Request", () => newTab()],
 
@@ -1040,14 +1557,21 @@ function palette(searchOnly = false) {
 
     [
       "Duplicate Request",
-      () => newTab(state.request, `${state.request.method} copy`),
+      () =>
+        newTab(
+          state.request,
+          `${state.request.method} copy`,
+        ),
     ],
 
     ["Open History", () => go("history")],
 
     ["Open Collections", () => go("collections")],
 
-    ["Open Environments", () => go("environments")],
+    [
+      "Open Environments",
+      () => go("environments"),
+    ],
 
     ["Generate cURL", () => go("code")],
 
@@ -1057,7 +1581,12 @@ function palette(searchOnly = false) {
 
     [
       "Toggle Theme",
-      () => setTheme(state.settings.theme === "dark" ? "light" : "dark"),
+      () =>
+        setTheme(
+          state.settings.theme === "dark"
+            ? "light"
+            : "dark",
+        ),
     ],
 
     [
@@ -1066,67 +1595,143 @@ function palette(searchOnly = false) {
         state.response = null;
         syncTab();
         persist();
+        render();
       },
     ],
 
-    ["Focus URL", () => document.querySelector("#url")?.focus()],
+    [
+      "Focus URL",
+      () => document.querySelector("#url")?.focus(),
+    ],
 
-    ["Keyboard shortcuts", () => go("shortcuts")],
+    [
+      "Keyboard shortcuts",
+      () => go("shortcuts"),
+    ],
   ];
 
-  const list = document.querySelector("#palette-list");
 
-  const input = document.querySelector("#palette-input");
+  const paletteElement =
+    document.querySelector("#palette");
+
+  const input =
+    document.querySelector("#palette-input");
+
+  const list =
+    document.querySelector("#palette-list");
+
 
   const paint = () => {
-    const query = input.value.toLowerCase();
+    const query =
+      input.value
+        .trim()
+        .toLowerCase();
 
-    list.innerHTML = commands
-      .filter(([label]) => label.toLowerCase().includes(query))
-      .map(
-        ([label], index) => `
-          <button
-            class="command-item w-full text-left border-b border-line px-4 py-3 text-xs"
-            data-command-index="${index}"
-          >
-            ${esc(label)}
-          </button>
-        `,
-      )
-      .join("");
+    const matches = commands
+      .map((command, index) => ({
+        label: command[0],
+        action: command[1],
+        index,
+      }))
+      .filter((command) =>
+        command.label
+          .toLowerCase()
+          .includes(query),
+      );
 
-    list.querySelector("[data-command-index]")?.classList.add("active");
+
+    list.innerHTML = matches.length
+      ? matches
+          .map(
+            (command) => `
+              <button
+                class="command-item w-full text-left border-b border-line px-4 py-3 text-xs"
+                data-command-index="${command.index}"
+              >
+                ${esc(command.label)}
+              </button>
+            `,
+          )
+          .join("")
+      : `
+          <div class="px-4 py-5 text-xs text-muted">
+            No commands found.
+          </div>
+        `;
+
+
+    list
+      .querySelector("[data-command-index]")
+      ?.classList.add("active");
   };
+
+
+  const close = () => {
+    paletteElement?.remove();
+    state.ui.commandOpen = false;
+  };
+
 
   paint();
 
-  input.addEventListener("input", paint);
+  input?.focus();
 
-  list.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-command-index]");
 
-    if (!button) {
-      return;
-    }
+  input?.addEventListener(
+    "input",
+    paint,
+  );
 
-    const index = Number(button.dataset.commandIndex);
 
-    document.querySelector("#palette")?.remove();
+  list?.addEventListener(
+    "click",
+    (event) => {
+      const button =
+        event.target.closest(
+          "[data-command-index]",
+        );
 
-    commands[index]?.[1]?.();
+      if (!button) {
+        return;
+      }
 
-    render();
-  });
+      const index = Number(
+        button.dataset.commandIndex,
+      );
 
-  document.querySelector("#palette").addEventListener("click", (event) => {
-    if (event.target.id === "palette") {
-      event.target.remove();
-    }
-  });
+      const action =
+        commands[index]?.[1];
+
+      close();
+
+      action?.();
+    },
+  );
+
+
+  paletteElement?.addEventListener(
+    "click",
+    (event) => {
+      if (
+        event.target === paletteElement
+      ) {
+        close();
+      }
+    },
+  );
 }
 
-/* CURL MODAL */
+
+/* =========================================================
+   CURL MODAL
+   ========================================================= */
+
 function curlModal() {
+  if (document.querySelector("#curl-modal")) {
+    return;
+  }
+
+
   document.body.insertAdjacentHTML(
     "beforeend",
     `
@@ -1136,11 +1741,14 @@ function curlModal() {
       >
 
         <div
-          class="bg-panel border border-line rounded-xl shadow-2xl w-[min(800px,100%)]"
+          class="bg-panel border border-line rounded-xl shadow-2xl w-[min(800px,100%)] overflow-hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Import cURL"
         >
 
           <div
-            class="px-4 py-3 border-b border-line flex justify-between"
+            class="px-4 py-3 border-b border-line flex items-center justify-between"
           >
 
             <div class="font-semibold text-sm">
@@ -1150,17 +1758,22 @@ function curlModal() {
             <button
               class="btn iconbtn"
               data-curl-close
+              title="Close"
+              aria-label="Close"
             >
               <i class="fa-solid fa-xmark"></i>
             </button>
 
           </div>
 
+
           <textarea
             id="curl-input"
             class="input code-editor w-full min-h-[220px] rounded-none border-0 p-4"
             placeholder="curl -X GET https://example.com ..."
+            spellcheck="false"
           ></textarea>
+
 
           <div
             class="p-3 flex justify-end gap-2 border-t border-line"
@@ -1188,44 +1801,90 @@ function curlModal() {
     `,
   );
 
-  document
-    .querySelectorAll("#curl-modal [data-curl-close]")
+
+  const modal =
+    document.querySelector("#curl-modal");
+
+  const input =
+    document.querySelector("#curl-input");
+
+
+  const close = () => {
+    modal?.remove();
+  };
+
+
+  modal
+    ?.querySelectorAll("[data-curl-close]")
     .forEach((element) => {
-      element.addEventListener("click", () => {
-        document.querySelector("#curl-modal")?.remove();
-      });
+      element.addEventListener(
+        "click",
+        close,
+      );
     });
 
-  document.querySelector("[data-curl-go]")?.addEventListener("click", () => {
-    try {
-      const output = importCurl(document.querySelector("#curl-input").value);
 
-      replaceRequest(output.request);
+  modal?.addEventListener(
+    "click",
+    (event) => {
+      if (event.target === modal) {
+        close();
+      }
+    },
+  );
 
-      markDirty();
 
-      document.querySelector("#curl-modal")?.remove();
+  document
+    .querySelector("[data-curl-go]")
+    ?.addEventListener(
+      "click",
+      () => {
+        try {
+          const output = importCurl(
+            input?.value || "",
+          );
 
-      go("workspace");
+          replaceRequest(
+            output.request,
+          );
 
-      toast(
-        output.warnings.length
-          ? `Imported with ${output.warnings.length} warning(s)`
-          : "cURL imported",
-      );
-    } catch (error) {
-      toast(error?.message || "Unable to import cURL.", "error");
-    }
-  });
+          markDirty();
+
+          close();
+
+          go("workspace");
+
+          toast(
+            output.warnings.length
+              ? `Imported with ${output.warnings.length} warning(s)`
+              : "cURL imported",
+          );
+
+        } catch (error) {
+          toast(
+            error?.message ||
+              "Unable to import cURL.",
+            "error",
+          );
+        }
+      },
+    );
+
+
+  input?.focus();
 }
 
-/* RESET */
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
 function reset() {
-  if (
-    !confirm(
-      "Reset Endpoint? This deletes collections, environments, history, settings and open workspace data.",
-    )
-  ) {
+  const confirmed = confirm(
+    "Reset Endpoint? This deletes collections, environments, history, settings and open workspace data.",
+  );
+
+  if (!confirmed) {
     return;
   }
 
@@ -1234,56 +1893,99 @@ function reset() {
   location.reload();
 }
 
-/* FILE IMPORT */
-function bindFileImport() {
-  const input = document.querySelector("#file-import");
 
-  if (!input) {
+/* =========================================================
+   FILE IMPORT
+   ========================================================= */
+
+function bindFileImport() {
+  const input =
+    document.querySelector("#file-import");
+
+  if (!input || input.dataset.bound === "true") {
     return;
   }
 
-  input.addEventListener("change", (event) => {
-    const file = event.target.files?.[0];
+  input.dataset.bound = "true";
 
-    if (!file) {
-      return;
-    }
 
-    importWorkspace(file)
-      .then(() => {
-        toast("Workspace imported");
-        render();
-      })
-      .catch((error) => {
-        toast(error?.message || "Workspace import failed.", "error");
-      })
-      .finally(() => {
-        event.target.value = "";
-      });
-  });
+  input.addEventListener(
+    "change",
+    (event) => {
+      const file =
+        event.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+
+      importWorkspace(file)
+        .then(() => {
+          toast("Workspace imported");
+          render();
+        })
+        .catch((error) => {
+          toast(
+            error?.message ||
+              "Workspace import failed.",
+            "error",
+          );
+        })
+        .finally(() => {
+          event.target.value = "";
+        });
+    },
+  );
 }
 
-/* GLOBAL EVENTS */
-window.addEventListener("hashchange", render);
+
+/* =========================================================
+   GLOBAL EVENTS
+   ========================================================= */
+
+window.addEventListener(
+  "hashchange",
+  () => {
+    render();
+  },
+);
+
+
+/* =========================================================
+   STATE SUBSCRIPTION
+   ========================================================= */
 
 subscribe(() => {
   persist();
 
-  if (viewKey !== current()) {
-    viewKey = current();
+  const nextViewKey = current();
+
+  if (viewKey !== nextViewKey) {
+    viewKey = nextViewKey;
   }
 
   render();
+
+  bindFileImport();
 });
 
-/* INITIALIZE */
+
+/* =========================================================
+   INITIALIZE
+   ========================================================= */
+
 viewKey = current();
 
 render();
 
 bindFileImport();
 
-/* KEYBOARD SHORTCUTS */
+
+/* =========================================================
+   KEYBOARD SHORTCUTS
+   ========================================================= */
+
 initKeyboard({
   send,
 
@@ -1291,13 +1993,20 @@ initKeyboard({
 
   palette: () => palette(),
 
-  search: () => palette(true),
+  search: () => palette(),
 
-  url: () => document.querySelector("#url")?.focus(),
+  url: () =>
+    document.querySelector("#url")?.focus(),
 
   escape: () => {
-    document.querySelector("#palette")?.remove();
+    document
+      .querySelector("#palette")
+      ?.remove();
 
-    document.querySelector("#curl-modal")?.remove();
+    document
+      .querySelector("#curl-modal")
+      ?.remove();
+
+    closeMobileSidebar();
   },
 });

@@ -148,7 +148,7 @@ export function renderRequest() {
   return `
     <div class="flex flex-col h-full">
 
-      <div class="flex gap-1 border-b border-line px-3 overflow-x-auto">
+      <div class="flex gap-1 border-b border-line px-3 overflow-x-auto lg:overflow-hidden">
         ${tabs
           .map(function (t) {
             const active = state.ui.requestTab === t ? "active" : "";
