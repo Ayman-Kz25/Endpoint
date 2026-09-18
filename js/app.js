@@ -198,7 +198,7 @@ function shell() {
         <aside
           id="sidebar"
           class="desktop-sidebar border-r border-line bg-panel ${
-            sidebarOpen ? "open" : ""
+            sidebarOpen
           }"
         >
           ${sidebar()}
